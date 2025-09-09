@@ -9,4 +9,10 @@ export const PATTERNS = {
   USER_FIND_ALL: 'user.findAll',
   USER_UPDATE: 'user.update',
   USER_DELETE: 'user.delete',
+
+  BRANCH_CREATE: 'branch.create',
+  BRANCH_FIND_BY_ID: 'branch.findById',
+  BRANCH_FIND_ALL: 'branch.findAll',
+  BRANCH_UPDATE: 'branch.update',
+  BRANCH_DELETE: 'branch.delete',
 } as const;

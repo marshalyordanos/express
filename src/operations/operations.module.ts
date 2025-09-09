@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
 import { UserRepository } from './user/user.repository';
 import { JwtModule } from '@nestjs/jwt';
+import { BranchModule } from '../branch/branch.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { JwtModule } from '@nestjs/jwt';
       secret: process.env.JWT_SECRET || 'yourSecret',
       signOptions: { expiresIn: '15m' },
     }),
+    BranchModule,
   ],
   controllers: [UserMessageController],
   providers: [UserUseCasesImp, UserRepository, PrismaService],

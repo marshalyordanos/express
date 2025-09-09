@@ -17,14 +17,14 @@ export class IResponse<T = any> {
     data?: T,
     pagination?: IPagination,
   ) {
+    this.success = success;
     this.message = message;
     this.data = data;
-    this.success = success;
     this.pagination = pagination;
   }
 
   // Optional static helpers
   static success<T>(message: string, data?: T, pagination?: IPagination) {
-    return new IResponse<T>(message, data, true, pagination);
+    return new IResponse<T>(true,message, data, pagination);
   }
 }
