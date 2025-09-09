@@ -1,0 +1,131 @@
+// auth.repository.ts
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service'; // Adjust path to your Prisma service
+import { Prisma, User } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
+
+@Injectable()
+export class AuthRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  // ----------------- User Queries -----------------
+  async findByEmail(email: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { email } });
+  }
+
+  async findById(id: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { id } });
+  }
+
+  async createUser(data: Prisma.UserCreateInput): Promise<User> {
+    return this.prisma.user.create({ data });
+  }
+
+  // ----------------- Refresh Tokens -----------------
+  async saveRefreshToken(userId: string, token: string): Promise<void> {
+    const hashedToken = await bcrypt.hash(token, 10);
+    await this.prisma.refreshToken.create({
+      data: {
+        token: hashedToken,
+        userId,
+      },
+    });
+  }
+
+  async findSessionByRefreshToken(userId: string, token: string) {
+    // Fetch only this user's sessions that are still valid
+    const sessions = await this.prisma.refreshToken.findMany({
+      where: {
+        userId,
+        expiresAt: { gt: new Date() }, // only not expired
+      },
+    });
+
+    for (const session of sessions) {
+      const isValid = await bcrypt.compare(token, session.token);
+      if (isValid) return session;
+    }
+
+    return null; // no valid session found
+  }
+
+  async removeRefreshToken(userId: string, sessionId?: string): Promise<void> {
+    if (sessionId) {
+      await this.prisma.refreshToken.delete({ where: { id: sessionId } });
+    } else {
+      await this.prisma.refreshToken.deleteMany({ where: { userId } });
+    }
+  }
+
+  async updateRefreshToken(
+    userId: string,
+    newToken: string,
+    sessionId: string,
+  ) {
+    const hashedToken = await bcrypt.hash(newToken, 10);
+    await this.prisma.refreshToken.update({
+      where: { id: sessionId },
+      data: { token: hashedToken, createdAt: new Date() },
+    });
+  }
+
+  // ----------------- Password Management -----------------
+  async updatePassword(userId: string, hashedPassword: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+  }
+
+  async generateResetToken(userId: string): Promise<string> {
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 3600 * 1000); // 1 hour expiry
+    await this.prisma.passwordReset.create({
+      data: { userId, expiresAt },
+    });
+    return token;
+  }
+
+  async verifyResetToken(token: string): Promise<string | null> {
+    const resetRecord = await this.prisma.passwordReset.findFirst({
+      where: {
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!resetRecord) return null;
+    return resetRecord.userId;
+  }
+
+  async invalidateResetToken(token: string): Promise<void> {
+    await this.prisma.passwordReset.deleteMany({
+      where: { expiresAt: { gt: new Date() } },
+    });
+  }
+
+  // ----------------- Email Verification -----------------
+  async sendVerificationEmail(userId: string, email: string): Promise<void> {
+    // TODO: Integrate real email sending service
+    console.log(`Send verification email to ${email} for user ${userId}`);
+  }
+
+  async verifyEmailToken(token: string): Promise<string | null> {
+    // TODO: Implement proper token verification logic
+    // For now, return a userId placeholder
+    return null;
+  }
+
+  async markEmailAsVerified(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { emailVerified: true },
+    });
+  }
+
+  // ----------------- Reset Password Email -----------------
+  async sendResetPasswordEmail(email: string, token: string): Promise<void> {
+    // TODO: Integrate real email service
+    console.log(`Send password reset email to ${email}: token=${token}`);
+  }
+}
