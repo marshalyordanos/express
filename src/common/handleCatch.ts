@@ -7,5 +7,5 @@ export function handleCatch(error: any) {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     message = getPrismaErrorMessage(error);
   }
-  throw new RpcException({ statusCode: 400, message });
+  throw error;
 }

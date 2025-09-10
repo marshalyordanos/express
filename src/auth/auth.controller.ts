@@ -32,6 +32,8 @@ export class AuthMessageController {
   @MessagePattern(PATTERNS.AUTH_LOGIN)
   async login(@Payload() dto: AuthLoginDto) {
     try {
+      console.log('data: ', dto);
+
       const data = await this.usecases.login(dto);
       return new IResponse(true, 'User is logged in Succuessfuly', data);
     } catch (error) {

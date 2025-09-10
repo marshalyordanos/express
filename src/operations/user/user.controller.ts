@@ -25,10 +25,23 @@ export class UserMessageController {
   @MessagePattern(PATTERNS.USER_FIND_ALL)
   async findAll(@Payload() data: any) {
     try {
-      const user = data.user; // decoded JWT
+      const user = data.user;
       console.log('Current user:', user);
-      const users = await this.usecases.getAllUsers();
-      return new IResponse(true, 'Users fetched successfully', users, null);
+
+      const { page = 1, pageSize = 10, search, branchId } = data;
+
+      const result = await this.usecases.getAllUsers(
+        page,
+        pageSize,
+        search,
+        branchId,
+      );
+
+      return IResponse.success(
+        'Users fetched successfully',
+        result.users,
+        result.pagination,
+      );
     } catch (error) {
       handleCatch(error);
     }

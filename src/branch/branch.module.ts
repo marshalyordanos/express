@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { BranchController } from './branch.controller';
 import { BranchUseCaseImplementation } from './branch.useCase.implementation';
 import { BranchRepository } from './branch.repository';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 

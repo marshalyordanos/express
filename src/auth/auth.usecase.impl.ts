@@ -49,18 +49,25 @@ export class AuthUseCaseImpl implements AuthUseCase {
   }
 
   async login(data: AuthLoginDto): Promise<{ user: User; tokens: AuthTokens }> {
+    console.log('=========================: 2');
+
     const user = await this.authRepository.findByEmail(data.email);
+    console.log('=========================: 22', user);
+
     if (!user) {
+      console.log('=========================: 22', user);
+
       throw new RpcException({
         statusCode: 400,
         message: 'Invalid credentials',
       });
     }
+    console.log('=========================: ');
 
     const isPasswordValid = await bcrypt.compare(data.password, user.password);
     if (!isPasswordValid) {
       throw new RpcException({
-        statusCode: 400,
+        statusCode: 404,
         message: 'Invalid credentials',
       });
     }
@@ -69,6 +76,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
 
     await this.authRepository.saveRefreshToken(user.id, tokens.refreshToken);
     delete user.password;
+    console.log('=========================: ', user, tokens);
 
     return { user, tokens };
   }
