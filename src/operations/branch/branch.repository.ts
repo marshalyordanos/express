@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import {
   BranchCreateDto,
   BranchResponseDto,
   BranchUpdateDto,
-} from './brach.branchDTO';
+} from './branch.entity';
 import { Branch } from '@prisma/client';
 
 @Injectable()

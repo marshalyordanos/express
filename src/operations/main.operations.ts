@@ -1,13 +1,13 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
-import { UserModule } from './operations.module';
+import { OperationsModule } from './operations.module';
 import { ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from '../common/auth.guard';
 
 async function bootstrap() {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-    UserModule,
+    OperationsModule,
     {
       transport: Transport.TCP,
       options: {

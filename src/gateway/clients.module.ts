@@ -14,11 +14,6 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         transport: Transport.TCP,
         options: { host: '127.0.0.1', port: 4002 },
       },
-      {
-        name: 'BRANCH_SERVICE',
-        transport: Transport.TCP,
-        options: { host: '127.0.0.1', port: 4004 },
-      },
     ]),
   ],
   exports: [ClientsModule],
