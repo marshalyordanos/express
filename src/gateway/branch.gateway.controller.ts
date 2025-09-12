@@ -7,6 +7,7 @@ import {
   Patch,
   Inject,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PATTERNS } from '../contracts';
@@ -32,8 +33,16 @@ export class BranchGatewayController {
   }
 
   @Get()
-  async findAllBranches() {
-    return this.branchClient.send(PATTERNS.BRANCH_FIND_ALL, {});
+  async findAllBranches(
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+    @Query('search') search?: string,
+  ) {
+    return this.branchClient.send(PATTERNS.BRANCH_FIND_ALL, {
+      page: page ? Number(page) : 1,
+      pageSize: pageSize ? Number(pageSize) : 10,
+      search: search || null,
+    });
   }
 
   @Patch(':id')
@@ -48,4 +57,18 @@ export class BranchGatewayController {
   async deleteBranch(@Param('id') id: string) {
     return this.branchClient.send(PATTERNS.BRANCH_DELETE, { id });
   }
+
+  @Post('assign-manager')
+  async assignManager(@Body() data: { branchId: string; managerId: string }) {
+    console.log('Controller received:', data); // Debug log
+    return this.branchClient.send(PATTERNS.BRANCH_ASSIGN_MANAGER,{ branchId: data.branchId, managerId: data.managerId });
+  }
+
+
+  @Post('revoke-manager')
+  async revokeManager(@Body() data: { branchId: string; managerId: string }) {
+    console.log('Controller received:', data); // Debug log
+    return this.branchClient.send(PATTERNS.BRANCH_REVOKE_MANAGER,{ branchId: data.branchId, managerId: data.managerId });
+  }
+
 }

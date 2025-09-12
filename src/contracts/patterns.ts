@@ -15,4 +15,6 @@ export const PATTERNS = {
   BRANCH_FIND_ALL: 'branch.findAll',
   BRANCH_UPDATE: 'branch.update',
   BRANCH_DELETE: 'branch.delete',
+  BRANCH_ASSIGN_MANAGER: 'branch.assignManager',
+  BRANCH_REVOKE_MANAGER: 'branch.revokeManager',
 } as const;

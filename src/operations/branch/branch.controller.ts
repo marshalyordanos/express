@@ -5,6 +5,7 @@ import { IResponse } from '../../common/types';
 import { handleCatch } from '../../common/handleCatch';
 import { Public } from '../../common/decorator/public.decorator';
 import {
+  AssignManagerDto,
   BranchCreateDto,
   BranchResponseDto,
   BranchUpdateDto,
@@ -56,13 +57,56 @@ export class BranchMessageController {
   }
 
   @Public()
-  @MessagePattern(PATTERNS.BRANCH_FIND_ALL)
-  async findAllBranches() {
-    console.log('Branchs fetched successfully');
+  @MessagePattern(PATTERNS.BRANCH_ASSIGN_MANAGER)
+  async assignManager(
+    @Payload() payload: { branchId: string; managerId: string },
+  ) {
+    try {
+      console.log(
+        `Branch Id: ${payload.branchId}, Managrer managerId: ${payload.managerId} to be assigned.`,
+      );
+      return await this.usecases.assignManager(
+        payload.branchId,
+        payload.managerId,
+      );
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+  @Public()
+  @MessagePattern(PATTERNS.BRANCH_REVOKE_MANAGER)
+  async revokeManager(
+    @Payload() payload: { branchId: string; managerId: string },
+  ) {
+    console.log(
+      `Branch Id : ${payload.branchId}, Manager Id : ${payload.managerId} to be revoked.`,
+    );
 
     try {
-      const branchs = await this.usecases.findAllBranch();
-      return new IResponse(true, 'Branchs fetched successfully', branchs, null);
+      return this.usecases.revokeManager(payload.branchId, payload.managerId);
+    } catch (error) {}
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.BRANCH_FIND_ALL)
+  async findAllBranches(@Payload() data: any) {
+    console.log('data: ', data);
+
+    try {
+      const { page = 1, pageSize = 10, search } = data;
+
+      const branches = await this.usecases.findAllBranch(
+        page,
+        pageSize,
+        search,
+      );
+      console.log('branches: ', branches);
+
+      return IResponse.success(
+        'Branches fetched successfullyy',
+        branches.branches,
+        branches.pagination,
+      );
     } catch (error) {
       handleCatch(error);
     }

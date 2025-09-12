@@ -4,9 +4,11 @@ export class BranchCreateDto {
     @IsNotEmpty()
     @IsString()
     name: string;
+
     @IsNotEmpty()
     @IsString()
     location: string;
+
     @IsOptional()
     @IsString()
     managerId?: string;
@@ -33,4 +35,12 @@ export class BranchUpdateDto {
   @IsOptional()
   @IsString()
   managerId?: string;
+}
+export class AssignManagerDto{
+  
+  @IsString()
+  managerId?: string;
+
+  @IsNotEmpty()
+  branchId?: string;
 }
