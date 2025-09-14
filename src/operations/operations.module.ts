@@ -11,6 +11,8 @@ import { BranchRepository } from './branch/branch.repository';
 import { RoleRepository } from './role/role.repository';
 import { RoleUseCaseImpl } from './role/role.useCase.impl';
 import { RoleMessageController } from './role/role.controller';
+import { VehicleRepository } from './fleet/fleet.repository';
+import { FleetUseCasesImp } from './fleet/fleet.usecase.impl';
 
 @Module({
   imports: [
@@ -20,7 +22,11 @@ import { RoleMessageController } from './role/role.controller';
       signOptions: { expiresIn: '15m' },
     }),
   ],
-  controllers: [UserMessageController, BranchMessageController, RoleMessageController],
+  controllers: [
+    UserMessageController,
+    BranchMessageController,
+    RoleMessageController,
+  ],
   providers: [
     UserUseCasesImp,
     UserRepository,
@@ -28,8 +34,15 @@ import { RoleMessageController } from './role/role.controller';
     BranchRepository,
     PrismaService,
     RoleRepository,
-    RoleUseCaseImpl
+    RoleUseCaseImpl,
+    VehicleRepository,
+    FleetUseCasesImp,
   ],
-  exports: [UserUseCasesImp, BranchUseCaseImpl, RoleUseCaseImpl],
+  exports: [
+    UserUseCasesImp,
+    BranchUseCaseImpl,
+    RoleUseCaseImpl,
+    FleetUseCasesImp,
+  ],
 })
 export class OperationsModule {}

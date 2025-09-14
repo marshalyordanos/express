@@ -61,32 +61,45 @@ export class RoleRepository {
   }
 
   async deleteByName(name: string): Promise<string> {
-    const role= await this.prisma.role.findUnique({ where: { name } });
+    const role = await this.prisma.role.findUnique({ where: { name } });
     if (!role) {
       throw new Error('Role not found');
     }
-    const result=await this.prisma.role.delete({ where: { name } });
-     if (result) {
-      console.log("Role deleted successfully with id: " + result.id + " and name: " +result.name + "and result is: " +result);
-    }else{
-      console.log("this is result : ", result);
+    const result = await this.prisma.role.delete({ where: { name } });
+    if (result) {
+      console.log(
+        'Role deleted successfully with id: ' +
+          result.id +
+          ' and name: ' +
+          result.name +
+          'and result is: ' +
+          result,
+      );
+    } else {
+      console.log('this is result : ', result);
     }
-    return "Role deleted successfully with name: " + name;
+    return 'Role deleted successfully with name: ' + name;
   }
 
   async deleteById(id: string): Promise<string> {
-    const role= await this.prisma.role.findUnique({ where: { id } });
+    const role = await this.prisma.role.findUnique({ where: { id } });
     if (!role) {
       throw new Error('Role not found');
     }
-    const result=await this.prisma.role.delete({ where: { id } });
+    const result = await this.prisma.role.delete({ where: { id } });
     if (result) {
-      console.log("Role deleted successfully with id: " + result.id + " and name: " + result.name + "and result is: " +result);
-    }else{
-      console.log("this is result : ",result);
-      
+      console.log(
+        'Role deleted successfully with id: ' +
+          result.id +
+          ' and name: ' +
+          result.name +
+          'and result is: ' +
+          result,
+      );
+    } else {
+      console.log('this is result : ', result);
     }
-    return "Role deleted successfully with id: " + id;
+    return 'Role deleted successfully with id: ' + id;
   }
 
   async updateRole(id: string, data: RoleUpdateDto): Promise<Role> {
