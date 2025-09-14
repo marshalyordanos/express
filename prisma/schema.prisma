@@ -20,13 +20,14 @@ model User {
   email         String   @unique
   password      String
   phone         String?  @unique
-  role          Role
+  role          Role     @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  roleId        String
   branch        Branch?  @relation(fields: [branchId], references: [id])
   branchId      String?
+  isStaff       Boolean   @default(false)
   emailVerified Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
   orders        Order[]  @relation("CustomerOrders")
   assignedOrders Order[] @relation("DriverOrders")
   vehicles      Vehicle[]
@@ -40,14 +41,13 @@ model User {
   mfa Mfa[]
 }
 
-enum Role {
-  SUPER_ADMIN
-  BRANCH_MANAGER
-  DISPATCH_OFFICER
-  AGENT
-  DRIVER
-  CUSTOMER
-  CUSTOMER_SERVICE
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., SUPER_ADMIN, BRANCH_MANAGER
+  description String?  // Optional description for the role
+  users       User[]   // Relation to users
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Branch {

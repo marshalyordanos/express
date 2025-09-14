@@ -8,6 +8,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { BranchMessageController } from './branch/branch.controller';
 import { BranchUseCaseImpl } from './branch/branch.useCase.impl';
 import { BranchRepository } from './branch/branch.repository';
+import { RoleRepository } from './role/role.repository';
+import { RoleUseCaseImpl } from './role/role.useCase.impl';
+import { RoleMessageController } from './role/role.controller';
 
 @Module({
   imports: [
@@ -17,14 +20,16 @@ import { BranchRepository } from './branch/branch.repository';
       signOptions: { expiresIn: '15m' },
     }),
   ],
-  controllers: [UserMessageController, BranchMessageController],
+  controllers: [UserMessageController, BranchMessageController, RoleMessageController],
   providers: [
     UserUseCasesImp,
     UserRepository,
     BranchUseCaseImpl,
     BranchRepository,
     PrismaService,
+    RoleRepository,
+    RoleUseCaseImpl
   ],
-  exports: [UserUseCasesImp, BranchUseCaseImpl],
+  exports: [UserUseCasesImp, BranchUseCaseImpl, RoleUseCaseImpl],
 })
 export class OperationsModule {}

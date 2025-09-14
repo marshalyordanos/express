@@ -4,7 +4,7 @@ export interface AuthRegisterDto {
   name: string;
   email: string;
   password: string;
-  role: Role; // SUPER_ADMIN, CUSTOMER, DRIVER etc.
+  role: string; // SUPER_ADMIN, CUSTOMER, DRIVER etc.
   branchId?: string;
   phone?: string;
 }

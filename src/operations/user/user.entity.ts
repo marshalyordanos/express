@@ -1,10 +1,21 @@
-import { Role } from '@prisma/client';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export interface UserDto {
   name: string;
   email: string;
   password: string;
-  role: Role; // SUPER_ADMIN, CUSTOMER, DRIVER etc.
+  role: string; // SUPER_ADMIN, CUSTOMER, DRIVER etc.
   branchId?: string;
   phone?: string;
+}
+
+
+export class ChangeRoleDto {
+  @IsNotEmpty()
+  @IsString()
+  role: string;
+  
+  @IsNotEmpty()
+  @IsString()
+  userId: string;
 }

@@ -7,6 +7,7 @@ import { randomBytes } from 'crypto';
 
 @Injectable()
 export class AuthRepository {
+
   constructor(private readonly prisma: PrismaService) {}
 
   // ----------------- User Queries -----------------
@@ -18,9 +19,19 @@ export class AuthRepository {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  async createUser(data: Prisma.UserCreateInput): Promise<User> {
-    return this.prisma.user.create({ data });
+  async findRoleByName(name: string) {
+    return this.prisma.role.findUnique({ where: {name} })
   }
+  async createUser(data: Prisma.UserCreateInput): Promise<User> {
+    console.log("Data for creating user :" , data);
+    return this.prisma.user.create({ data});
+  }
+
+  //   async createUser(data: Prisma.UserCreateInput): Promise<User> {
+    
+  //   return this.prisma.user.create({ data });
+  // }
+
 
   // ----------------- Refresh Tokens -----------------
   async saveRefreshToken(userId: string, token: string): Promise<void> {

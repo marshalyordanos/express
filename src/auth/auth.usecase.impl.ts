@@ -35,9 +35,19 @@ export class AuthUseCaseImpl implements AuthUseCase {
 
     // Hash password
     const hashedPassword = await bcrypt.hash(data.password, 10);
+    // Resolve roleId (default to CUSTOMER if not provided)
+    const roleName = data.role || 'CUSTOMER';
+    const role = await this.authRepository.findRoleByName(roleName);
+    if (!role) {
+      throw new RpcException(`Invalid role: ${roleName}`);
+    }
 
     const user = await this.authRepository.createUser({
       ...data,
+      role: {
+        connect: { id: role.id },
+      },
+      branch: data.branchId ? { connect: { id: data.branchId } } : undefined,
       password: hashedPassword,
     });
 
