@@ -9,6 +9,13 @@ export interface UserDto {
   phone?: string;
 }
 
+export class UserUpdateDto{
+  name: string;
+  email: string;
+  password: string;
+  branchId?: string;
+  phone?: string;
+}
 
 export class ChangeRoleDto {
   @IsNotEmpty()
