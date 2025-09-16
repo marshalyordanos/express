@@ -16,6 +16,10 @@ export const PATTERNS = {
   STAFF_DELETE: 'staff.delete',
   STAFF_FIND_ALL: 'staff.findAll',
   STAFF_FIND_BY_ROLE: 'staff.findByRole',
+  STAFF_FIND_BY_ID: 'staff.findById',
+  STAFF_UPDATE: 'staff.update',
+  STAFF_FIND_BY_BRANCH: 'staff.findByBranch',
+  STAFF_ASSIGN_BRANCH: 'staff.assignBranch',
 
   BRANCH_CREATE: 'branch.create',
   BRANCH_FIND_BY_ID: 'branch.findById',

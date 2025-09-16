@@ -14,6 +14,9 @@ import { RoleMessageController } from './role/role.controller';
 import { VehicleRepository } from './fleet/fleet.repository';
 import { FleetUseCasesImp } from './fleet/fleet.usecase.impl';
 import { FleetMessageController } from './fleet/fleet.controller';
+import { StaffUseCasesImpl } from './staff/staff.useCase.impl';
+import { StaffMessageController } from './staff/staff.controller';
+import { StaffRepository } from './staff/staff.repository';
 
 @Module({
   imports: [
@@ -28,6 +31,7 @@ import { FleetMessageController } from './fleet/fleet.controller';
     BranchMessageController,
     RoleMessageController,
     FleetMessageController,
+    StaffMessageController,
   ],
   providers: [
     UserUseCasesImp,
@@ -45,6 +49,8 @@ import { FleetMessageController } from './fleet/fleet.controller';
     BranchUseCaseImpl,
     RoleUseCaseImpl,
     FleetUseCasesImp,
+    StaffUseCasesImpl,
+    StaffRepository,
   ],
 })
 export class OperationsModule {}

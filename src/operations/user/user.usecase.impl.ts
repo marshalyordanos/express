@@ -11,29 +11,8 @@ import { RpcException } from '@nestjs/microservices';
 export class UserUseCasesImp implements UserUsecase {
   constructor(private readonly userRepo: UserRepository
   ) {}
- async createStaff(data: UserDto, email: string): Promise<User> {
-  const roleName = data.role;
-  const role = await this.userRepo.findRoleByName(roleName);
 
-  if (!role) {
-    throw new RpcException(`Invalid role: ${roleName}`);
-  }
 
-  // Pass DTO and roleId to repository
-  return this.userRepo.createStaff(data, email, role.id);
-}
-
- async findStaffByRole(data: any): Promise<{
-    users: Partial<User>[];
-    pagination: IPagination;
-  }> {
-      const { page = 1, pageSize = 10, role } = data;
-
-    return this.userRepo.findStaffByRole(data);
-  }
-  async findAllStaff(data: any): Promise<{ users: Partial<User>[]; pagination: IPagination }> {
-    return this.userRepo.findAllStaff(data);
-  }
   findUserByEmail(email: string): Promise<User | null> {
     return this.userRepo.findUserByEmail(email);
   }
@@ -62,7 +41,5 @@ export class UserUseCasesImp implements UserUsecase {
     return this.userRepo.deleteUser(id);
   }
 
-  async changeUserRole(data: ChangeRoleDto): Promise<User> {
-    return this.userRepo.changeUserRole(data);
-  }
+
 }

@@ -1,0 +1,146 @@
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { Public } from '../../common/decorator/public.decorator';
+import { handleCatch } from 'src/common/handleCatch';
+import { IResponse } from 'src/common/types';
+import { PATTERNS } from 'src/contracts';
+import { ChangeRoleDto, UpdateStaffDto } from './staff.entity';
+import { StaffUseCasesImpl } from './staff.useCase.impl';
+import { RegisterStaffDto } from './staff.entity';
+
+@Controller()
+export class StaffMessageController {
+  constructor(private readonly usecases: StaffUseCasesImpl) {}
+
+  //COmpleted as Marshal wants
+  //Create staff
+  @MessagePattern(PATTERNS.STAFF_CREATE)
+  async createStaff(@Payload() payload: { user: any; data: RegisterStaffDto }) {
+    try {
+      const user = payload.user; // decoded JWT
+      const userEmail = user.email;
+      // console.log('Current user:', user, payload.data);
+      // console.log('Current user Email : ', userEmail);
+      return this.usecases.createStaff(payload.data, userEmail);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  //Completed but additional
+  //Get all staffs by role
+  @Public()
+  @MessagePattern(PATTERNS.STAFF_FIND_BY_ROLE)
+  async findStaffByRole(@Payload() payload: any) {
+    console.log('INSIDE CONTROLLER FOR ROLE : ', payload.role);
+
+    try {
+      const user = payload.user;
+      const { role } = payload;
+
+      const result = await this.usecases.findStaffByRole(payload);
+
+      return IResponse.success(
+        'Staff fetched successfully for role: ' + role,
+        result.users,
+        result.pagination,
+      );
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+
+  //COmpleted as marshal wanted
+  //Get all staffs
+  @Public()
+  @MessagePattern(PATTERNS.STAFF_FIND_ALL)
+  async findStaff(@Payload() data: any) {
+    try {
+      // const { page = 1, pageSize = 10, search, branchId } = data;
+
+      const result = await this.usecases.findAllStaff(data);
+
+      return IResponse.success(
+        'Users fetched successfully',
+        result.users,
+        result.pagination,
+      );
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  //Completed as marshal wanted
+  @Public()
+  @MessagePattern(PATTERNS.USER_CHANGE_ROLE)
+  async changeUserRole(@Payload() payload: ChangeRoleDto) {
+    try {
+      console.log('payload: ', payload);
+
+      return this.usecases.changeUserRole(payload);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  //Delete staff members
+  @Public()
+  @MessagePattern(PATTERNS.STAFF_DELETE)
+  async deleteStaff(@Payload() payload: { id: string }) {
+    try {
+      return this.usecases.deleteStaff(payload.id);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.STAFF_FIND_BY_ID )
+  async findStaffById(@Payload() payload: { id: string }) {
+    try {
+      return this.usecases.findStaffById(payload.id);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.STAFF_UPDATE)
+  async updateStaff(@Payload() payload: { id: string; data: UpdateStaffDto }) {
+    
+    try {
+      return this.usecases.updateStaff(payload.id, payload.data);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.STAFF_FIND_BY_BRANCH)
+  async findStaffByBranch(@Payload() payload: any) {
+    try {
+       const result = await this.usecases.findStaffByBranch(payload);
+
+      return IResponse.success(
+        'Users fetched successfully',
+        result.staffs,
+        result.pagination,
+      );
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+@Public()
+@MessagePattern(PATTERNS.STAFF_ASSIGN_BRANCH) 
+async assignStaffToBranch(@Payload() payload: any) {
+  try {
+    const { staffIds, branchId } = payload;
+
+    return this.usecases.assignStaffToBranch(staffIds, branchId);
+  } catch (error) {
+    handleCatch(error);
+  }
+}
+}
