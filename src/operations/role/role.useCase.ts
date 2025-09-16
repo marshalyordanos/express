@@ -1,4 +1,4 @@
-import { IPagination } from 'src/common/types';
+import { IPagination } from '../../common/types';
 import { RoleCreateDto, RoleUpdateDto } from './role.entity';
 import { Role } from '@prisma/client';
 

@@ -23,13 +23,20 @@ import { firstValueFrom } from 'rxjs';
 @Controller('fleet')
 export class FleetGatewayController {
   constructor(
-    @Inject('FLEET_SERVICE') private readonly fleetClient: ClientProxy,
+    @Inject('USER_SERVICE') private readonly fleetClient: ClientProxy,
   ) {}
 
   // Create a new vehicle
   @Post()
-  async createVehicle(@Body() dto: CreateVehicleDto) {
-    return this.fleetClient.send(PATTERNS.FLEET_CREATE_VEHICLE, { data: dto });
+  async createVehicle(@Req() req, @Body() dto: CreateVehicleDto) {
+    console.log('==========: abebe: ', dto);
+    const authHeader = req.headers['authorization'] || null;
+
+    return this.fleetClient.send(PATTERNS.FLEET_CREATE_VEHICLE, {
+      headers: { authorization: authHeader },
+
+      data: dto,
+    });
   }
 
   // Get all vehicles (with pagination)
@@ -41,6 +48,7 @@ export class FleetGatewayController {
     @Query('search') search?: string,
     @Query('status') status?: string,
   ) {
+    console.log('=============================: fleet');
     const authHeader = req.headers['authorization'] || null;
 
     return this.fleetClient.send(PATTERNS.FLEET_GET_ALL_VEHICLES, {
@@ -54,14 +62,27 @@ export class FleetGatewayController {
 
   // Get a vehicle by ID
   @Get(':id')
-  async getVehicleById(@Param('id') id: string) {
-    return this.fleetClient.send(PATTERNS.FLEET_GET_VEHICLE_BY_ID, { id });
+  async getVehicleById(@Req() req, @Param('id') id: string) {
+    const authHeader = req.headers['authorization'] || null;
+
+    return this.fleetClient.send(PATTERNS.FLEET_GET_VEHICLE_BY_ID, {
+      headers: { authorization: authHeader },
+
+      id,
+    });
   }
 
   // Update a vehicle
   @Patch(':id')
-  async updateVehicle(@Param('id') id: string, @Body() dto: UpdateVehicleDto) {
+  async updateVehicle(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() dto: UpdateVehicleDto,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+
     return this.fleetClient.send(PATTERNS.FLEET_UPDATE_VEHICLE, {
+      headers: { authorization: authHeader },
       id,
       data: dto,
     });
@@ -69,8 +90,13 @@ export class FleetGatewayController {
 
   // Delete a vehicle
   @Delete(':id')
-  async deleteVehicle(@Param('id') id: string) {
-    return this.fleetClient.send(PATTERNS.FLEET_DELETE_VEHICLE, { id });
+  async deleteVehicle(@Req() req: Request, @Param('id') id: string) {
+    const authHeader = req.headers['authorization'] || null;
+
+    return this.fleetClient.send(PATTERNS.FLEET_DELETE_VEHICLE, {
+      headers: { authorization: authHeader },
+      id,
+    });
   }
 
   // Assign vehicle to driver

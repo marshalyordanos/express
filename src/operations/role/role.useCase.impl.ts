@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { RoleCreateDto, RoleUpdateDto } from './role.entity';
 import { RoleUseCases } from './role.useCase';
-import { IPagination } from 'src/common/types';
+import { IPagination } from '../../common/types';
 import { RoleRepository } from './role.repository';
 
 @Injectable()
@@ -14,11 +14,11 @@ export class RoleUseCaseImpl implements RoleUseCases {
   }
   async findRole(payload: { id?: string; name?: string }): Promise<Role> {
     if (payload.id) {
-        return this.roleRepo.findRolById(payload.id);
+      return this.roleRepo.findRolById(payload.id);
     } else if (payload.name) {
-        return this.roleRepo.findRoleByName(payload.name);
+      return this.roleRepo.findRoleByName(payload.name);
     } else {
-        return null;
+      return null;
     }
   }
   async findAllRoles(

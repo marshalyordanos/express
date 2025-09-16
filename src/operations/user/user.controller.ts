@@ -15,7 +15,7 @@ export class UserMessageController {
   @MessagePattern(PATTERNS.USER_FIND_BY_ID)
   async findById(@Payload() payload: { id: string }) {
     try {
-      return this.usecases.getUser(payload.id);
+      return await this.usecases.getUser(payload.id);
     } catch (error) {
       handleCatch(error);
     }
@@ -133,8 +133,8 @@ export class UserMessageController {
   @MessagePattern(PATTERNS.USER_CHANGE_ROLE)
   async changeUserRole(@Payload() payload: ChangeRoleDto) {
     try {
-      console.log("payload: ", payload);
-      
+      console.log('payload: ', payload);
+
       return this.usecases.changeUserRole(payload);
     } catch (error) {
       handleCatch(error);

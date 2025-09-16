@@ -2,6 +2,9 @@ import { Prisma } from '@prisma/client';
 
 export function getPrismaErrorMessage(error: unknown): string {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    console.log('code:::: ', error.code);
+    console.log('code:::: ', error.message);
+
     switch (error.code) {
       case 'P2002':
         // Unique constraint violation

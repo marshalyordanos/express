@@ -15,7 +15,7 @@ import {
 
 import { ClientProxy } from '@nestjs/microservices';
 import { PATTERNS } from '../contracts';
-import { RoleCreateDto, RoleUpdateDto } from 'src/operations/role/role.entity';
+import { RoleCreateDto, RoleUpdateDto } from '../operations/role/role.entity';
 
 @Controller('roles')
 export class RoleGatewayController {
@@ -34,7 +34,7 @@ export class RoleGatewayController {
   async updateRole(@Param('id') id: string, @Body() data: RoleUpdateDto) {
     return this.roleClient.send(PATTERNS.ROLE_UPDATE, {
       id,
-      data: {...data},
+      data: { ...data },
     });
   }
 
@@ -59,7 +59,7 @@ export class RoleGatewayController {
   //completed
   @Get(':identifier')
   async getRole(@Param('identifier') identifier: string) {
-        // Check if the identifier is an ID or name
+    // Check if the identifier is an ID or name
     const isName = /^[A-Z]+$/.test(identifier);
     const isId = /^[a-z0-9]{24,25}$/.test(identifier);
     const payload = isId ? { id: identifier } : { name: identifier };
@@ -73,7 +73,7 @@ export class RoleGatewayController {
     // Check if the identifier is an ID or name
     const isName = /^[A-Z]+$/.test(identifier);
     const isId = /^[a-z0-9]{24,25}$/.test(identifier);
-    
+
     // Create payload based on whether it's an ID or name
     const payload = isId ? { id: identifier } : { name: identifier };
     return this.roleClient.send(PATTERNS.ROLE_DELETE, payload);

@@ -1,4 +1,4 @@
-import { IPagination } from 'src/common/types';
+import { IPagination } from '../../common/types';
 import { Vehicle, FleetLog, User } from '@prisma/client';
 import {
   CreateVehicleDto,

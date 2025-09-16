@@ -21,8 +21,11 @@ export class FleetMessageController {
   @MessagePattern(PATTERNS.FLEET_CREATE_VEHICLE)
   async createVehicle(@Payload() payload: { data: CreateVehicleDto }) {
     try {
-      return this.usecases.createVehicle(payload.data);
+      const data = await this.usecases.createVehicle(payload.data);
+      return IResponse.success('Vehicles created successfully', data, null);
     } catch (error) {
+      console.log('==========: payload:Error ');
+
       handleCatch(error);
     }
   }
@@ -31,6 +34,8 @@ export class FleetMessageController {
   @MessagePattern(PATTERNS.FLEET_GET_ALL_VEHICLES)
   async getAllVehicles(@Payload() payload: any) {
     try {
+      console.log('=============================: fleet2');
+
       const { page = 1, pageSize = 10, search, status } = payload;
       const result = await this.usecases.getAllVehicles(
         page,
@@ -52,7 +57,8 @@ export class FleetMessageController {
   @MessagePattern(PATTERNS.FLEET_GET_VEHICLE_BY_ID)
   async getVehicleById(@Payload() payload: { id: string }) {
     try {
-      return this.usecases.getVehicleById(payload.id);
+      const data = await this.usecases.getVehicleById(payload.id);
+      return IResponse.success('Vehicle fetched successfully', data, null);
     } catch (error) {
       handleCatch(error);
     }
@@ -64,7 +70,8 @@ export class FleetMessageController {
     @Payload() payload: { id: string; data: UpdateVehicleDto },
   ) {
     try {
-      return this.usecases.updateVehicle(payload.id, payload.data);
+      const data = await this.usecases.updateVehicle(payload.id, payload.data);
+      return IResponse.success('Vehicle updated successfully', data, null);
     } catch (error) {
       handleCatch(error);
     }
@@ -74,7 +81,8 @@ export class FleetMessageController {
   @MessagePattern(PATTERNS.FLEET_DELETE_VEHICLE)
   async deleteVehicle(@Payload() payload: { id: string }) {
     try {
-      return this.usecases.deleteVehicle(payload.id);
+      await this.usecases.deleteVehicle(payload.id);
+      return IResponse.success('Vehicle deleted successfully', null, null);
     } catch (error) {
       handleCatch(error);
     }

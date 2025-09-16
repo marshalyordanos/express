@@ -11,6 +11,7 @@ import { VehicleStatus } from '@prisma/client'; // assuming you use Prisma enums
 export interface CreateVehicleDto {
   plateNumber: string;
   type: string;
+  model?: string;
   status?: VehicleStatus; // default to ACTIVE
   driverId?: string; // optional assignment on creation
 }
@@ -24,6 +25,10 @@ export class UpdateVehicleDto {
   @IsOptional()
   @IsString()
   type?: string;
+
+  @IsOptional()
+  @IsString()
+  model?: string;
 
   @IsOptional()
   @IsEnum(VehicleStatus)

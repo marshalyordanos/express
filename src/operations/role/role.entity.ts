@@ -5,7 +5,7 @@ export class RoleCreateDto {
   @IsString()
   name: string;
 
-  @IsNotEmpty()
+  // @IsNotEmpty()
   @IsString()
   description: string;
 }

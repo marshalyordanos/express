@@ -13,6 +13,7 @@ import { RoleUseCaseImpl } from './role/role.useCase.impl';
 import { RoleMessageController } from './role/role.controller';
 import { VehicleRepository } from './fleet/fleet.repository';
 import { FleetUseCasesImp } from './fleet/fleet.usecase.impl';
+import { FleetMessageController } from './fleet/fleet.controller';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { FleetUseCasesImp } from './fleet/fleet.usecase.impl';
     UserMessageController,
     BranchMessageController,
     RoleMessageController,
+    FleetMessageController,
   ],
   providers: [
     UserUseCasesImp,

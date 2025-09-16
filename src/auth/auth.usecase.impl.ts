@@ -184,7 +184,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
   private async generateTokens(user: User): Promise<AuthTokens> {
     const payload = { sub: user.id, email: user.email };
 
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '30m' });
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
     return { accessToken, refreshToken };

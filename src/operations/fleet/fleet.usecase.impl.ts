@@ -10,7 +10,7 @@ import {
   VehicleMaintenanceQueryDto,
 } from './fleet.entity';
 import { Vehicle, FleetLog } from '@prisma/client';
-import { IPagination } from 'src/common/types';
+import { IPagination } from '../../common/types';
 
 @Injectable()
 export class FleetUseCasesImp implements FleetUsecase {
@@ -18,6 +18,12 @@ export class FleetUseCasesImp implements FleetUsecase {
 
   // Vehicle Management
   async createVehicle(data: CreateVehicleDto): Promise<Vehicle> {
+    if (data.driverId) {
+      const existingUser = await this.vehicleRepo.findUserById(data.driverId);
+      if (!existingUser) {
+        throw new RpcException('Driver is not found');
+      }
+    }
     return this.vehicleRepo.createVehicle(data);
   }
 

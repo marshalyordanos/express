@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service'; // Your Prisma client service
-import { Vehicle, FleetLog } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service'; // Your Prisma client service
+import { Vehicle, FleetLog, User } from '@prisma/client';
 import {
   CreateVehicleDto,
   UpdateVehicleDto,
@@ -8,7 +8,7 @@ import {
   VehicleMaintenanceDto,
   VehicleMaintenanceQueryDto,
 } from './fleet.entity';
-import { IPagination } from 'src/common/types';
+import { IPagination } from '../../common/types';
 
 @Injectable()
 export class VehicleRepository {
@@ -17,7 +17,6 @@ export class VehicleRepository {
   // ---------------- Vehicle Management ----------------
   async createVehicle(data: CreateVehicleDto): Promise<Vehicle> {
     const { driverId, status, ...vehicleData } = data;
-
     return this.prisma.vehicle.create({
       data: {
         ...vehicleData,
@@ -25,6 +24,9 @@ export class VehicleRepository {
         driver: driverId ? { connect: { id: driverId } } : undefined,
       },
     });
+  }
+  async findUserById(id: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { id } });
   }
 
   async getAllVehicles(
@@ -47,7 +49,12 @@ export class VehicleRepository {
     if (search) where.plateNumber = { contains: search, mode: 'insensitive' };
 
     const [vehicles, total] = await Promise.all([
-      this.prisma.vehicle.findMany({ where, skip, take: pageSize }),
+      this.prisma.vehicle.findMany({
+        where,
+        skip,
+        take: pageSize,
+        include: { driver: true },
+      }),
       this.prisma.vehicle.count({ where }),
     ]);
 
@@ -65,7 +72,10 @@ export class VehicleRepository {
   }
 
   async getVehicleById(id: string): Promise<Vehicle | null> {
-    return this.prisma.vehicle.findUnique({ where: { id } });
+    return this.prisma.vehicle.findUnique({
+      where: { id },
+      include: { driver: true },
+    });
   }
 
   async updateVehicle(
