@@ -9,6 +9,7 @@ import {
 import { Prisma, User } from '@prisma/client';
 import { StaffRepository } from './staff.repository';
 import { IPagination } from 'src/common/types';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class StaffUseCasesImpl implements StaffUsecase {
@@ -24,6 +25,8 @@ export class StaffUseCasesImpl implements StaffUsecase {
       }
       data.role = role.id;
     }
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    data.password = hashedPassword;
 
     // Pass DTO and roleId to repository
     return this.staffRepo.createStaff(data);

@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common';
+import { Controller, UseGuards } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PATTERNS } from '../../contracts';
 import { AccessControlUsecaseImpl } from './access_control.usecase.impl';
@@ -12,6 +12,9 @@ import {
 import { IResponse } from '../../common/types';
 import { handleCatch } from '../../common/handleCatch';
 import { Public } from '../../common/decorator/public.decorator';
+import { CheckPermission } from '../../common/decorator/check-permission.decorator';
+import { PermissionGuard } from '../../common/permission.guard';
+import { PermissionActions } from '../../contracts/permission-actions.enum';
 
 @Controller()
 export class AccessControlMessageController {
@@ -19,6 +22,8 @@ export class AccessControlMessageController {
 
   // ----------- ROLES -----------
 
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Role', PermissionActions.READ)
   @MessagePattern(PATTERNS.ROLE_FIND_BY_ID)
   async findRoleById(@Payload() payload: { id: string }) {
     try {

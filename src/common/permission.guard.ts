@@ -8,7 +8,8 @@ import {
 import { Reflector } from '@nestjs/core';
 import { PERMISSION_KEY } from './decorator/check-permission.decorator';
 import { PrismaService } from '../prisma/prisma.service';
-import { PermissionActions } from 'src/contracts/permission-actions.enum';
+import { PermissionActions } from '../contracts/permission-actions.enum';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -27,27 +28,38 @@ export class PermissionGuard implements CanActivate {
 
     const { resource, action } = required;
 
+    // Get user from request
     const req = context.switchToHttp().getRequest();
-    const user = req.user;
+    const userData = req.user;
+    const user = await this.prisma.user.findUnique({
+      where: { id: userData.sub },
+    });
 
-    if (!user) throw new UnauthorizedException('User not authenticated');
+    if (!user) throw new RpcException('User not authenticated');
 
-    if (user.isSuperAdmin) return true; // bypass for super admin
+    // Super admin bypass
+    if (user.isSuperAdmin) return true;
 
-    if (!user.roleId) throw new ForbiddenException('User has no role assigned');
+    if (!user.roleId) throw new RpcException('User has no role assigned');
 
     const rolePermissions = await this.prisma.rolePermission.findMany({
       where: { roleId: user.roleId },
       include: { permission: true },
     });
-
-    // Check action on RolePermission
+    // console.log(rolePermissions);
+    console.log(
+      rolePermissions[0].permission.resource,
+      resource,
+      action,
+      rolePermissions[0][action],
+    );
+    // Dynamically check the action
     const hasPermission = rolePermissions.some(
-      (rp) => rp.permission.resource === resource && rp[`${action}Action`],
+      (rp) => rp.permission.resource === resource && rp[action],
     );
 
     if (!hasPermission) {
-      throw new ForbiddenException(
+      throw new RpcException(
         `You do not have permission to perform action [${action}] on ${resource}`,
       );
     }
