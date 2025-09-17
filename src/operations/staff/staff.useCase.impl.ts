@@ -12,20 +12,21 @@ import { IPagination } from 'src/common/types';
 
 @Injectable()
 export class StaffUseCasesImpl implements StaffUsecase {
-
   constructor(private readonly staffRepo: StaffRepository) {}
 
+  async createStaff(data: RegisterStaffDto): Promise<User> {
+    if (data.role) {
+      const roleName = data.role;
+      const role = await this.staffRepo.findRoleByName(roleName);
 
-  async createStaff(data: RegisterStaffDto, email: string): Promise<User> {
-    const roleName = data.role;
-    const role = await this.staffRepo.findRoleByName(roleName);
-
-    if (!role) {
-      throw new RpcException(`Invalid role: ${roleName}`);
+      if (!role) {
+        throw new RpcException(`Invalid role: ${roleName}`);
+      }
+      data.role = role.id;
     }
 
     // Pass DTO and roleId to repository
-    return this.staffRepo.createStaff(data, email, role.id);
+    return this.staffRepo.createStaff(data);
   }
 
   async findStaffByRole(data: any): Promise<{
@@ -50,18 +51,22 @@ export class StaffUseCasesImpl implements StaffUsecase {
     return this.staffRepo.deleteStaff(id);
   }
   async findStaffById(id: string): Promise<User> {
-
     return this.staffRepo.findStaffById(id);
   }
   async updateStaff(id: string, data: UpdateStaffDto): Promise<User> {
-    return  this.staffRepo.updateStaff(id, data);
+    return this.staffRepo.updateStaff(id, data);
   }
 
-    async findStaffByBranch(data: any): Promise<{ staffs: Partial<User>[]; pagination: IPagination }> {
-      return this.staffRepo.findStaffByBranch(data);
+  async findStaffByBranch(
+    data: any,
+  ): Promise<{ staffs: Partial<User>[]; pagination: IPagination }> {
+    return this.staffRepo.findStaffByBranch(data);
   }
 
-    async  assignStaffToBranch(staffIds: string[], branchId: string): Promise<Prisma.BatchPayload> {
-        return this.staffRepo.assignStaffToBranch(staffIds, branchId);
-    }
+  async assignStaffToBranch(
+    staffIds: string[],
+    branchId: string,
+  ): Promise<Prisma.BatchPayload> {
+    return this.staffRepo.assignStaffToBranch(staffIds, branchId);
+  }
 }

@@ -1,9 +1,9 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { Public } from '../../common/decorator/public.decorator';
-import { handleCatch } from 'src/common/handleCatch';
-import { IResponse } from 'src/common/types';
-import { PATTERNS } from 'src/contracts';
+import * as handleCatch from '../../common/handleCatch';
+import { IResponse } from '../../common/types';
+import { PATTERNS } from '../../contracts';
 import { ChangeRoleDto, UpdateStaffDto } from './staff.entity';
 import { StaffUseCasesImpl } from './staff.useCase.impl';
 import { RegisterStaffDto } from './staff.entity';
@@ -17,13 +17,9 @@ export class StaffMessageController {
   @MessagePattern(PATTERNS.STAFF_CREATE)
   async createStaff(@Payload() payload: { user: any; data: RegisterStaffDto }) {
     try {
-      const user = payload.user; // decoded JWT
-      const userEmail = user.email;
-      // console.log('Current user:', user, payload.data);
-      // console.log('Current user Email : ', userEmail);
-      return this.usecases.createStaff(payload.data, userEmail);
+      return this.usecases.createStaff(payload.data);
     } catch (error) {
-      handleCatch(error);
+      handleCatch.handleCatch(error);
     }
   }
 
@@ -46,10 +42,9 @@ export class StaffMessageController {
         result.pagination,
       );
     } catch (error) {
-      handleCatch(error);
+      handleCatch.handleCatch(error);
     }
   }
-
 
   //COmpleted as marshal wanted
   //Get all staffs
@@ -67,7 +62,7 @@ export class StaffMessageController {
         result.pagination,
       );
     } catch (error) {
-      handleCatch(error);
+      handleCatch.handleCatch(error);
     }
   }
 
@@ -80,7 +75,7 @@ export class StaffMessageController {
 
       return this.usecases.changeUserRole(payload);
     } catch (error) {
-      handleCatch(error);
+      handleCatch.handleCatch(error);
     }
   }
 
@@ -91,28 +86,27 @@ export class StaffMessageController {
     try {
       return this.usecases.deleteStaff(payload.id);
     } catch (error) {
-      handleCatch(error);
+      handleCatch.handleCatch(error);
     }
   }
 
   @Public()
-  @MessagePattern(PATTERNS.STAFF_FIND_BY_ID )
+  @MessagePattern(PATTERNS.STAFF_FIND_BY_ID)
   async findStaffById(@Payload() payload: { id: string }) {
     try {
       return this.usecases.findStaffById(payload.id);
     } catch (error) {
-      handleCatch(error);
+      handleCatch.handleCatch(error);
     }
   }
 
   @Public()
   @MessagePattern(PATTERNS.STAFF_UPDATE)
   async updateStaff(@Payload() payload: { id: string; data: UpdateStaffDto }) {
-    
     try {
       return this.usecases.updateStaff(payload.id, payload.data);
     } catch (error) {
-      handleCatch(error);
+      handleCatch.handleCatch(error);
     }
   }
 
@@ -120,7 +114,7 @@ export class StaffMessageController {
   @MessagePattern(PATTERNS.STAFF_FIND_BY_BRANCH)
   async findStaffByBranch(@Payload() payload: any) {
     try {
-       const result = await this.usecases.findStaffByBranch(payload);
+      const result = await this.usecases.findStaffByBranch(payload);
 
       return IResponse.success(
         'Users fetched successfully',
@@ -128,19 +122,19 @@ export class StaffMessageController {
         result.pagination,
       );
     } catch (error) {
-      handleCatch(error);
+      handleCatch.handleCatch(error);
     }
   }
 
-@Public()
-@MessagePattern(PATTERNS.STAFF_ASSIGN_BRANCH) 
-async assignStaffToBranch(@Payload() payload: any) {
-  try {
-    const { staffIds, branchId } = payload;
+  @Public()
+  @MessagePattern(PATTERNS.STAFF_ASSIGN_BRANCH)
+  async assignStaffToBranch(@Payload() payload: any) {
+    try {
+      const { staffIds, branchId } = payload;
 
-    return this.usecases.assignStaffToBranch(staffIds, branchId);
-  } catch (error) {
-    handleCatch(error);
+      return this.usecases.assignStaffToBranch(staffIds, branchId);
+    } catch (error) {
+      handleCatch.handleCatch(error);
+    }
   }
-}
 }

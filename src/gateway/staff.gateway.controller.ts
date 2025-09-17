@@ -12,12 +12,12 @@ import {
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import { PATTERNS } from 'src/contracts';
+import { PATTERNS } from '../contracts';
 import {
   ChangeRoleDto,
   RegisterStaffDto,
   UpdateStaffDto,
-} from 'src/operations/staff/staff.entity';
+} from '../operations/staff/staff.entity';
 
 @Controller('staff')
 export class StaffGatewayController {
@@ -45,6 +45,7 @@ export class StaffGatewayController {
   @Post()
   async createStaff(@Req() req: Request, @Body() dto: RegisterStaffDto) {
     const authHeader = req.headers['authorization'] || null;
+    console.log('=========================: ', authHeader);
     return this.staffClient.send(PATTERNS.STAFF_CREATE, {
       headers: { authorization: authHeader },
       data: dto,

@@ -3,10 +3,11 @@ import { Prisma } from '@prisma/client';
 export function getPrismaErrorMessage(error: unknown): string {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     console.log('code:::: ', error.code);
-    console.log('code:::: ', error.message);
 
     switch (error.code) {
       case 'P2002':
+        console.log('codenew: ', error.message);
+
         // Unique constraint violation
         const fields = (error.meta?.target as string[]).join(', ');
         return `Duplicate value detected for fields: ${fields}`;

@@ -1,13 +1,12 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { User, Prisma } from '@prisma/client';
-import { IPagination } from 'src/common/types';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { IPagination } from '../../common/types';
+import { PrismaService } from '../../prisma/prisma.service';
 import { ChangeRoleDto, UserDto } from '../user/user.entity';
 import { UpdateStaffDto } from './staff.entity';
 
 @Injectable()
 export class StaffRepository {
-
   constructor(private prisma: PrismaService) {}
 
   async changeUserRole(data: ChangeRoleDto): Promise<User> {
@@ -42,52 +41,7 @@ export class StaffRepository {
     });
   }
 
-  async createStaff(
-    data: UserDto,
-    email: string,
-    roleId: string,
-  ): Promise<User> {
-    // Check if the requester is a SUPER_ADMIN
-    const isAdmin = await this.prisma.user.findUnique({
-      where: { email },
-      include: { role: true }, // Include role details
-    });
-
-    if (!isAdmin) {
-      Logger.error(
-        `Admin not found for email: ${email}`,
-        undefined,
-        'UserRepository',
-      );
-      throw new BadRequestException('Admin not found');
-    }
-
-    if (isAdmin.role.name !== 'SUPER_ADMIN') {
-      Logger.error(
-        `User ${email} is not a SUPER_ADMIN`,
-        undefined,
-        'UserRepository',
-      );
-      throw new BadRequestException('Only Super Admin can create staff');
-    }
-
-    const userExists = await this.prisma.user.findUnique({
-      where: { email: data.email },
-    });
-    if (userExists) {
-      throw new BadRequestException('User already exists');
-    }
-
-    if (data.branchId) {
-        const branch = await this.prisma.branch.findUnique({
-          where: { id: data.branchId },
-        })
-        
-        if (!branch) {
-            throw new BadRequestException('Branch not found');
-        }
-    }
-
+  async createStaff(data: UserDto): Promise<User> {
     // Transform DTO into Prisma create input
     const prismaData: Prisma.UserCreateInput = {
       name: data.name,
@@ -95,7 +49,7 @@ export class StaffRepository {
       password: data.password,
       phone: data.phone,
       isStaff: true,
-      role: { connect: { id: roleId } }, // relation
+      role: data.role ? { connect: { id: data.role } } : undefined, // relation
       branch: data.branchId ? { connect: { id: data.branchId } } : undefined,
     };
 
@@ -165,7 +119,7 @@ export class StaffRepository {
     return 'User deleted successfully with id: ' + id;
   }
   async findStaffById(id: string) {
-    const result= await this.prisma.user.findUnique({
+    const result = await this.prisma.user.findUnique({
       where: { id },
       include: {
         role: true,
@@ -173,7 +127,7 @@ export class StaffRepository {
       },
     });
     if (!result) {
-        throw new Error('User not found');
+      throw new Error('User not found');
     }
     return result;
   }
@@ -226,57 +180,58 @@ export class StaffRepository {
     return await this.prisma.user.update({ where: { id }, data });
   }
 
-   async findStaffByBranch(data: any): Promise< { staffs: Partial<User>[]; pagination: IPagination; } > {
-      const { page = 1, pageSize = 10, branchId, search } = data;
+  async findStaffByBranch(
+    data: any,
+  ): Promise<{ staffs: Partial<User>[]; pagination: IPagination }> {
+    const { page = 1, pageSize = 10, branchId, search } = data;
 
-      const skip= (page - 1) * pageSize;
+    const skip = (page - 1) * pageSize;
 
-      const where: any = {
-        isStaff: true, 
-        branchId,
-      };
+    const where: any = {
+      isStaff: true,
+      branchId,
+    };
 
-      if (search) {
-        where.OR = [
-          { name: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { phone: { contains: search, mode: 'insensitive' } },
-        ];
-      }
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
-      const [staffs, total] = await Promise.all([
-        this.prisma.user.findMany({
-          skip,
-          take: pageSize,
-          where,
-          include: {
-            role: true,
-            branch: true,
-          },
-        }),
-        this.prisma.user.count({ where }),
-      ]);
-
-      const totalPages = Math.ceil(total / pageSize);
-
-      return {
-        staffs,
-        pagination: {
-          total,
-          page,
-          pageSize,
-          totalPages,
+    const [staffs, total] = await Promise.all([
+      this.prisma.user.findMany({
+        skip,
+        take: pageSize,
+        where,
+        include: {
+          role: true,
+          branch: true,
         },
-      };
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      staffs,
+      pagination: {
+        total,
+        page,
+        pageSize,
+        totalPages,
+      },
+    };
   }
 
-async assignStaffToBranch(staffIds: string[], branchId: string) {
-  return await this.prisma.user.updateMany({
-    where: {
-      id: { in: staffIds },
-    },
-    data: { branchId },
-  });
-}
-
+  async assignStaffToBranch(staffIds: string[], branchId: string) {
+    return await this.prisma.user.updateMany({
+      where: {
+        id: { in: staffIds },
+      },
+      data: { branchId },
+    });
+  }
 }

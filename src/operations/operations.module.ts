@@ -17,6 +17,9 @@ import { FleetMessageController } from './fleet/fleet.controller';
 import { StaffUseCasesImpl } from './staff/staff.useCase.impl';
 import { StaffMessageController } from './staff/staff.controller';
 import { StaffRepository } from './staff/staff.repository';
+import { AccessControlMessageController } from './acl/access_control.controller';
+import { AccessControlRepository } from './acl/access_control.repository';
+import { AccessControlUsecaseImpl } from './acl/access_control.usecase.impl';
 
 @Module({
   imports: [
@@ -29,9 +32,9 @@ import { StaffRepository } from './staff/staff.repository';
   controllers: [
     UserMessageController,
     BranchMessageController,
-    RoleMessageController,
     FleetMessageController,
     StaffMessageController,
+    AccessControlMessageController,
   ],
   providers: [
     UserUseCasesImp,
@@ -39,18 +42,19 @@ import { StaffRepository } from './staff/staff.repository';
     BranchUseCaseImpl,
     BranchRepository,
     PrismaService,
-    RoleRepository,
-    RoleUseCaseImpl,
     VehicleRepository,
     FleetUseCasesImp,
+    StaffUseCasesImpl,
+    StaffRepository,
+    AccessControlRepository,
+    AccessControlUsecaseImpl,
   ],
   exports: [
     UserUseCasesImp,
     BranchUseCaseImpl,
-    RoleUseCaseImpl,
     FleetUseCasesImp,
     StaffUseCasesImpl,
-    StaffRepository,
+    AccessControlUsecaseImpl,
   ],
 })
 export class OperationsModule {}

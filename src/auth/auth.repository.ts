@@ -1,9 +1,10 @@
 // auth.repository.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service'; // Adjust path to your Prisma service
-import { Prisma, User } from '@prisma/client';
+import { Prisma, Role, User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
+import { AuthRegisterDto } from './auth.entity';
 
 @Injectable()
 export class AuthRepository {
@@ -24,9 +25,26 @@ export class AuthRepository {
   async findRoleByName(name: string) {
     return this.prisma.role.findUnique({ where: { name } });
   }
-  async createUser(data: Prisma.UserCreateInput): Promise<User> {
+  async createUser(
+    data: AuthRegisterDto,
+    role: Role,
+    hashedPassword: string,
+  ): Promise<User> {
     console.log('Data for creating user :', data);
-    return this.prisma.user.create({ data });
+    const { name, email, phone, branchId } = data;
+
+    return this.prisma.user.create({
+      data: {
+        name,
+        email,
+        phone,
+        password: hashedPassword,
+        role: {
+          connect: { id: role.id },
+        },
+        branch: branchId ? { connect: { id: branchId } } : undefined,
+      },
+    });
   }
 
   //   async createUser(data: Prisma.UserCreateInput): Promise<User> {

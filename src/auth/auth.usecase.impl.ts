@@ -42,14 +42,11 @@ export class AuthUseCaseImpl implements AuthUseCase {
       throw new RpcException(`Invalid role: ${roleName}`);
     }
 
-    const user = await this.authRepository.createUser({
-      ...data,
-      role: {
-        connect: { id: role.id },
-      },
-      branch: data.branchId ? { connect: { id: data.branchId } } : undefined,
-      password: hashedPassword,
-    });
+    const user = await this.authRepository.createUser(
+      data,
+      role,
+      hashedPassword,
+    );
 
     // Send verification email (optional, implement in repository/service)
     await this.authRepository.sendVerificationEmail(user.id, user.email);

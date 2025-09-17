@@ -21,8 +21,9 @@ export class RegisterStaffDto {
   @IsNotEmpty({ message: 'Password is required' })
   password: string;
 
+  @IsOptional()
   @IsString()
-  role: string;
+  role?: string;
 
   @IsOptional()
   @IsString()

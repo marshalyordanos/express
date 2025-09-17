@@ -4,6 +4,7 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { Prisma } from '@prisma/client';
@@ -15,7 +16,7 @@ export class AllExceptions implements ExceptionFilter {
     const ctxType = host.getType();
     console.log(
       'ppppppppppppppppp:',
-      exception instanceof RpcException,
+
       exception,
       ctxType,
       // exception,
@@ -41,6 +42,11 @@ export class AllExceptions implements ExceptionFilter {
       console.log(rpcError);
       status = rpcError.statusCode || status;
       message = rpcError.message || message;
+    }
+
+    if (exception instanceof BadRequestException) {
+      message = exception?.response?.message || exception.message;
+      console.log('------------------------------', message);
     }
 
     if (ctxType === 'http') {

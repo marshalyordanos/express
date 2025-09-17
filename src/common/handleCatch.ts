@@ -8,6 +8,13 @@ export function handleCatch(error: any) {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     message = getPrismaErrorMessage(error); // <-- friendly message
     console.log('getPrismaErrorMessage: ', message);
+  } else if (error instanceof Prisma.PrismaClientValidationError) {
+    const msg = error.message;
+    if (msg.includes('Argument')) {
+      message = msg.split('Argument')[1].trim();
+    } else {
+      message = msg;
+    }
   } else if (error instanceof Error) {
     console.log('getPrismaErrorMessage2: ', error.message);
 

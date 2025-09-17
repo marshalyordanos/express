@@ -6,6 +6,7 @@ import { BranchGatewayController } from './branch.gateway.controller';
 import { RoleGatewayController } from './role.gateway.controller';
 import { FleetGatewayController } from './fleet.gatway.controller';
 import { StaffGatewayController } from './staff.gateway.controller';
+import { AccessControlGatewayController } from './access_control.gateway.controller';
 
 @Module({
   imports: [MicroserviceClientsModule],
@@ -16,6 +17,7 @@ import { StaffGatewayController } from './staff.gateway.controller';
     RoleGatewayController,
     FleetGatewayController,
     StaffGatewayController,
+    AccessControlGatewayController,
   ],
 })
 export class GatewayModule {}

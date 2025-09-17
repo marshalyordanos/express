@@ -34,6 +34,18 @@ export const PATTERNS = {
   ROLE_FIND_ALL: 'role.findAll',
   ROLE_UPDATE: 'role.update',
   ROLE_DELETE: 'role.delete',
+  ROLE_FIND_BY_ID: 'role.findById',
+  ROLE_ASSIGN_PERMISSIONS: 'role.assignPermissions',
+  ROLE_REMOVE_PERMISSION: 'role.removePermission',
+  ROLE_UPDATE_PERMISSION: 'role.updatePermission',
+  ROLE_ASSIGN_USER: 'role.assignUser',
+
+  // ===== PERMISSION =====
+  PERMISSION_CREATE: 'permission.create',
+  PERMISSION_FIND_BY_ID: 'permission.findById',
+  PERMISSION_FIND_ALL: 'permission.findAll',
+  PERMISSION_UPDATE: 'permission.update',
+  PERMISSION_DELETE: 'permission.delete',
 
   // Fleet / Vehicle patterns
   FLEET_CREATE_VEHICLE: 'fleet.createVehicle',

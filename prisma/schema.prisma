@@ -20,11 +20,12 @@ model User {
   email         String   @unique
   password      String
   phone         String?  @unique
-  role          Role     @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  roleId        String
+  role          Role?     @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  roleId        String?
   branch        Branch?  @relation(fields: [branchId], references: [id])
   branchId      String?
   isStaff       Boolean   @default(false)
+  isSuperAdmin     Boolean   @default(false) // <-- new field
   emailVerified Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -41,15 +42,43 @@ model User {
   mfa Mfa[]
 }
 
-model Role {
-  id          String   @id @default(cuid())
-  name        String   @unique // e.g., SUPER_ADMIN, BRANCH_MANAGER
-  description String?  // Optional description for the role
-  users       User[]   // Relation to users
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+model Permission {
+  id             String           @id @default(cuid())
+  resource       String           // e.g., "User", "Order", "Branch"
+  description    String?
+  rolePermissions RolePermission[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([resource]) // one row per resource
 }
 
+model Role {
+  id              String             @id @default(cuid())
+  name            String             @unique
+  description     String?
+  users           User[]
+  rolePermissions RolePermission[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model RolePermission {
+  id           String      @id @default(cuid())
+  role         Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId       String
+  permission   Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  permissionId String
+
+  // Actions assigned to this role for this permission/resource
+  createAction Boolean @default(false)
+  readAction   Boolean @default(false)
+  updateAction Boolean @default(false)
+  deleteAction Boolean @default(false)
+
+  @@unique([roleId, permissionId]) // prevent duplicates
+}
 model Branch {
   id         String    @id @default(cuid())
   name       String

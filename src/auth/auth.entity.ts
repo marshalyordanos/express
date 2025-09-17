@@ -6,7 +6,7 @@ export interface AuthRegisterDto {
   password: string;
   role: string;
   branchId?: string;
-  phone?: string;
+  phone: string;
 }
 
 export interface AuthLoginDto {
