@@ -22,21 +22,20 @@ import { firstValueFrom } from 'rxjs';
 
 @Controller('fleet')
 export class FleetGatewayController {
-  constructor(
+  // constructor(
+  //   @Inject('FLEET_SERVICE') private readonly fleetClient: ClientProxy,
+  // ) {}
+
+  // I Get an error because of that i changed to this way you can uncomment yours and comment mine 
+    constructor(
     @Inject('USER_SERVICE') private readonly fleetClient: ClientProxy,
   ) {}
 
   // Create a new vehicle
   @Post()
-  async createVehicle(@Req() req, @Body() dto: CreateVehicleDto) {
-    console.log('==========: abebe: ', dto);
-    const authHeader = req.headers['authorization'] || null;
-
-    return this.fleetClient.send(PATTERNS.FLEET_CREATE_VEHICLE, {
-      headers: { authorization: authHeader },
-
-      data: dto,
-    });
+  async createVehicle(@Body() dto: CreateVehicleDto) {
+    console.log("difsnaodsio ", dto);
+    return this.fleetClient.send(PATTERNS.FLEET_CREATE_VEHICLE, { data: dto });
   }
 
   // Get all vehicles (with pagination)

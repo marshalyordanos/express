@@ -27,6 +27,7 @@ export class JwtAuthGuard implements CanActivate {
       const data = context.switchToRpc().getData();
       const token =
         data?.headers?.authorization?.replace('Bearer ', '') || null;
+console.log("Token :", data?.headers?.authorization);
 
       if (!token)
         throw new RpcException({

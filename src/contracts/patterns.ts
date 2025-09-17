@@ -66,4 +66,21 @@ export const PATTERNS = {
   FLEET_RETIRE_VEHICLE: 'fleet.retireVehicle',
   FLEET_GET_ALERTS: 'fleet.getFleetAlerts',
   FLEET_GET_DRIVER_HISTORY: 'fleet.getDriverVehicleHistory',
+
+  //Order Management System or Service
+  ORDER_CREATE: 'order.create',
+  ORDER_FIND_BY_ID: 'order.findById',
+  ORDER_FIND_ALL: 'order.findAll',
+  ORDER_FIND_BY_CUSTOMER: 'order.findByCustomer',
+  ORDER_FIND_BY_DRIVER: 'order.findByDriver',
+  ORDER_FIND_BY_STATUS: 'order.findByStatus',
+  ORDER_FIND_BY_BRANCH: 'order.findByBranch',
+  ORDER_FIND_BY_TYPE: 'order.findByType',
+  ORDER_FIND_BY_TRACK_CODE: 'order.findByTrackCode',
+  ORDER_FIND_BY_PAYMENT: 'order.findByPayment',
+  ORDER_UPDATE: 'order.update',
+  ORDER_UPDATE_STATUS: 'order.updateStatus',
+  ORDER_UPDATE_DRIVER: 'order.updateDriver',
+  ORDER_UPDATE_TYPE: 'order.updateType',
+  ORDER_DELETE: 'order.delete',
 } as const;
