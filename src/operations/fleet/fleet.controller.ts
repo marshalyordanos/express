@@ -18,6 +18,7 @@ export class FleetMessageController {
   constructor(private readonly usecases: FleetUseCasesImp) {}
 
   // Create a new vehicle
+  @Public()
   @MessagePattern(PATTERNS.FLEET_CREATE_VEHICLE)
   async createVehicle(@Payload() payload: { data: CreateVehicleDto }) {
     try {
@@ -65,6 +66,7 @@ export class FleetMessageController {
   }
 
   // Update vehicle details
+  @Public()
   @MessagePattern(PATTERNS.FLEET_UPDATE_VEHICLE)
   async updateVehicle(
     @Payload() payload: { id: string; data: UpdateVehicleDto },
@@ -78,6 +80,7 @@ export class FleetMessageController {
   }
 
   // Delete a vehicle
+  @Public()
   @MessagePattern(PATTERNS.FLEET_DELETE_VEHICLE)
   async deleteVehicle(@Payload() payload: { id: string }) {
     try {
@@ -89,6 +92,7 @@ export class FleetMessageController {
   }
 
   // Assign vehicle to a driver
+  @Public()
   @MessagePattern(PATTERNS.FLEET_ASSIGN_VEHICLE)
   async assignVehicle(@Payload() payload: AssignVehicleDto) {
     try {
@@ -99,6 +103,7 @@ export class FleetMessageController {
   }
 
   // Unassign vehicle from a driver
+  @Public()
   @MessagePattern(PATTERNS.FLEET_UNASSIGN_VEHICLE)
   async unassignVehicle(@Payload() payload: { vehicleId: string }) {
     try {

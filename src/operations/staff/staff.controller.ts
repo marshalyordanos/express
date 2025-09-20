@@ -131,7 +131,8 @@ export class StaffMessageController {
   async assignStaffToBranch(@Payload() payload: any) {
     try {
       const { staffIds, branchId } = payload;
-
+console.log('payload: ', payload);
+console.log('staffIds: ', staffIds);
       return this.usecases.assignStaffToBranch(staffIds, branchId);
     } catch (error) {
       handleCatch.handleCatch(error);

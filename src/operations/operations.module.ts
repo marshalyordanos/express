@@ -32,6 +32,7 @@ import { FleetMessageController } from './fleet/fleet.controller';
     FleetMessageController,
     StaffMessageController,
     FleetMessageController,
+    RoleMessageController,
   ],
   providers: [
     UserUseCasesImp,
@@ -43,12 +44,15 @@ import { FleetMessageController } from './fleet/fleet.controller';
     FleetUseCasesImp,
     StaffUseCasesImpl,
     StaffRepository,
+    RoleRepository,
+    RoleUseCaseImpl,
   ],
   exports: [
     UserUseCasesImp,
     BranchUseCaseImpl,
     FleetUseCasesImp,
     StaffUseCasesImpl,
+    RoleUseCaseImpl,
   ],
 })
 export class OperationsModule {}

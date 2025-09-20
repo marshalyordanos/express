@@ -15,7 +15,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         options: { host: '127.0.0.1', port: 4002 },
       },
       {
-        name: 'ORDER_SERVICE',
+        name: 'FULFILLMENT_SERVICE',
         transport: Transport.TCP,
         options: { host: '127.0.0.1', port: 4003 },
       }

@@ -20,7 +20,8 @@ export class BranchMessageController {
   @MessagePattern(PATTERNS.BRANCH_CREATE)
   async createBranch(@Payload() data: BranchCreateDto) {
     try {
-      return this.usecases.createBranch(data);
+      const result = await this.usecases.createBranch(data);
+      return new IResponse(true, 'Branch is created Succuessfuly', result);
     } catch (error) {
       handleCatch(error);
     }
@@ -29,7 +30,8 @@ export class BranchMessageController {
   @MessagePattern(PATTERNS.BRANCH_FIND_BY_ID)
   async findBranchById(@Payload() data: { id: string }) {
     try {
-      return this.usecases.findBranchById(data.id);
+      const result = await this.usecases.findBranchById(data.id);
+      return IResponse.success('Branches fetched successfullyy', result);
     } catch (error) {
       handleCatch(error);
     }
@@ -40,7 +42,8 @@ export class BranchMessageController {
     @Payload() payload: { id: string; data: Partial<BranchUpdateDto> },
   ) {
     try {
-      return this.usecases.updateBranch(payload.id, payload.data);
+      const result = await this.usecases.updateBranch(payload.id, payload.data);
+      return new IResponse(true, 'Branch is Updated Succuessfuly', result);
     } catch (error) {
       handleCatch(error);
     }
@@ -50,7 +53,8 @@ export class BranchMessageController {
   @MessagePattern(PATTERNS.BRANCH_DELETE)
   async deleteBranch(@Payload() data: { id: string }) {
     try {
-      return this.usecases.deleteBranch(data.id);
+      const result = await this.usecases.deleteBranch(data.id);
+      return new IResponse(true, 'Branch is Deleted Succuessfuly', result);
     } catch (error) {
       handleCatch(error);
     }
@@ -65,9 +69,14 @@ export class BranchMessageController {
       console.log(
         `Branch Id: ${payload.branchId}, Managrer managerId: ${payload.managerId} to be assigned.`,
       );
-      return await this.usecases.assignManager(
+      const result = await this.usecases.assignManager(
         payload.branchId,
         payload.managerId,
+      );
+      return new IResponse(
+        true,
+        'Branch Manager assigned Succuessfuly',
+        result,
       );
     } catch (error) {
       handleCatch(error);
@@ -83,7 +92,11 @@ export class BranchMessageController {
     );
 
     try {
-      return this.usecases.revokeManager(payload.branchId, payload.managerId);
+      const result = await this.usecases.revokeManager(
+        payload.branchId,
+        payload.managerId,
+      );
+      return new IResponse(true, 'Branch Manager revoked Succuessfuly', result);
     } catch (error) {}
   }
 

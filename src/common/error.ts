@@ -44,8 +44,18 @@ export class AllExceptions implements ExceptionFilter {
       message = rpcError.message || message;
     }
 
+    // if (exception instanceof BadRequestException) {
+    //   message = exception?.response?.message || exception.message;
+    //   console.log('------------------------------', message);
+    // }
+
     if (exception instanceof BadRequestException) {
-      message = exception?.response?.message || exception.message;
+      const response = exception.getResponse();
+      message =
+        typeof response === 'string'
+          ? response
+          : (response as any)?.message || exception.message;
+
       console.log('------------------------------', message);
     }
 

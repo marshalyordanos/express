@@ -46,7 +46,7 @@ export class RoleGatewayController {
     @Query('pageSize') pageSize?: number,
     @Query('search') search?: string,
   ) {
-    const authHeader = req.headers['authoization'] || null;
+    const authHeader = req.headers['authorization'] || null;
 
     return this.roleClient.send(PATTERNS.ROLE_FIND_ALL, {
       headers: { authorization: authHeader },

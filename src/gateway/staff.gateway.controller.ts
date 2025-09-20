@@ -136,6 +136,7 @@ export class StaffGatewayController {
 
   @Post('assign-branch')
   async assignBranch(@Body() dto: { staffIds: string[]; branchId: string }) {
+    
     return this.staffClient.send(PATTERNS.STAFF_ASSIGN_BRANCH, dto);
   }
 }

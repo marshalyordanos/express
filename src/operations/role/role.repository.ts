@@ -19,19 +19,8 @@ export class RoleRepository {
     return this.prisma.role.findUnique({ where: { id } });
   }
 
-  async findAllRoles(
-    page: number,
-    pageSize: number,
-    search: string,
-  ): Promise<{ roles: Partial<Role>[]; pagination: IPagination }> {
-    const skip = (page - 1) * pageSize;
-    const where: any = {};
-
-    if (search) {
-      where.OR = [{ name: { contains: search, mode: 'insensitive' } }];
-    }
-
-    const [roles, total] = await Promise.all([
+  async findAllRoles(skip: number, pageSize: number, where: any) {
+    return await Promise.all([
       this.prisma.role.findMany({
         skip,
         take: pageSize,
@@ -46,60 +35,14 @@ export class RoleRepository {
       }),
       this.prisma.role.count({ where }),
     ]);
-
-    const totalPages = Math.ceil(total / pageSize);
-
-    return {
-      roles,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
   }
 
-  async deleteByName(name: string): Promise<string> {
-    const role = await this.prisma.role.findUnique({ where: { name } });
-    if (!role) {
-      throw new Error('Role not found');
-    }
-    const result = await this.prisma.role.delete({ where: { name } });
-    if (result) {
-      console.log(
-        'Role deleted successfully with id: ' +
-          result.id +
-          ' and name: ' +
-          result.name +
-          'and result is: ' +
-          result,
-      );
-    } else {
-      console.log('this is result : ', result);
-    }
-    return 'Role deleted successfully with name: ' + name;
+  async deleteByName(name: string) {
+    return await this.prisma.role.delete({ where: { name } });
   }
 
-  async deleteById(id: string): Promise<string> {
-    const role = await this.prisma.role.findUnique({ where: { id } });
-    if (!role) {
-      throw new Error('Role not found');
-    }
-    const result = await this.prisma.role.delete({ where: { id } });
-    if (result) {
-      console.log(
-        'Role deleted successfully with id: ' +
-          result.id +
-          ' and name: ' +
-          result.name +
-          'and result is: ' +
-          result,
-      );
-    } else {
-      console.log('this is result : ', result);
-    }
-    return 'Role deleted successfully with id: ' + id;
+  async deleteById(id: string) {
+    return await this.prisma.role.delete({ where: { id } }); 
   }
 
   async updateRole(id: string, data: RoleUpdateDto): Promise<Role> {

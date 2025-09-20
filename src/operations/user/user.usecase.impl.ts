@@ -30,7 +30,37 @@ export class UserUseCasesImp implements UserUsecase {
     users: Partial<User>[];
     pagination: IPagination;
   }> {
-    return this.userRepo.findAll(page, pageSize, search, branchId);
+
+    const skip = (page - 1) * pageSize;
+
+    // Dynamic filters
+    const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (branchId) {
+      where.branchId = branchId;
+    }
+
+    const [users, total]= await this.userRepo.findAll(skip, pageSize, where);
+
+     const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      users,
+      pagination: {
+        total,
+        page,
+        pageSize,
+        totalPages,
+      },
+    };
   }
 
   async updateUser(id: string, data: Partial<UserDto>) {
@@ -40,6 +70,4 @@ export class UserUseCasesImp implements UserUsecase {
   async deleteUser(id: string) {
     return this.userRepo.deleteUser(id);
   }
-
-
 }

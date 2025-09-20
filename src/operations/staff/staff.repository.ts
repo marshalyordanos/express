@@ -1,36 +1,20 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { User, Prisma } from '@prisma/client';
+import { User, Prisma, Role } from '@prisma/client';
 import { IPagination } from '../../common/types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChangeRoleDto, UserDto } from '../user/user.entity';
 import { UpdateStaffDto } from './staff.entity';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class StaffRepository {
+
   constructor(private prisma: PrismaService) {}
 
-  async changeUserRole(data: ChangeRoleDto): Promise<User> {
-    // Find user
-    const user = await this.prisma.user.findUnique({
-      where: { id: data.userId },
-    });
-
-    if (!user) {
-      throw new BadRequestException(`User with id ${data.userId} not found`);
-    }
-
-    // Find role
-    const role = await this.prisma.role.findUnique({
-      where: { name: data.role },
-    });
-
-    if (!role) {
-      throw new BadRequestException(`Role ${data.role} not found`);
-    }
-
+  async changeUserRole(user: User, role: Role): Promise<User> {
     // Update user with new role
     return this.prisma.user.update({
-      where: { id: data.userId },
+      where: { id: user.id },
       data: {
         role: { connect: { id: role.id } },
       },
@@ -61,51 +45,25 @@ export class StaffRepository {
   async findRoleByName(roleName: string) {
     return this.prisma.role.findUnique({ where: { name: roleName } });
   }
+  async findBranchById(branchId: string) {
+    return this.prisma.branch.findUnique({ where: { id: branchId } });
+  }
 
-  async findStaffByRole(data: any): Promise<{
-    users: Partial<User>[];
-    pagination: IPagination;
-  }> {
-    const { page = 1, pageSize = 10, role } = data;
-
-    const skip = (page - 1) * pageSize;
-    console.log('roleName: ', role);
-
-    // Check role existence
-    const roles = await this.prisma.role.findUnique({
-      where: { name: role },
-    });
-
-    if (!role) {
-      throw new Error(`Invalid role: ${role}`);
-    }
-
-    const [users, total] = await Promise.all([
+  async findStaffByRole(skip: any, roleId: any, pageSize: number) {
+    return await Promise.all([
       this.prisma.user.findMany({
         skip,
         take: pageSize,
         where: {
-          roleId: roles.id,
+          roleId,
         },
         include: {
           role: true,
           branch: true,
         },
       }),
-      this.prisma.user.count({ where: { roleId: roles.id } }),
+      this.prisma.user.count({ where: { roleId } }),
     ]);
-
-    const totalPages = Math.ceil(total / pageSize);
-
-    return {
-      users,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
   }
   async findUserByEmail(email: string): Promise<User | null> {
     return this.prisma.user.findUnique({
@@ -114,43 +72,20 @@ export class StaffRepository {
     });
   }
   async deleteStaff(id: string) {
-    await this.prisma.user.delete({ where: { id } });
+   return await this.prisma.user.delete({ where: { id } });
 
-    return 'User deleted successfully with id: ' + id;
   }
   async findStaffById(id: string) {
-    const result = await this.prisma.user.findUnique({
+    return await this.prisma.user.findUnique({
       where: { id },
       include: {
         role: true,
         branch: true,
       },
     });
-    if (!result) {
-      throw new Error('User not found');
-    }
-    return result;
   }
-  async findAllStaff(
-    data: any,
-  ): Promise<{ users: Partial<User>[]; pagination: IPagination }> {
-    const { page = 1, pageSize = 10, search } = data;
-
-    const skip = (page - 1) * pageSize;
-
-    // Dynamic filters
-    const where: any = {
-      isStaff: true, //  filter only staff
-    };
-
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    const [users, total] = await Promise.all([
+  async findAllStaff(skip: number, where: any, pageSize: number) {
+    return await Promise.all([
       this.prisma.user.findMany({
         skip,
         take: pageSize,
@@ -162,45 +97,14 @@ export class StaffRepository {
       }),
       this.prisma.user.count({ where }),
     ]);
-
-    const totalPages = Math.ceil(total / pageSize);
-
-    return {
-      users,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
   }
 
   async updateStaff(id: string, data: UpdateStaffDto) {
     return await this.prisma.user.update({ where: { id }, data });
   }
 
-  async findStaffByBranch(
-    data: any,
-  ): Promise<{ staffs: Partial<User>[]; pagination: IPagination }> {
-    const { page = 1, pageSize = 10, branchId, search } = data;
-
-    const skip = (page - 1) * pageSize;
-
-    const where: any = {
-      isStaff: true,
-      branchId,
-    };
-
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    const [staffs, total] = await Promise.all([
+  async findStaffByBranch(skip: number, where: any, pageSize: number) {
+    return await Promise.all([
       this.prisma.user.findMany({
         skip,
         take: pageSize,
@@ -212,26 +116,13 @@ export class StaffRepository {
       }),
       this.prisma.user.count({ where }),
     ]);
-
-    const totalPages = Math.ceil(total / pageSize);
-
-    return {
-      staffs,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
   }
 
-  async assignStaffToBranch(staffIds: string[], branchId: string) {
-    return await this.prisma.user.updateMany({
-      where: {
-        id: { in: staffIds },
-      },
-      data: { branchId },
-    });
-  }
+async assignStaffToBranch(staffIds: string[], branchId: string) {
+  return await this.prisma.user.updateMany({
+    where: { id: { in: staffIds } },
+    data: { branchId },
+  });
+}
+
 }

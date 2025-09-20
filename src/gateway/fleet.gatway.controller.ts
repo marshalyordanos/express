@@ -34,14 +34,14 @@ export class FleetGatewayController {
   // Create a new vehicle
   @Post()
   async createVehicle(@Body() dto: CreateVehicleDto) {
-    console.log("difsnaodsio ", dto);
+
     return this.fleetClient.send(PATTERNS.FLEET_CREATE_VEHICLE, { data: dto });
   }
 
   // Get all vehicles (with pagination)
   @Get()
   async getAllVehicles(
-    @Req() req,
+    @Req() req: Request,
     @Query('page') page = 1,
     @Query('pageSize') pageSize = 10,
     @Query('search') search?: string,

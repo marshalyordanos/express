@@ -27,7 +27,7 @@ export class AuthRepository {
   }
   async createUser(
     data: AuthRegisterDto,
-    role: Role,
+    // role: Role,
     hashedPassword: string,
   ): Promise<User> {
     console.log('Data for creating user :', data);
@@ -39,9 +39,9 @@ export class AuthRepository {
         email,
         phone,
         password: hashedPassword,
-        role: {
-          connect: { id: role.id },
-        },
+        // role: {
+        //   connect: { id: role.id },
+        // },
         branch: branchId ? { connect: { id: branchId } } : undefined,
       },
     });

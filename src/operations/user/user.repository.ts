@@ -1,9 +1,7 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ChangeRoleDto, UserDto, UserUpdateDto } from './user.entity';
-import { Prisma, User } from '@prisma/client';
-import { IPagination } from 'src/common/types';
-import { Role } from '../role/role.entity';
+import {  UserUpdateDto } from './user.entity';
+import {  User } from '@prisma/client';
 
 @Injectable()
 export class UserRepository {
@@ -15,32 +13,11 @@ export class UserRepository {
   }
 
   async findAll(
-    page: number,
+    skip: number,
     pageSize: number,
-    search?: string,
-    branchId?: number,
-  ): Promise<{
-    users: Partial<User>[];
-    pagination: IPagination;
-  }> {
-    const skip = (page - 1) * pageSize;
-
-    // Dynamic filters
-    const where: any = {};
-
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    if (branchId) {
-      where.branchId = branchId;
-    }
-
-    const [users, total] = await Promise.all([
+    where: any,
+  ) {
+    return await Promise.all([
       this.prisma.user.findMany({
         skip,
         take: pageSize,
@@ -59,18 +36,6 @@ export class UserRepository {
       }),
       this.prisma.user.count({ where }),
     ]);
-
-    const totalPages = Math.ceil(total / pageSize);
-
-    return {
-      users,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
   }
 
   async updateUser(id: string, data: Partial<UserUpdateDto>): Promise<User> {

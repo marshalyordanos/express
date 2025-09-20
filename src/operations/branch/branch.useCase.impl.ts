@@ -8,15 +8,54 @@ import {
 } from './branch.entity';
 import { BranchUseCases } from './branch.useCase';
 import { IPagination } from 'src/common/types';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class BranchUseCaseImpl implements BranchUseCases {
   constructor(private readonly branchRepository: BranchRepository) {}
-  revokeManager(branchId: string, managerId: string): Promise<string> {
-    return this.branchRepository.revokeManager(branchId,managerId);
+  async revokeManager(branchId: string, managerId: string): Promise<string> {
+    const [user, branch] =
+      await this.branchRepository.findBranchAndBranchManager(
+        managerId,
+        branchId,
+      );
+    // Validate user and branch existence
+    if (!user || !branch) {
+      throw new RpcException('User or Branch not found');
+    }
+
+    if (branch.managerId !== managerId) {
+      throw new RpcException('User is not a manager of this branch');
+    }
+    await this.branchRepository.revokeManager(branchId, managerId);
+
+    return 'Manager revoked successfully';
   }
-  assignManager(branchId: string, managerId: string): Promise<Branch> {
-    return this.branchRepository.assignManager(branchId,managerId);
+  async assignManager(branchId: string, managerId: string): Promise<Branch> {
+    const [user, branch] =
+      await this.branchRepository.findBranchAndBranchManager(
+        managerId,
+        branchId,
+      );
+    // Validate user and branch existence
+    if (!user || !branch) {
+      throw new RpcException('User or Branch not found');
+    }
+
+    //  Checking if branch already has a manager
+    if (branch.managerId) {
+      throw new RpcException('Branch already has a manager');
+    }
+
+    const existingManagedBranch = await this.branchRepository.findManagedBranch(
+      branchId,
+      managerId,
+    );
+    if (existingManagedBranch) {
+      throw new RpcException('User is already a manager of another branch');
+    }
+
+    return await this.branchRepository.assignManager(branchId, managerId);
   }
 
   async createBranch(data: BranchCreateDto): Promise<Branch> {
@@ -31,11 +70,35 @@ export class BranchUseCaseImpl implements BranchUseCases {
     branches: BranchResponseDto[];
     pagination: IPagination;
   }> {
-    return this.branchRepository.findAllBranch(
-      page,
+
+     const skip = (page - 1) * pageSize;
+
+    const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { location: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [branches, total] = await this.branchRepository.findAllBranch(
+      skip,
       pageSize,
-      search,
-    );
+      where,
+    )
+
+    const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      branches,
+      pagination: {
+        total,
+        page,
+        pageSize,
+        totalPages,
+      },
+    };
   }
   async findBranchById(id: string): Promise<Branch> {
     return this.branchRepository.findBranchById(id);

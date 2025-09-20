@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,62 +7,62 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
-  id            String   @id @default(cuid())
-  name          String
-  email         String   @unique
-  password      String
-  phone         String?  @unique
-  role          Role?     @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  roleId        String?
-  branch        Branch?  @relation(fields: [branchId], references: [id])
-  branchId      String?
-  isStaff       Boolean   @default(false)
-  isSuperAdmin     Boolean   @default(false) // <-- new field
-  emailVerified Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  orders        Order[]  @relation("CustomerOrders")
-  assignedOrders Order[] @relation("DriverOrders")
-  vehicles      Vehicle[]
-  notifications Notification[]
-  logs          AuditLog[]
-  managedBranch Branch? @relation("BranchManager")
-  bookmarks Bookmark[]
-  refreshTokens RefreshToken[]
-  passwordReset PasswordReset[]
-  emialVarifiCation EmailVerification[]
-  mfa Mfa[]
+  id                String             @id @default(cuid())
+  name              String
+  email             String             @unique
+  password          String
+  phone             String?            @unique
+  branchId          String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  emailVerified     Boolean            @default(false)
+  roleId            String?
+  isStaff           Boolean            @default(false)
+  isSuperAdmin      Boolean            @default(false)
+  logs              AuditLog[]
+  bookmarks         Bookmark[]
+  managedBranch     Branch?            @relation("BranchManager")
+  emialVarifiCation EmailVerification?
+  mfa               Mfa?
+  notifications     Notification[]
+  orders            Order[]            @relation("CustomerOrders")
+  assignedOrders    Order[]            @relation("DriverOrders")
+  validatedOrders   Order[]            @relation("ValidateOrders")
+  passwordReset     PasswordReset[]
+  refreshTokens     RefreshToken[]
+  branch            Branch?            @relation(fields: [branchId], references: [id])
+  role              Role?              @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  vehicles          Vehicle[]
+  approvals         ParcelApproval[]   @relation("StaffApprovals")
 }
 
-
 model Permission {
-  id             String           @id @default(cuid())
-  resource       String           // e.g., "User", "Order", "Branch"
-  description    String?
+  id              String           @id @default(cuid())
+  resource        String // e.g., "User", "Order", "Branch"
+  description     String?
   rolePermissions RolePermission[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@unique([resource]) // one row per resource
 }
 
 model Role {
-  id              String             @id @default(cuid())
-  name            String             @unique
+  id              String           @id @default(cuid())
+  name            String           @unique
   description     String?
   users           User[]
   rolePermissions RolePermission[]
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model RolePermission {
-  id           String      @id @default(cuid())
-  role         Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   roleId       String
-  permission   Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
   permissionId String
 
   // Actions assigned to this role for this permission/resource
@@ -79,29 +73,213 @@ model RolePermission {
 
   @@unique([roleId, permissionId]) // prevent duplicates
 }
+
 model Branch {
-  id         String    @id @default(cuid())
-  name       String
-  location   String
-  manager    User?     @relation("BranchManager", fields: [managerId], references: [id])
-  managerId  String?   @unique
-  staff      User[]
-  orders     Order[]
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  location  String
+  managerId String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  manager   User?    @relation("BranchManager", fields: [managerId], references: [id])
+  orders    Order[]
+  staff     User[]
 }
 
 model Vehicle {
-  id           String   @id @default(cuid())
-  plateNumber  String   @unique
-  type         String
-  status       VehicleStatus 
-  model        String?
-  driver       User?    @relation(fields: [driverId], references: [id])
-  driverId     String?
-  fleetLogs    FleetLog[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String        @id @default(cuid())
+  plateNumber String        @unique
+  type        String
+  status      VehicleStatus
+  model       String?
+  driverId    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  fleetLogs   FleetLog[]
+  driver      User?         @relation(fields: [driverId], references: [id])
+}
+
+model FleetLog {
+  id          String   @id @default(cuid())
+  vehicleId   String
+  maintenance String
+  cost        Float?
+  date        DateTime @default(now())
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+}
+
+model Order {
+  id              String          @id @default(cuid())
+  trackingCode    String          @unique
+  customerId      String
+  branchId        String?
+  driverId        String?
+  status          OrderStatus     @default(PENDING)
+  serviceType     ServiceType
+  fulfillmentType FulfillmentType @default(PICKUP)
+
+  // 📦 Parcel details
+  weight        Float
+  length        Float?
+  width         Float?
+  height        Float?
+  category      ParcelCategory?
+  isFragile     Boolean         @default(false)
+  shipmentType  ShipmentType?
+  shippingScope ShippingScope?
+  isUnusual     Boolean         @default(false)
+  unusualReason String?
+
+  // Delivery info
+  pickupAddress     String?
+  pickupDate        DateTime?
+  deliveryAddress   String
+  deliveryDate      DateTime?
+  pickupConfirmed   Boolean   @default(false)
+  dropoffConfirmed  Boolean   @default(false)
+  actualPickupDate  DateTime?
+  actualDropoffDate DateTime?
+  notes             String?
+  cost              Float?
+  validatedBy       String?
+  validatedAt       DateTime?
+  validatedNotes    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  branch          Branch?          @relation(fields: [branchId], references: [id])
+  customer        User             @relation("CustomerOrders", fields: [customerId], references: [id])
+  driver          User?            @relation("DriverOrders", fields: [driverId], references: [id])
+  validator       User?            @relation("ValidateOrders", fields: [validatedBy], references: [id])
+  exceptions      OrderException[]
+  payment         Payment?
+  approvalRequest ParcelApproval?
+}
+
+model ParcelApproval {
+  id         String         @id @default(cuid())
+  orderId    String         @unique
+  status     ApprovalStatus @default(PENDING)
+  reason     String?
+  decisionBy String?
+  decidedAt  DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+  staff User? @relation("StaffApprovals", fields: [decisionBy], references: [id])
+}
+
+model OrderException {
+  id        String   @id @default(cuid())
+  orderId   String
+  type      String
+  reason    String
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  orderId       String        @unique
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  amount        Float
+  transactionId String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  order         Order         @relation(fields: [orderId], references: [id])
+}
+
+model Pricing {
+  id          String      @id @default(cuid())
+  baseRate    Float
+  zoneFrom    String
+  zoneTo      String
+  serviceType ServiceType
+  surcharge   Float?
+  corporateId String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  entity    String
+  entityId  String
+  details   String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Bookmark {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  title       String
+  description String?
+  link        String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Bookmark2 {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  title       String
+  description String?
+  link        String?
+  userId      Int
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String
+  userId    String
+  createdAt DateTime @default(now())
+  expiresAt DateTime @default(dbgenerated("(now() + '7 days'::interval)"))
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Mfa {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  secret    String
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum VehicleStatus {
@@ -110,46 +288,28 @@ enum VehicleStatus {
   MAINTENANCE
 }
 
-model FleetLog {
-  id          String   @id @default(cuid())
-  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
-  vehicleId   String
-  maintenance String
-  cost        Float?
-  date        DateTime @default(now())
-}
-
-model Order {
-  id            String   @id @default(cuid())
-  trackingCode  String   @unique
-  customer      User     @relation("CustomerOrders", fields: [customerId], references: [id])
-  customerId    String
-  branch        Branch   @relation(fields: [branchId], references: [id])
-  branchId      String
-  driver        User?    @relation("DriverOrders", fields: [driverId], references: [id])
-  driverId      String?
-  status        OrderStatus @default(PENDING)
-  serviceType   ServiceType
-  weight        Float
-  size          String
-  pickupAddress String
-  deliveryAddress String
-  deliveryDate  DateTime?
-  cost          Float?
-  payment       Payment?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  exceptions    OrderException[]
-}
-
 enum OrderStatus {
-  PENDING
+  CREATED
+  PENDING_APPROVAL
   APPROVED
-  DISPATCHED
+  REJECTED
+  VALIDATED
+
+  ASSIGNED
+  READY_FOR_PICKUP
+  PICKUP_ATTEMPTED
+  PICKED_UP
+
   IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DROPOFF_ATTEMPTED
+  DROPPED_OFF
+
+  DISPATCHED
+  PENDING
   DELIVERED
-  CANCELED
   FAILED
+  CANCELED
 }
 
 enum ServiceType {
@@ -157,27 +317,6 @@ enum ServiceType {
   EXPRESS
   SAME_DAY
   OVERNIGHT
-}
-
-model OrderException {
-  id        String   @id @default(cuid())
-  order     Order    @relation(fields: [orderId], references: [id])
-  orderId   String
-  type      String
-  reason    String
-  createdAt DateTime @default(now())
-}
-
-model Payment {
-  id          String   @id @default(cuid())
-  order       Order    @relation(fields: [orderId], references: [id])
-  orderId     String   @unique
-  method      PaymentMethod
-  status      PaymentStatus @default(PENDING)
-  amount      Float
-  transactionId String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
 
 enum PaymentMethod {
@@ -193,106 +332,34 @@ enum PaymentStatus {
   FAILED
 }
 
-model Pricing {
-  id           String   @id @default(cuid())
-  baseRate     Float
-  zoneFrom     String
-  zoneTo       String
-  serviceType  ServiceType
-  surcharge    Float?
-  corporateId  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+enum FulfillmentType {
+  PICKUP
+  DROPOFF
 }
 
-model Notification {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  type      String
-  message   String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
+enum ParcelCategory {
+  DOCUMENT
+  ELECTRONICS
+  FOOD
+  FRAGILE_ITEM
+  CHEMICAL
+  OTHER
 }
 
-model AuditLog {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  action    String
-  entity    String
-  entityId  String
-  details   String?
-  createdAt DateTime @default(now())
+enum ShipmentType {
+  PARCEL
+  CARRIER
 }
 
-model Bookmark{
-  id Int @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  title String
-  description String?
-
-  link String?
-  
-  userId String
-
-  user User @relation(fields: [userId],references: [id])
-
-  // @@map("bookmarks")
+enum ShippingScope {
+  REGIONAL
+  TOWN
+  INTERNATIONAL
 }
 
-
-model Bookmark2{
-  id Int @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  title String
-  description String?
-
-  link String?
-  
-  userId Int
-
-  // user User @relation(fields: [userId],references: [id])
-
-  // @@map("bookmarks")
-}
-
-
-model RefreshToken {
-  id        String   @id @default(cuid())
-  token     String   // hashed refresh token
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  expiresAt DateTime @default(dbgenerated("(NOW() + interval '7 days')")) // optional auto-expiry
-}
-
-model PasswordReset {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-}
-
-model EmailVerification {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-}
-
-model Mfa {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  secret    String   // TOTP secret (base32 encoded)
-  enabled   Boolean  @default(false)
-  createdAt DateTime @default(now())
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ESCALATED
 }
