@@ -6,8 +6,9 @@ export class RoleCreateDto {
   name: string;
 
   // @IsNotEmpty()
+
   @IsString()
-  description: string;
+  description?: string;
 }
 
 export class RoleResponseDto {

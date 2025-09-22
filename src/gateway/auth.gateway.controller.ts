@@ -61,4 +61,9 @@ export class AuthGatewayController {
       body,
     });
   }
+
+  @Post('superAdmin')
+  async superAdmin(@Body() dto: any) {
+    return this.authClient.send('SUPPER_ADDMIN', {});
+  }
 }

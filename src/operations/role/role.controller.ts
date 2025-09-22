@@ -14,6 +14,9 @@ export class RoleMessageController {
   @MessagePattern(PATTERNS.ROLE_CREATE)
   async createRole(@Payload() data: RoleCreateDto) {
     try {
+      console.log(
+        '-----------------------------------------------------------------',
+      );
       return this.usecases.createRole(data);
     } catch (error) {
       handleCatch(error);

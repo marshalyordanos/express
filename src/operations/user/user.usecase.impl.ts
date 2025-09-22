@@ -1,6 +1,11 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { UserRepository } from './user.repository';
-import { ChangeRoleDto, UserDto } from './user.entity';
+import {
+  AddressDto,
+  AddressUpdateDto,
+  ChangeRoleDto,
+  UserDto,
+} from './user.entity';
 import { User } from '@prisma/client';
 import { IPagination } from 'src/common/types';
 import { UserUsecase } from './user.usecase';
@@ -9,9 +14,7 @@ import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class UserUseCasesImp implements UserUsecase {
-  constructor(private readonly userRepo: UserRepository
-  ) {}
-
+  constructor(private readonly userRepo: UserRepository) {}
 
   findUserByEmail(email: string): Promise<User | null> {
     return this.userRepo.findUserByEmail(email);
@@ -30,7 +33,6 @@ export class UserUseCasesImp implements UserUsecase {
     users: Partial<User>[];
     pagination: IPagination;
   }> {
-
     const skip = (page - 1) * pageSize;
 
     // Dynamic filters
@@ -48,9 +50,9 @@ export class UserUseCasesImp implements UserUsecase {
       where.branchId = branchId;
     }
 
-    const [users, total]= await this.userRepo.findAll(skip, pageSize, where);
+    const [users, total] = await this.userRepo.findAll(skip, pageSize, where);
 
-     const totalPages = Math.ceil(total / pageSize);
+    const totalPages = Math.ceil(total / pageSize);
 
     return {
       users,
@@ -69,5 +71,21 @@ export class UserUseCasesImp implements UserUsecase {
 
   async deleteUser(id: string) {
     return this.userRepo.deleteUser(id);
+  }
+
+  async addAddress(data: AddressDto) {
+    return this.userRepo.addAddress(data);
+  }
+
+  async listAddresses(userId: string) {
+    return this.userRepo.listAddresses(userId);
+  }
+
+  async updateAddress(id: string, data: Partial<AddressUpdateDto>) {
+    return this.userRepo.updateAddress(id, data);
+  }
+
+  async deleteAddress(id: string) {
+    return this.userRepo.deleteAddress(id);
   }
 }

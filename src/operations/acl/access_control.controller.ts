@@ -36,6 +36,9 @@ export class AccessControlMessageController {
 
   @MessagePattern(PATTERNS.ROLE_FIND_ALL)
   async findAllRoles(@Payload() payload: any) {
+    console.log(
+      '===============================================================',
+    );
     try {
       const { page = 1, pageSize = 10, search } = payload;
       const result = await this.usecases.getAllRoles(page, pageSize, search);
@@ -52,6 +55,10 @@ export class AccessControlMessageController {
   @MessagePattern(PATTERNS.ROLE_CREATE)
   async createRole(@Payload() payload: { data: Partial<RoleDto> }) {
     try {
+      console.log(
+        '===============================================================',
+        payload.data,
+      );
       const result = await this.usecases.createRole(payload.data);
       return IResponse.success('Role created successfully', result);
     } catch (error) {

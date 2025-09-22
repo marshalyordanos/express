@@ -9,8 +9,8 @@ import {
   Post,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { PATTERNS } from 'src/contracts';
-import { AssignDriverForPickup } from 'src/fulfillment/dispatch/dispatch.entity';
+import { PATTERNS } from '../contracts';
+import { AssignDriverForPickup } from '../fulfillment/dispatch/dispatch.entity';
 
 @Controller('dispatch')
 export class DispatchGatewayController {

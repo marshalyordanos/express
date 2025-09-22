@@ -28,30 +28,34 @@ export class AuthUseCaseImpl implements AuthUseCase {
 
   // ----------------- Core Authentication -----------------
   async register(data: AuthRegisterDto): Promise<User> {
-    const existingUser = await this.authRepository.findByEmail(data.email);
-    if (existingUser) {
-      throw new RpcException('Email already in use');
+    const roleId = data.role;
+    const role = await this.authRepository.findRoleById(roleId);
+    if (!role) {
+      throw new RpcException(`Invalid role`);
     }
-
+    if (role.name == 'CUSTOMUR' || role.name == 'DRIVER') {
+      const existingUser = await this.authRepository.findByPhone(data.email);
+      if (existingUser) {
+        throw new RpcException('Phone already in use');
+      }
+    } else {
+      const existingUser = await this.authRepository.findByEmail(data.email);
+      if (existingUser) {
+        throw new RpcException('Email already in use');
+      }
+    }
     // Hash password
     const hashedPassword = await bcrypt.hash(data.password, 10);
     // Resolve roleId (default to CUSTOMER if not provided)
-    // if (data.role) {
-    //   const roleName = data.role;
-    //   const role = await this.authRepository.findRoleByName(roleName);
-    //   if (!role) {
-    //     throw new RpcException(`Invalid role: ${roleName}`);
-    //   }
-    // }
 
-    const user = await this.authRepository.createUser(
-      data,
-      // role,
-      hashedPassword,
-    );
+    const user = await this.authRepository.createUser(data, hashedPassword);
 
     // Send verification email (optional, implement in repository/service)
-    await this.authRepository.sendVerificationEmail(user.id, user.email);
+    if (role.name == 'CUSTOMUR' || role.name == 'DRIVER') {
+      await this.authRepository.sendVerificationPhone(user.id, user.email);
+    } else {
+      await this.authRepository.sendVerificationEmail(user.id, user.email);
+    }
     delete user.password;
 
     return user;
@@ -187,5 +191,9 @@ export class AuthUseCaseImpl implements AuthUseCase {
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
     return { accessToken, refreshToken };
+  }
+
+  async createSuperAdmin() {
+    const user = await this.authRepository.createSuperAdmin();
   }
 }

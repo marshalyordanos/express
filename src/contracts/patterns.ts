@@ -12,6 +12,11 @@ export const PATTERNS = {
   USER_FIND_BY_EMAIL: 'user.findByEmail',
   USER_CHANGE_ROLE: 'user.changeRole',
 
+  ADDRESS_CREATE: 'address.create',
+  ADDRESS_LIST: 'address.list',
+  ADDRESS_UPDATE: 'address.update',
+  ADDRESS_DELETE: 'address.delete',
+
   STAFF_CREATE: 'staff.register',
   STAFF_DELETE: 'staff.delete',
   STAFF_FIND_ALL: 'staff.findAll',
@@ -86,7 +91,7 @@ export const PATTERNS = {
   ORDER_DELETE: 'order.delete',
   ORDER_ACCEPT_DROP_OFF: 'order.acceptDropOff',
   ORDER_CONFIRM_PICKUP: 'order.confirmPickup',
-  ORDER_VALIDATE: 'order.validate', 
+  ORDER_VALIDATE: 'order.validate',
   ORDER_MARK_UNUSUAL: 'order.markUnusual',
   ORDER_APPROVE: 'order.approve',
   ORDER_FIND_FRAGILENT: 'order.getFragile',
@@ -106,8 +111,8 @@ export const PATTERNS = {
   DISPATCH_FIND_BY_TRACK_CODE: 'dispatch.findByTrackCode',
   DISPATCH_FIND_BY_PAYMENT: 'dispatch.findByPayment',
   DISPATCH_UPDATE: 'dispatch.update',
-  DISPATCH_ASSIGN_DRIVER_FOR_PICKUP : 'dispatch.assignDriverForPickup',
-  DISPATCH_ASSIGN_DRIVER_FOR_DELIVERY : 'dispatch.assignDriverForDelivery',
-  DISPATCH_REMOVE_DRIVER_FROM_ORDER : 'dispatch.removeDriverFromOrder',
-  DISPATCH_CHANGE_DRIVER_FOR_ORDER : 'dispatch.changeDriverForOrder',
+  DISPATCH_ASSIGN_DRIVER_FOR_PICKUP: 'dispatch.assignDriverForPickup',
+  DISPATCH_ASSIGN_DRIVER_FOR_DELIVERY: 'dispatch.assignDriverForDelivery',
+  DISPATCH_REMOVE_DRIVER_FROM_ORDER: 'dispatch.removeDriverFromOrder',
+  DISPATCH_CHANGE_DRIVER_FOR_ORDER: 'dispatch.changeDriverForOrder',
 } as const;

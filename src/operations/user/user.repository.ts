@@ -1,22 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import {  UserUpdateDto } from './user.entity';
-import {  User } from '@prisma/client';
+import { AddressDto, UserUpdateDto } from './user.entity';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class UserRepository {
-
   constructor(private prisma: PrismaService) {}
 
   async findUserById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  async findAll(
-    skip: number,
-    pageSize: number,
-    where: any,
-  ) {
+  async findAll(skip: number, pageSize: number, where: any) {
     return await Promise.all([
       this.prisma.user.findMany({
         skip,
@@ -48,5 +43,19 @@ export class UserRepository {
   async findUserByEmail(email: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { email } });
   }
-}
+  async addAddress(data: AddressDto) {
+    return this.prisma.address.create({ data });
+  }
 
+  async listAddresses(userId: string) {
+    return this.prisma.address.findMany({ where: { userId } });
+  }
+
+  async updateAddress(id: string, data: any) {
+    return this.prisma.address.update({ where: { id }, data });
+  }
+
+  async deleteAddress(id: string) {
+    return this.prisma.address.delete({ where: { id } });
+  }
+}

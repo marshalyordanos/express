@@ -12,8 +12,11 @@ import {
 import { Request } from 'express';
 
 import { ClientProxy } from '@nestjs/microservices';
-import { PATTERNS } from 'src/contracts';
-import { CreateOrderDto, ValidateOrderDto } from 'src/fulfillment/order/order.entity';
+import { PATTERNS } from '../contracts';
+import {
+  CreateOrderDto,
+  ValidateOrderDto,
+} from '../fulfillment/order/order.entity';
 
 @Controller('order')
 export class OrderGatewayController {
@@ -59,7 +62,6 @@ export class OrderGatewayController {
     return this.orderClient.send(PATTERNS.ORDER_APPROVE, data);
   }
 
-
   @Get()
   async getAllOrders(
     @Req() req: Request,
@@ -92,25 +94,31 @@ export class OrderGatewayController {
   }
 
   @Get('/customer/:id')
-  async getOrderByCustomer(@Param('id') id: string,
+  async getOrderByCustomer(
+    @Param('id') id: string,
     @Req() req: Request,
     @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,) {
+    @Query('pageSize') pageSize?: number,
+  ) {
     const authHeader = req.headers['authorization'] || null;
 
-    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_CUSTOMER, {id,
+    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_CUSTOMER, {
+      id,
       headers: { authorization: authHeader },
       page: page ? Number(page) : 1,
       pageSize: pageSize ? Number(pageSize) : 10,
     });
   }
   @Get('/status/:status')
-  async getOrderByStatus(@Param('status') status: string,
+  async getOrderByStatus(
+    @Param('status') status: string,
     @Req() req: Request,
     @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,) {
-        const authHeader = req.headers['authorization'] || null;
-    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_STATUS, {status,
+    @Query('pageSize') pageSize?: number,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_STATUS, {
+      status,
       headers: { authorization: authHeader },
       page: page ? Number(page) : 1,
       pageSize: pageSize ? Number(pageSize) : 10,
@@ -118,12 +126,15 @@ export class OrderGatewayController {
   }
 
   @Get('/branch/:id')
-  async getOrderByBranch(@Param('id') id: string,
+  async getOrderByBranch(
+    @Param('id') id: string,
     @Req() req: Request,
     @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,) {
-        const authHeader = req.headers['authorization'] || null;
-    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_BRANCH, {id,
+    @Query('pageSize') pageSize?: number,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_BRANCH, {
+      id,
       headers: { authorization: authHeader },
       page: page ? Number(page) : 1,
       pageSize: pageSize ? Number(pageSize) : 10,
@@ -135,12 +146,15 @@ export class OrderGatewayController {
   }
 
   @Get('/driver/:id')
-  async getOrderByDriver(@Param('id') id: string,
+  async getOrderByDriver(
+    @Param('id') id: string,
     @Req() req: Request,
     @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,) {
-        const authHeader = req.headers['authorization'] || null;
-    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_DRIVER, {id,
+    @Query('pageSize') pageSize?: number,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_DRIVER, {
+      id,
       headers: { authorization: authHeader },
       page: page ? Number(page) : 1,
       pageSize: pageSize ? Number(pageSize) : 10,
@@ -148,12 +162,15 @@ export class OrderGatewayController {
   }
 
   @Get('/type/:type')
-  async getOrderByType(@Param('type') type: string,
+  async getOrderByType(
+    @Param('type') type: string,
     @Req() req: Request,
     @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,) {
-        const authHeader = req.headers['authorization'] || null;
-    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_TYPE, { type,
+    @Query('pageSize') pageSize?: number,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_TYPE, {
+      type,
       headers: { authorization: authHeader },
       page: page ? Number(page) : 1,
       pageSize: pageSize ? Number(pageSize) : 10,
@@ -169,15 +186,15 @@ export class OrderGatewayController {
   async getFragileOrders(
     @Req() req: Request,
     @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number
+    @Query('pageSize') pageSize?: number,
   ) {
     console.log('getFragileOrders');
-    
+
     const authHeader = req.headers['authorization'] || null;
-    return this.orderClient.send(PATTERNS.ORDER_FIND_FRAGILENT,{
+    return this.orderClient.send(PATTERNS.ORDER_FIND_FRAGILENT, {
       headers: { authorization: authHeader },
       page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10
+      pageSize: pageSize ? Number(pageSize) : 10,
     });
   }
 
@@ -185,14 +202,13 @@ export class OrderGatewayController {
   async getUnusualOrders(
     @Req() req: Request,
     @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number
-
+    @Query('pageSize') pageSize?: number,
   ) {
-      const authHeader = req.headers['authorization'] || null;
-    return this.orderClient.send(PATTERNS.ORDER_FIND_UNUSUAL,{
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_FIND_UNUSUAL, {
       headers: { authorization: authHeader },
       page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10
+      pageSize: pageSize ? Number(pageSize) : 10,
     });
   }
 
@@ -200,13 +216,13 @@ export class OrderGatewayController {
   async getPendingOrders(
     @Req() req: Request,
     @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number
-  ){
+    @Query('pageSize') pageSize?: number,
+  ) {
     const authHeader = req.headers['authorization'] || null;
     return this.orderClient.send(PATTERNS.ORDER_FIND_PENDING, {
       headers: { authorization: authHeader },
       page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10
+      pageSize: pageSize ? Number(pageSize) : 10,
     });
   }
 
@@ -214,13 +230,13 @@ export class OrderGatewayController {
   async getPendingApprovalOrders(
     @Req() req: Request,
     @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number
-  ){
+    @Query('pageSize') pageSize?: number,
+  ) {
     const authHeader = req.headers['authorization'] || null;
     return this.orderClient.send(PATTERNS.ORDER_FIND_PENDING_APPROVAL, {
       headers: { authorization: authHeader },
       page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10
+      pageSize: pageSize ? Number(pageSize) : 10,
     });
   }
 
@@ -228,13 +244,13 @@ export class OrderGatewayController {
   async getPendingPickupOrders(
     @Req() req: Request,
     @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number
-  ){
+    @Query('pageSize') pageSize?: number,
+  ) {
     const authHeader = req.headers['authorization'] || null;
     return this.orderClient.send(PATTERNS.ORDER_FIND_PENDING_PICKUP, {
       headers: { authorization: authHeader },
       page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10
+      pageSize: pageSize ? Number(pageSize) : 10,
     });
   }
   @Patch(':id')
@@ -261,5 +277,4 @@ export class OrderGatewayController {
   async getOrder(@Param('id') id: string) {
     return this.orderClient.send(PATTERNS.ORDER_FIND_BY_ID, id);
   }
-
 }

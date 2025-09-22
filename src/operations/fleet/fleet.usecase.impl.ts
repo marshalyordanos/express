@@ -53,6 +53,11 @@ export class FleetUseCasesImp implements FleetUsecase {
 
   // Vehicle Assignment
   async assignVehicle(data: AssignVehicleDto): Promise<Vehicle> {
+    const user = await this.vehicleRepo.findUserById(data.driverId);
+    console.log(user);
+    if (!user?.role || user.role.name !== 'DRIVER') {
+      throw new RpcException('First assign the user to Driver!');
+    }
     return this.vehicleRepo.assignVehicle(data);
   }
 
@@ -76,19 +81,9 @@ export class FleetUseCasesImp implements FleetUsecase {
     return this.vehicleRepo.getMaintenanceHistory(vehicleId, query);
   }
 
-  async getLatestVehicleMaintenance(
-    vehicleId: string,
-  ): Promise<FleetLog | null> {
-    return this.vehicleRepo.getLatestMaintenance(vehicleId);
-  }
-
   // Fleet Analytics & Reporting
   async getFleetSummary(): Promise<any> {
     return this.vehicleRepo.getFleetSummary();
-  }
-
-  async getVehicleStatusSummary(): Promise<{ [status: string]: number }> {
-    return this.vehicleRepo.getVehicleStatusSummary();
   }
 
   async getAvailableVehicles(): Promise<Vehicle[]> {

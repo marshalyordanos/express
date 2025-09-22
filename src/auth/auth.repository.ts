@@ -17,13 +17,19 @@ export class AuthRepository {
       include: { role: true },
     });
   }
+  async findByPhone(phone: string): Promise<User | null> {
+    return this.prisma.user.findUnique({
+      where: { phone },
+      include: { role: true },
+    });
+  }
 
   async findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  async findRoleByName(name: string) {
-    return this.prisma.role.findUnique({ where: { name } });
+  async findRoleById(id: string) {
+    return this.prisma.role.findUnique({ where: { id } });
   }
   async createUser(
     data: AuthRegisterDto,
@@ -31,7 +37,7 @@ export class AuthRepository {
     hashedPassword: string,
   ): Promise<User> {
     console.log('Data for creating user :', data);
-    const { name, email, phone, branchId } = data;
+    const { name, email, phone, branchId, role } = data;
 
     return this.prisma.user.create({
       data: {
@@ -39,9 +45,9 @@ export class AuthRepository {
         email,
         phone,
         password: hashedPassword,
-        // role: {
-        //   connect: { id: role.id },
-        // },
+        role: {
+          connect: { id: role },
+        },
         branch: branchId ? { connect: { id: branchId } } : undefined,
       },
     });
@@ -139,6 +145,10 @@ export class AuthRepository {
     // TODO: Integrate real email sending service
     console.log(`Send verification email to ${email} for user ${userId}`);
   }
+  async sendVerificationPhone(userId: string, email: string): Promise<void> {
+    // TODO: Integrate real email sending service
+    console.log(`Send verification email to ${email} for user ${userId}`);
+  }
 
   async verifyEmailToken(token: string): Promise<string | null> {
     // TODO: Implement proper token verification logic
@@ -157,5 +167,34 @@ export class AuthRepository {
   async sendResetPasswordEmail(email: string, token: string): Promise<void> {
     // TODO: Integrate real email service
     console.log(`Send password reset email to ${email}: token=${token}`);
+  }
+
+  async createSuperAdmin() {
+    // Check if super admin already exists
+    const existing = await this.prisma.user.findFirst({
+      where: { isSuperAdmin: true },
+    });
+    if (existing) {
+      return existing;
+    }
+
+    const hashedPassword = await bcrypt.hash('admin1111', 10);
+
+    return this.prisma.user.create({
+      data: {
+        name: 'Super Admin',
+        email: 'superadmin@gmail.com',
+        password: hashedPassword,
+        phone: '0000000000',
+        isStaff: true,
+        isSuperAdmin: true,
+        role: {
+          create: {
+            name: 'SuperAdmin',
+            description: 'Full access to the system',
+          },
+        },
+      },
+    });
   }
 }

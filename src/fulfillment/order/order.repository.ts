@@ -7,6 +7,7 @@ import {
   ServiceType,
   FulfillmentType,
 } from '@prisma/client'; // assuming you use Prisma enums
+import { AddressDto } from 'src/operations/user/user.entity';
 
 @Injectable()
 export class OrderRepository {
@@ -86,7 +87,7 @@ export class OrderRepository {
     return this.prisma.order.create({
       data: {
         trackingCode,
-        status: 'CREATED',
+        status: OrderStatus.CREATED,
         serviceType: data.serviceType,
         fulfillmentType: data.fulfillmentType,
         weight: data.weight,

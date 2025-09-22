@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service'; // Your Prisma client service
-import { Vehicle, FleetLog, User } from '@prisma/client';
+import { Vehicle, FleetLog, User, Role } from '@prisma/client';
 import {
   CreateVehicleDto,
   UpdateVehicleDto,
@@ -18,7 +18,7 @@ export class VehicleRepository {
   async createVehicle(data: CreateVehicleDto): Promise<Vehicle> {
     const { driverId, status, ...vehicleData } = data;
     console.log('vehicleData: ', vehicleData);
-    
+
     return this.prisma.vehicle.create({
       data: {
         ...vehicleData,
@@ -27,8 +27,13 @@ export class VehicleRepository {
       },
     });
   }
-  async findUserById(id: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { id } });
+  async findUserById(
+    id: string,
+  ): Promise<(User & { role: Role | null }) | null> {
+    return this.prisma.user.findUnique({
+      where: { id },
+      include: { role: true },
+    });
   }
 
   async getAllVehicles(
@@ -132,13 +137,6 @@ export class VehicleRepository {
     return this.prisma.fleetLog.findMany({ where, orderBy: { date: 'desc' } });
   }
 
-  async getLatestMaintenance(vehicleId: string): Promise<FleetLog | null> {
-    return this.prisma.fleetLog.findFirst({
-      where: { vehicleId },
-      orderBy: { date: 'desc' },
-    });
-  }
-
   // ---------------- Fleet Analytics & Reporting ----------------
   async getFleetSummary(): Promise<any> {
     const totalVehicles = await this.prisma.vehicle.count();
@@ -153,17 +151,6 @@ export class VehicleRepository {
     });
 
     return { totalVehicles, activeVehicles, inMaintenance, inactive };
-  }
-
-  async getVehicleStatusSummary(): Promise<{ [status: string]: number }> {
-    const vehicles = await this.prisma.vehicle.groupBy({
-      by: ['status'],
-      _count: { status: true },
-    });
-
-    const summary: any = {};
-    vehicles.forEach((v) => (summary[v.status] = v._count.status));
-    return summary;
   }
 
   async getAvailableVehicles(): Promise<Vehicle[]> {
@@ -204,6 +191,13 @@ export class VehicleRepository {
       where: { driverId },
       include: { fleetLogs: true },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findUser(userId: string): Promise<User> {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { role: true },
     });
   }
 }

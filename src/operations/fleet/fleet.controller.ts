@@ -94,9 +94,11 @@ export class FleetMessageController {
   // Assign vehicle to a driver
   @Public()
   @MessagePattern(PATTERNS.FLEET_ASSIGN_VEHICLE)
-  async assignVehicle(@Payload() payload: AssignVehicleDto) {
+  async assignVehicle(@Payload() payload: { data: AssignVehicleDto }) {
     try {
-      return this.usecases.assignVehicle(payload);
+      console.log(payload.data);
+      const vehicle = await this.usecases.assignVehicle(payload.data);
+      return IResponse.success('Driver assigned successfully', vehicle, null);
     } catch (error) {
       handleCatch(error);
     }
@@ -107,7 +109,8 @@ export class FleetMessageController {
   @MessagePattern(PATTERNS.FLEET_UNASSIGN_VEHICLE)
   async unassignVehicle(@Payload() payload: { vehicleId: string }) {
     try {
-      return this.usecases.unassignVehicle(payload.vehicleId);
+      const vehicle = await this.usecases.unassignVehicle(payload.vehicleId);
+      return IResponse.success('Driver unassigned successfully', vehicle, null);
     } catch (error) {
       handleCatch(error);
     }
@@ -125,9 +128,12 @@ export class FleetMessageController {
 
   // Log vehicle maintenance
   @MessagePattern(PATTERNS.FLEET_LOG_MAINTENANCE)
-  async logVehicleMaintenance(@Payload() payload: VehicleMaintenanceDto) {
+  async logVehicleMaintenance(
+    @Payload() payload: { data: VehicleMaintenanceDto },
+  ) {
     try {
-      return this.usecases.logVehicleMaintenance(payload);
+      const fleetLog = await this.usecases.logVehicleMaintenance(payload.data);
+      return IResponse.success('fleetLog added successfully', fleetLog, null);
     } catch (error) {
       handleCatch(error);
     }
@@ -143,20 +149,15 @@ export class FleetMessageController {
     },
   ) {
     try {
-      return this.usecases.getVehicleMaintenanceHistory(
+      const fleetLogs = await this.usecases.getVehicleMaintenanceHistory(
         payload.vehicleId,
         payload.query,
       );
-    } catch (error) {
-      handleCatch(error);
-    }
-  }
-
-  // Get latest maintenance record
-  @MessagePattern(PATTERNS.FLEET_GET_LATEST_MAINTENANCE)
-  async getLatestMaintenance(@Payload() payload: { vehicleId: string }) {
-    try {
-      return this.usecases.getLatestVehicleMaintenance(payload.vehicleId);
+      return IResponse.success(
+        'fleetLog fetched successfully',
+        fleetLogs,
+        null,
+      );
     } catch (error) {
       handleCatch(error);
     }
@@ -166,17 +167,8 @@ export class FleetMessageController {
   @MessagePattern(PATTERNS.FLEET_GET_SUMMARY)
   async getFleetSummary() {
     try {
-      return this.usecases.getFleetSummary();
-    } catch (error) {
-      handleCatch(error);
-    }
-  }
-
-  // Get vehicle status summary
-  @MessagePattern(PATTERNS.FLEET_GET_STATUS_SUMMARY)
-  async getVehicleStatusSummary() {
-    try {
-      return this.usecases.getVehicleStatusSummary();
+      const fleetSummary = await this.usecases.getFleetSummary();
+      return IResponse.success('Fleet Summary!', fleetSummary, null);
     } catch (error) {
       handleCatch(error);
     }

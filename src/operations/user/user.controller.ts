@@ -2,7 +2,7 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PATTERNS } from '../../contracts';
 import { UserUseCasesImp } from './user.usecase.impl';
-import { ChangeRoleDto, UserDto } from './user.entity';
+import { AddressDto, ChangeRoleDto, UserDto } from './user.entity';
 import { Public } from '../../common/decorator/public.decorator';
 import { IResponse } from '../../common/types';
 import { handleCatch } from '../../common/handleCatch';
@@ -15,7 +15,8 @@ export class UserMessageController {
   @MessagePattern(PATTERNS.USER_FIND_BY_ID)
   async findById(@Payload() payload: { id: string }) {
     try {
-      return await this.usecases.getUser(payload.id);
+      const user = await this.usecases.getUser(payload.id);
+      return IResponse.success('Fetch user successfully', user);
     } catch (error) {
       handleCatch(error);
     }
@@ -50,7 +51,8 @@ export class UserMessageController {
   @MessagePattern(PATTERNS.USER_UPDATE)
   async update(@Payload() payload: { id: string; data: Partial<UserDto> }) {
     try {
-      return this.usecases.updateUser(payload.id, payload.data);
+      const user = await this.usecases.updateUser(payload.id, payload.data);
+      return IResponse.success(' user updated successfully', user);
     } catch (error) {
       handleCatch(error);
     }
@@ -59,7 +61,8 @@ export class UserMessageController {
   @MessagePattern(PATTERNS.USER_DELETE)
   async deleteUser(@Payload() payload: { id: string }) {
     try {
-      return this.usecases.deleteUser(payload.id);
+      const user = await this.usecases.deleteUser(payload.id);
+      return IResponse.success(' user deleted successfully', user);
     } catch (error) {
       handleCatch(error);
     }
@@ -71,6 +74,51 @@ export class UserMessageController {
   async findByEmail(@Payload() payload: { email: string }) {
     try {
       return this.usecases.findUserByEmail(payload.email);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @MessagePattern(PATTERNS.ADDRESS_CREATE)
+  async addAddress(@Payload() payload: { data: AddressDto }) {
+    try {
+      const address = await this.usecases.addAddress(payload.data);
+      return IResponse.success('Address added successfully', address);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @MessagePattern(PATTERNS.ADDRESS_LIST)
+  async listAddresses(@Payload() data: any) {
+    try {
+      const user = data.user;
+
+      const addresses = await this.usecases.listAddresses(user.sub);
+      return IResponse.success('Address fetched successfully', addresses);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @MessagePattern(PATTERNS.ADDRESS_UPDATE)
+  async updateAddress(@Payload() payload: { id: string; data: any }) {
+    try {
+      const address = await this.usecases.updateAddress(
+        payload.id,
+        payload.data,
+      );
+      return IResponse.success('Address updated successfully', address);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @MessagePattern(PATTERNS.ADDRESS_DELETE)
+  async deleteAddress(@Payload() payload: { id: string }) {
+    try {
+      const address = await this.usecases.deleteAddress(payload.id);
+      return IResponse.success('Address deleted successfully', address);
     } catch (error) {
       handleCatch(error);
     }

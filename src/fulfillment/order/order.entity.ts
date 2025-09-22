@@ -10,7 +10,13 @@ import {
   ValidateIf,
   IsBoolean,
 } from 'class-validator';
-import { ServiceType,FulfillmentType, ShipmentType, ShippingScope, ParcelCategory } from '@prisma/client';
+import {
+  ServiceType,
+  FulfillmentType,
+  ShipmentType,
+  ShippingScope,
+  ParcelCategory,
+} from '@prisma/client';
 import { PartialType } from '@nestjs/mapped-types';
 
 export class CreateOrderDto {
@@ -92,12 +98,12 @@ export class CreateOrderDto {
   height?: number;
 
   // Pickup info — required if fulfillmentType is PICKUP
-  @ValidateIf(o => o.fulfillmentType === FulfillmentType.PICKUP)
+  @ValidateIf((o) => o.fulfillmentType === FulfillmentType.PICKUP)
   @IsString()
   @IsNotEmpty()
   pickupAddress?: string;
 
-  @ValidateIf(o => o.fulfillmentType === FulfillmentType.PICKUP)
+  @ValidateIf((o) => o.fulfillmentType === FulfillmentType.PICKUP)
   @IsDateString()
   @IsOptional()
   pickupDate?: string;
@@ -135,9 +141,7 @@ export class AcceptDropOffDto {
   @IsString()
   @IsNotEmpty()
   tackingCode: string;
-
 }
-
 
 export class ValidateOrderDto extends PartialType(CreateOrderDto) {
   // @IsString()

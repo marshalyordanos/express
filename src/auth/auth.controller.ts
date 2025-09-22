@@ -71,5 +71,16 @@ export class AuthMessageController {
       handleCatch(error);
     }
   }
+
+  @Public()
+  @MessagePattern('SUPPER_ADDMIN')
+  async superAdmin(@Payload() dto: any) {
+    try {
+      const user = await this.usecases.createSuperAdmin();
+      return new IResponse(true, 'User is registered Succuessfuly', user);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
 }
 //

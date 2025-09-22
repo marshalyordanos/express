@@ -20,7 +20,13 @@ async function bootstrap() {
   const reflector = app.get(Reflector);
   app.useGlobalGuards(new JwtAuthGuard(jwtService, reflector));
 
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // strips unexpected fields
+      forbidNonWhitelisted: true, // throws error for extra fields
+      transform: true, // auto-transform payloads to DTO classes
+    }),
+  );
   await app.listen();
   console.log(
     'User microservice running on TCP port',

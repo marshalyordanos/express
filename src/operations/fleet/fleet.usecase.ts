@@ -32,11 +32,9 @@ export interface FleetUsecase {
     vehicleId: string,
     query?: VehicleMaintenanceQueryDto,
   ): Promise<FleetLog[]>;
-  getLatestVehicleMaintenance(vehicleId: string): Promise<FleetLog | null>;
 
   // Fleet Analytics & Reporting
   getFleetSummary(): Promise<any>; // replace `any` with a structured summary DTO if needed
-  getVehicleStatusSummary(): Promise<{ [status: string]: number }>; // count per status
   getAvailableVehicles(): Promise<Vehicle[]>;
 
   // Optional / Advanced Features

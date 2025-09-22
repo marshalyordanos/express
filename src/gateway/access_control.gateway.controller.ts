@@ -45,6 +45,9 @@ export class AccessControlGatewayController {
     @Query('pageSize') pageSize?: number,
     @Query('search') search?: string,
   ) {
+    console.log(
+      '-----------------------------------------------------------------',
+    );
     const authHeader = req.headers['authorization'] || null;
     return this.accessClient.send(PATTERNS.ROLE_FIND_ALL, {
       headers: { authorization: authHeader },
@@ -57,6 +60,10 @@ export class AccessControlGatewayController {
   @Post('roles')
   async createRole(@Req() req, @Body() dto: Partial<RoleDto>) {
     const authHeader = req.headers['authorization'] || null;
+    console.log(
+      '-----------------------------------------------------------------',
+      dto,
+    );
     return this.accessClient.send(PATTERNS.ROLE_CREATE, {
       data: dto,
       headers: { authorization: authHeader },

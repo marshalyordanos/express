@@ -26,15 +26,108 @@ export class FleetGatewayController {
   //   @Inject('FLEET_SERVICE') private readonly fleetClient: ClientProxy,
   // ) {}
 
-  // I Get an error because of that i changed to this way you can uncomment yours and comment mine 
-    constructor(
+  // I Get an error because of that i changed to this way you can uncomment yours and comment mine
+  constructor(
     @Inject('USER_SERVICE') private readonly fleetClient: ClientProxy,
   ) {}
+
+  // Assign vehicle to driver
+  @Patch('assign-to-driver')
+  async assignVehicle(@Req() req, @Body() dto: AssignVehicleDto) {
+    const authHeader = req.headers['authorization'] || null;
+    console.log(dto);
+
+    return this.fleetClient.send(PATTERNS.FLEET_ASSIGN_VEHICLE, {
+      headers: { authorization: authHeader },
+
+      data: dto,
+    });
+  }
+
+  // Unassign vehicle from driver
+  @Patch('unassign/:id')
+  async unassignVehicle(@Req() req, @Param('id') id: string) {
+    const authHeader = req.headers['authorization'] || null;
+
+    return this.fleetClient.send(PATTERNS.FLEET_UNASSIGN_VEHICLE, {
+      headers: { authorization: authHeader },
+
+      vehicleId: id,
+    });
+  }
+
+  // Get vehicles assigned to a driver
+  @Get('driver/:driverId')
+  async getVehiclesByDriver(@Param('driverId') driverId: string) {
+    return this.fleetClient.send(PATTERNS.FLEET_GET_DRIVER_VEHICLES, {
+      driverId,
+    });
+  }
+
+  // Log vehicle maintenance
+  @Post('maintenance')
+  async logMaintenance(@Req() req, @Body() dto: VehicleMaintenanceDto) {
+    const authHeader = req.headers['authorization'] || null;
+    console.log('auth: ', authHeader);
+
+    return this.fleetClient.send(PATTERNS.FLEET_LOG_MAINTENANCE, {
+      headers: { authorization: authHeader },
+
+      data: dto,
+    });
+  }
+
+  // Get vehicle maintenance history
+  @Get('maintenance/:id')
+  async getMaintenanceHistory(@Req() req, @Param('id') vehicleId: string) {
+    const authHeader = req.headers['authorization'] || null;
+
+    return this.fleetClient.send(PATTERNS.FLEET_GET_MAINTENANCE_HISTORY, {
+      headers: { authorization: authHeader },
+
+      vehicleId,
+    });
+  }
+
+  // Get fleet summary / analytics
+  @Get('summary')
+  async getFleetSummary(@Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+
+    return this.fleetClient.send(PATTERNS.FLEET_GET_SUMMARY, {
+      headers: { authorization: authHeader },
+    });
+  }
+
+  // Get available vehicles
+  @Get('available')
+  async getAvailableVehicles() {
+    return this.fleetClient.send(PATTERNS.FLEET_GET_AVAILABLE_VEHICLES, {});
+  }
+
+  // Retire a vehicle
+  @Patch(':id/retire')
+  async retireVehicle(@Param('id') vehicleId: string) {
+    return this.fleetClient.send(PATTERNS.FLEET_RETIRE_VEHICLE, { vehicleId });
+  }
+
+  // Get fleet alerts
+  @Get('alerts')
+  async getFleetAlerts() {
+    return this.fleetClient.send(PATTERNS.FLEET_GET_ALERTS, {});
+  }
+
+  // Get driver vehicle history
+  @Get('driver/:driverId/history')
+  async getDriverVehicleHistory(@Param('driverId') driverId: string) {
+    return this.fleetClient.send(PATTERNS.FLEET_GET_DRIVER_HISTORY, {
+      driverId,
+    });
+  }
 
   // Create a new vehicle
   @Post()
   async createVehicle(@Body() dto: CreateVehicleDto) {
-
     return this.fleetClient.send(PATTERNS.FLEET_CREATE_VEHICLE, { data: dto });
   }
 
@@ -95,97 +188,6 @@ export class FleetGatewayController {
     return this.fleetClient.send(PATTERNS.FLEET_DELETE_VEHICLE, {
       headers: { authorization: authHeader },
       id,
-    });
-  }
-
-  // Assign vehicle to driver
-  @Patch(':id/assign')
-  async assignVehicle(@Param('id') id: string, @Body() dto: AssignVehicleDto) {
-    return this.fleetClient.send(PATTERNS.FLEET_ASSIGN_VEHICLE, {
-      vehicleId: id,
-      ...dto,
-    });
-  }
-
-  // Unassign vehicle from driver
-  @Patch(':id/unassign')
-  async unassignVehicle(@Param('id') id: string) {
-    return this.fleetClient.send(PATTERNS.FLEET_UNASSIGN_VEHICLE, {
-      vehicleId: id,
-    });
-  }
-
-  // Get vehicles assigned to a driver
-  @Get('driver/:driverId')
-  async getVehiclesByDriver(@Param('driverId') driverId: string) {
-    return this.fleetClient.send(PATTERNS.FLEET_GET_DRIVER_VEHICLES, {
-      driverId,
-    });
-  }
-
-  // Log vehicle maintenance
-  @Post(':id/maintenance')
-  async logMaintenance(
-    @Param('id') vehicleId: string,
-    @Body() dto: VehicleMaintenanceDto,
-  ) {
-    return this.fleetClient.send(PATTERNS.FLEET_LOG_MAINTENANCE, {
-      vehicleId,
-      ...dto,
-    });
-  }
-
-  // Get vehicle maintenance history
-  @Get(':id/maintenance')
-  async getMaintenanceHistory(@Param('id') vehicleId: string) {
-    return this.fleetClient.send(PATTERNS.FLEET_GET_MAINTENANCE_HISTORY, {
-      vehicleId,
-    });
-  }
-
-  // Get latest maintenance record
-  @Get(':id/maintenance/latest')
-  async getLatestMaintenance(@Param('id') vehicleId: string) {
-    return this.fleetClient.send(PATTERNS.FLEET_GET_LATEST_MAINTENANCE, {
-      vehicleId,
-    });
-  }
-
-  // Get fleet summary / analytics
-  @Get('summary')
-  async getFleetSummary() {
-    return this.fleetClient.send(PATTERNS.FLEET_GET_SUMMARY, {});
-  }
-
-  // Get fleet status summary
-  @Get('status-summary')
-  async getStatusSummary() {
-    return this.fleetClient.send(PATTERNS.FLEET_GET_STATUS_SUMMARY, {});
-  }
-
-  // Get available vehicles
-  @Get('available')
-  async getAvailableVehicles() {
-    return this.fleetClient.send(PATTERNS.FLEET_GET_AVAILABLE_VEHICLES, {});
-  }
-
-  // Retire a vehicle
-  @Patch(':id/retire')
-  async retireVehicle(@Param('id') vehicleId: string) {
-    return this.fleetClient.send(PATTERNS.FLEET_RETIRE_VEHICLE, { vehicleId });
-  }
-
-  // Get fleet alerts
-  @Get('alerts')
-  async getFleetAlerts() {
-    return this.fleetClient.send(PATTERNS.FLEET_GET_ALERTS, {});
-  }
-
-  // Get driver vehicle history
-  @Get('driver/:driverId/history')
-  async getDriverVehicleHistory(@Param('driverId') driverId: string) {
-    return this.fleetClient.send(PATTERNS.FLEET_GET_DRIVER_HISTORY, {
-      driverId,
     });
   }
 }
