@@ -17,7 +17,9 @@ export class StaffMessageController {
   @MessagePattern(PATTERNS.STAFF_CREATE)
   async createStaff(@Payload() payload: { user: any; data: RegisterStaffDto }) {
     try {
-      return this.usecases.createStaff(payload.data);
+      const result = await this.usecases.createStaff(payload.data);
+
+      return IResponse.success('Staff created successfully', result);
     } catch (error) {
       handleCatch.handleCatch(error);
     }
@@ -73,7 +75,9 @@ export class StaffMessageController {
     try {
       console.log('payload: ', payload);
 
-      return this.usecases.changeUserRole(payload);
+      const result = await this.usecases.changeUserRole(payload);
+
+      return IResponse.success('Role changed successfully', result);
     } catch (error) {
       handleCatch.handleCatch(error);
     }
@@ -84,7 +88,9 @@ export class StaffMessageController {
   @MessagePattern(PATTERNS.STAFF_DELETE)
   async deleteStaff(@Payload() payload: { id: string }) {
     try {
-      return this.usecases.deleteStaff(payload.id);
+      const result = await this.usecases.deleteStaff(payload.id);
+
+      return IResponse.success('Staff deleted successfully', result);
     } catch (error) {
       handleCatch.handleCatch(error);
     }
@@ -94,7 +100,9 @@ export class StaffMessageController {
   @MessagePattern(PATTERNS.STAFF_FIND_BY_ID)
   async findStaffById(@Payload() payload: { id: string }) {
     try {
-      return this.usecases.findStaffById(payload.id);
+      const result = await this.usecases.findStaffById(payload.id);
+
+      return IResponse.success('User fetched successfully', result);
     } catch (error) {
       handleCatch.handleCatch(error);
     }
@@ -104,7 +112,8 @@ export class StaffMessageController {
   @MessagePattern(PATTERNS.STAFF_UPDATE)
   async updateStaff(@Payload() payload: { id: string; data: UpdateStaffDto }) {
     try {
-      return this.usecases.updateStaff(payload.id, payload.data);
+      const result = await this.usecases.updateStaff(payload.id, payload.data);
+      return IResponse.success('User updated successfully', result);
     } catch (error) {
       handleCatch.handleCatch(error);
     }
@@ -131,9 +140,13 @@ export class StaffMessageController {
   async assignStaffToBranch(@Payload() payload: any) {
     try {
       const { staffIds, branchId } = payload;
-console.log('payload: ', payload);
-console.log('staffIds: ', staffIds);
-      return this.usecases.assignStaffToBranch(staffIds, branchId);
+      console.log('payload: ', payload);
+      console.log('staffIds: ', staffIds);
+      const result = await this.usecases.assignStaffToBranch(
+        staffIds,
+        branchId,
+      );
+      return IResponse.success('Staffs assigned successfully', result);
     } catch (error) {
       handleCatch.handleCatch(error);
     }

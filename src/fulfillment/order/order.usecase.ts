@@ -23,7 +23,7 @@ export interface OrderUseCases {
     getOrderByType(type: ServiceType, data: any): Promise<any>;
     getOrderByPayment(payment: string): Promise<any>;
     getOrderByFullfillmentType(type: string, data: any): Promise<any>;
-    approveOrder(orderId: string): Promise<any>;
+    approveOrder(orderId: string,reason: string): Promise<any>;
     getFragileOrders(data: any): Promise<any>;
     getUnusualOrders(data: any): Promise<any>;
     getPendingOrders(data: any): Promise<any>;

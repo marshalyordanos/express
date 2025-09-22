@@ -94,6 +94,7 @@ export const PATTERNS = {
   ORDER_FIND_PENDING_APPROVAL: 'order.getPendingApproval',
   ORDER_FIND_UNUSUAL: 'order.getUnusual',
   ORDER_FIND_PENDING_PICKUP: 'order.getPendingPickup',
+  ORDER_CREATE_AND_VALIDATE: 'order.createAndValidate',
 
   //Dispatch Management System
   DISPATCH_CREATE: 'dispatch.create',

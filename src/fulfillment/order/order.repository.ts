@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateOrderDto } from './order.entity';
+import { CreateOrderDto, ValidateOrderDto } from './order.entity';
 import {
   VehicleStatus,
   OrderStatus,
@@ -10,6 +10,11 @@ import {
 
 @Injectable()
 export class OrderRepository {
+  async trackOrder(orderId: string) {
+    return this.prisma.orderTracking.findMany({
+      where: { orderId },
+    });
+  }
   getOrderByDriverId(
     id: string,
     skip: number,
@@ -33,6 +38,7 @@ export class OrderRepository {
         isStaff: false,
         roleId: null,
       },
+
     });
   }
 
@@ -82,8 +88,10 @@ export class OrderRepository {
     driverConnect: any,
     paymentConnect: any,
     trackingCode: string,
+    location: string,
+    updatedBy: string,
   ): Promise<any> {
-    return this.prisma.order.create({
+    const order = await this.prisma.order.create({
       data: {
         trackingCode,
         status: 'CREATED',
@@ -108,32 +116,123 @@ export class OrderRepository {
         ...(paymentConnect && { payment: paymentConnect }), // ✅ only add if exists
       },
     });
-  }
 
-  async confirmPickupOrder(orderId: string) {
-    return this.prisma.order.update({
-      where: { id: orderId },
+    await this.logOrderStatus(
+      order.id,
+      'CREATED',
+      location,
+      updatedBy,
+      'Order Created.',
+    );
+
+    return order;
+  }
+  async createOrderAndValidate(
+    data: ValidateOrderDto,
+    customerConnect: any,
+    branchConnect: any,
+    driverConnect: any,
+    paymentConnect: any,
+    trackingCode: string,
+    location: string,
+    updatedBy: string,
+  ) {
+    console.log("Validator: ", data.validatedBy);
+    
+    const order = await this.prisma.order.create({
       data: {
-        status: 'PICKED_UP',
-        pickupConfirmed: true,
-        actualPickupDate: new Date(),
+        trackingCode,
+        status: 'PENDING_APPROVAL',
+        serviceType: data.serviceType,
+        fulfillmentType: data.fulfillmentType,
+        weight: data.weight,
+        height: data.height,
+        width: data.width,
+        length: data.length,
+        category: data.category,
+        isFragile: data.isFragile,
+        shipmentType: data.shipmentType,
+        shippingScope: data.shippingScope,
+        pickupAddress: data.pickupAddress,
+        pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
+        deliveryAddress: data.deliveryAddress,
+        deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
+        cost: data.cost,
+        isUnusual: data.isUnusual ?? false,
+        unusualReason: data.unusualReason ?? null,
+        validator: { connect: { id: data.validatedBy } },
+        validatedAt: new Date(),
+        validatedNotes: data.validatedNotes ?? null,
+        actualDropoffDate: new Date(),
+        dropoffConfirmed: true,
+
+        customer: customerConnect,
+        ...(branchConnect && { branch: branchConnect }),
+        ...(driverConnect && { driver: driverConnect }),
+        ...(paymentConnect && { payment: paymentConnect }),
       },
     });
+
+    await this.logOrderStatus(
+      order.id,
+      'PENDING_APPROVAL',
+      location,
+      data.validatedBy,
+      'Order Created and validated.',
+    );
+
+    return order;
   }
 
-  async validateOrder(orderId: string, officerId: string, data: any) {
+  async confirmPickupOrder(
+    orderId: string,
+    location: string,
+    updatedBy: string,
+  ) {
+    const result = await Promise.all([
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'PICKED_UP',
+          pickupConfirmed: true,
+          actualPickupDate: new Date(),
+        },
+      }),
+      await this.logOrderStatus(
+        orderId,
+        'PICKED_UP',
+        location,
+        updatedBy,
+        'Pickup confirmed by driver',
+      ),
+    ]);
+
+    return result;
+  }
+
+  async validateOrder(orderId: string, officerId: string,location: string, data: any) {
     console.log('updates: ', data);
 
-    return this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        ...data, // dynamic fields (weight, size, cost, etc.)
-        status: 'PENDING_APPROVAL',
-        validatedBy: officerId,
-        validatedAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
+    const result = await Promise.all([
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          ...data, // dynamic fields (weight, size, cost, etc.)
+          status: 'PENDING_APPROVAL',
+          validatedBy: officerId,
+          validatedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      }),
+      await this.logOrderStatus(
+        orderId,
+        'PENDING_APPROVAL',
+        location,
+        officerId,
+        'Order validated, pending approval',
+      ),
+    ]);
+    return result;
   }
 
   async markUnusualOrder(orderId: string, data: any) {
@@ -208,13 +307,37 @@ export class OrderRepository {
     ]);
   }
 
-  async approveOrder(orderId: string) {
-    return this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: 'APPROVED',
-      },
-    });
+  async approveOrder(
+    order: any,
+    reason: string,
+    location: string,
+    updatedBy: string,
+  ) {
+    const result = await Promise.all([
+      await this.prisma.order.update({
+        where: { id: order.id },
+        data: {
+          status: 'APPROVED',
+        },
+      }),
+      await this.prisma.parcelApproval.create({
+        data: {
+          orderId: order.id,
+          status: 'APPROVED',
+          reason,
+          decisionBy: updatedBy,
+          decidedAt: new Date(),
+        },
+      }),
+      await this.logOrderStatus(
+        order.id,
+        'APPROVED',
+        location,
+        updatedBy,
+        'Order approved by Operation Manager',
+      ),
+    ]);
+    return result;
   }
 
   async getPendingOrder(skip: number, pageSize: number) {
@@ -266,6 +389,8 @@ export class OrderRepository {
           driver: true,
           payment: true,
           validator: true,
+          approvalRequest: true,
+          orderTracking: true,
         },
       }),
       this.prisma.order.count(),
@@ -424,61 +549,96 @@ export class OrderRepository {
     ]);
   }
 
-  async acceptDropOffOrder(trackingCode: string) {
+  async acceptDropOffOrder(
+    trackingCode: string,
+    orderId: string,
+    branchId: string,
+    updatedBy: string,
+  ) {
     console.log('trackingCode: ', trackingCode);
 
-    return this.prisma.order.update({
-      where: { trackingCode },
-      data: {
-        status: 'PICKED_UP',
-        dropoffConfirmed: true,
-        actualDropoffDate: new Date(),
-      },
-      select: {
-        id: true,
-        trackingCode: true,
-        status: true,
-        serviceType: true,
-        fulfillmentType: true,
-        deliveryAddress: true,
-        deliveryDate: true,
-        height: true,
-        width: true,
-        length: true,
-        shipmentType: true,
-        shippingScope: true,
-        isFragile: true,
-        isUnusual: true,
-        dropoffConfirmed: true,
-        actualDropoffDate: true,
-        weight: true,
-        cost: true,
-        payment: {
-          select: {
-            id: true,
-            amount: true,
-            status: true,
+    const result = await Promise.all([
+      this.prisma.order.update({
+        where: { trackingCode },
+        data: {
+          status: 'DROPPED_OFF',
+          dropoffConfirmed: true,
+          actualDropoffDate: new Date(),
+          branchId,
+        },
+        select: {
+          id: true,
+          trackingCode: true,
+          status: true,
+          serviceType: true,
+          fulfillmentType: true,
+          deliveryAddress: true,
+          deliveryDate: true,
+          height: true,
+          width: true,
+          length: true,
+          shipmentType: true,
+          shippingScope: true,
+          isFragile: true,
+          isUnusual: true,
+          dropoffConfirmed: true,
+          actualDropoffDate: true,
+          weight: true,
+          cost: true,
+          payment: {
+            select: {
+              id: true,
+              amount: true,
+              status: true,
+            },
+          },
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+            },
+          },
+          driver: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+              branch: true,
+              vehicles: true,
+            },
+          },
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              location: true,
+            },
           },
         },
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true,
-          },
-        },
-        driver: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true,
-            branch: true,
-            vehicles: true,
-          },
-        },
-      },
+      }),
+      await this.logOrderStatus(
+        orderId,
+        'PICKED_UP',
+        branchId,
+        updatedBy,
+        'Dropoff confirmed by customer',
+      ),
+    ]);
+    return result;
+  }
+
+  private async logOrderStatus(
+    orderId: string,
+    status: OrderStatus,
+    location?: string,
+    updatedBy?: string,
+    notes?: string,
+  ) {
+    await this.prisma.orderTracking.create({
+      data: { orderId, status, location, updatedBy, notes },
     });
   }
 }

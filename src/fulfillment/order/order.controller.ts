@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PATTERNS } from 'src/contracts';
-import { CreateOrderDto } from './order.entity';
+import { CreateOrderDto, ValidateOrderDto } from './order.entity';
 import { Public } from 'src/common/decorator/public.decorator';
 import { OrderUseCasesImpl } from './order.usecase.impl';
 import { FulfillmentType, OrderStatus, ServiceType } from '@prisma/client'; // assuming you use Prisma enums
@@ -20,6 +20,12 @@ export class OrderMessageController {
     return IResponse.success('Order created successfully', result);
   }
 
+  @Public()
+  @MessagePattern(PATTERNS.ORDER_CREATE_AND_VALIDATE)
+  async createOrderAndValidate(data: ValidateOrderDto) {
+    const result = await this.orderUseCases.createOrder(data);
+    return IResponse.success('Order created and validated successfully by customer officer', result);
+  }
   //COMPLETED
   @Public()
   @MessagePattern(PATTERNS.ORDER_ACCEPT_DROP_OFF)
@@ -70,9 +76,10 @@ export class OrderMessageController {
   @MessagePattern(PATTERNS.ORDER_APPROVE)
   async approveOrder(@Payload() payload: any){
     const orderId= payload.orderId;
+    const reason= payload.reason;
     console.log("Order : ", orderId);
     
-    const result= await this.orderUseCases.approveOrder(orderId);
+    const result= await this.orderUseCases.approveOrder(orderId, reason);
     return IResponse.success(`Order with id: ${orderId} approved by Operation Manager.`, result);
   }
 

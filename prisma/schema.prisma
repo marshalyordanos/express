@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -156,6 +157,8 @@ model Order {
   exceptions      OrderException[]
   payment         Payment?
   approvalRequest ParcelApproval?
+  orderTracking   OrderTracking[]
+
 }
 
 model ParcelApproval {
@@ -170,6 +173,20 @@ model ParcelApproval {
 
   order Order @relation(fields: [orderId], references: [id])
   staff User? @relation("StaffApprovals", fields: [decisionBy], references: [id])
+}
+
+model OrderTracking {
+  id         String      @id @default(cuid())
+  orderId    String
+  status     OrderStatus
+  location   String?      
+  updatedBy  String?      
+  notes      String?
+  createdAt  DateTime     @default(now())
+
+  order      Order        @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
 }
 
 model OrderException {
@@ -290,6 +307,7 @@ enum VehicleStatus {
 
 enum OrderStatus {
   CREATED
+  COLLECTED
   PENDING_APPROVAL
   APPROVED
   REJECTED

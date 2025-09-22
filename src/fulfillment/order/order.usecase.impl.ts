@@ -10,7 +10,7 @@ import { IResponse } from 'src/common/types';
 export class OrderUseCasesImpl implements OrderUseCases {
   constructor(private readonly orderRepo: OrderRepository) {}
   //Customer order creating API: For customer to create for it self and staff/Admin to create for customer
-  async createOrder(data: CreateOrderDto): Promise<any> {
+  async createOrder(data: any): Promise<any> {
     console.log('data: ', data);
 
     // Find or create customer
@@ -73,6 +73,15 @@ export class OrderUseCasesImpl implements OrderUseCases {
       this.orderRepo.findPayment.bind(this.orderRepo),
     );
 
+    let location = null;
+    if (data.fulfillmentType === 'PICKUP') {
+      location = data.pickupAddress;
+    }
+    if (data.fulfillmentType === 'DROPOFF') {
+      location = data.branchId;
+    }
+
+    const updatedBy = customer.id;
     return this.orderRepo.createOrder(
       data,
       customerConnect,
@@ -80,6 +89,8 @@ export class OrderUseCasesImpl implements OrderUseCases {
       driverConnect,
       paymentConnect,
       trackingCode,
+      location,
+      updatedBy,
     );
   }
 
@@ -92,12 +103,36 @@ export class OrderUseCasesImpl implements OrderUseCases {
         `Order with tracking code ${trackingCode} not found`,
       );
     }
-    if (order.status !== 'PENDING') {
+
+    let branchId: string | null = null;
+
+    if (order.branchId) {
+      console.log('order.branchId: ', order.branchId);
+      // If order already has a branch assigned
+      branchId = order.branchId;
+    } else if (order.driver && order.driver.branchId) {
+      console.log('order.driver.branchId: ', order.driver.branchId);
+      // If order has a driver, use driver's branch
+      branchId = order.driver.branchId;
+    }
+
+    if (!branchId) {
       throw new RpcException(
-        `Order with tracking code ${trackingCode} is not in PENDING status`,
+        `Order with tracking code ${trackingCode} does not have a branch assigned`,
       );
     }
-    return this.orderRepo.acceptDropOffOrder(trackingCode);
+    if (order.status !== 'CREATED' && order.status !== 'PICKED_UP') {
+      throw new RpcException(
+        `Order with tracking code ['${trackingCode}'] or Order Id ['${order.id}'] can not be COLLECTED because it does not meet the requirement for COLLECTED it have to be in CREATED or PICKED_UP state.`,
+      );
+    }
+    const updatedBy = order.customerId;
+    return this.orderRepo.acceptDropOffOrder(
+      trackingCode,
+      order.id,
+      branchId,
+      updatedBy,
+    );
   }
 
   async confirmPickupOrder(orderId: string, driverId: string) {
@@ -119,11 +154,12 @@ export class OrderUseCasesImpl implements OrderUseCases {
     if (order.status !== 'ASSIGNED') {
       throw new RpcException({
         statusCode: 403, // Forbidden
-        message: `Order with ID ${orderId} is not ASSIGNED to the driver for the pick up or the package already picked up.`,
+        message: `Order with Tracking code ['${order.trackingCode}'] or Order Id ['${order.id}'] is not ASSIGNED to the driver for the pick up or the package already picked up.`,
       });
     }
+    const location = order.pickupAddress;
 
-    return this.orderRepo.confirmPickupOrder(orderId);
+    return this.orderRepo.confirmPickupOrder(orderId, location, driverId);
   }
 
   // done
@@ -136,6 +172,8 @@ export class OrderUseCasesImpl implements OrderUseCases {
         message: `Order with ID ${orderId} not found.`,
       });
     }
+    console.log('Order for validation: ', order);
+
     const officer = await this.orderRepo.findStaffById(data.validatedBy);
     if (!officer) {
       throw new RpcException({
@@ -143,9 +181,30 @@ export class OrderUseCasesImpl implements OrderUseCases {
         message: `Officer with ID ${data.validatedBy} not found.`,
       });
     }
+    console.log('Office for validation: ', officer);
+
+    let location = null;
+    if (order.branchId || officer.branchId) {
+      location = order.branchId ? order.branchId : officer.branchId;
+    }
+    console.log('location for validation: ', location);
+
+    if (!location) {
+      throw new RpcException({
+        statusCode: 404,
+        message: `Order with ID ${order.id} do not have a branch to be found.`,
+      });
+    }
+
+    if (order.status !== 'DROPPED_OFF') {
+      throw new RpcException({
+        statusCode: 404,
+        message: `Order with Tracking code ['${order.trackingCode}'] can not be validated. It is already Validated or not Collected.`,
+      });
+    }
 
     const validatedBy = data.validatedBy;
-    return this.orderRepo.validateOrder(orderId, validatedBy, data);
+    return this.orderRepo.validateOrder(orderId, validatedBy, location, data);
   }
 
   //done
@@ -161,7 +220,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
   }
 
   //done
-  async approveOrder(orderId: string) {
+  async approveOrder(orderId: string, reason: string) {
     const order = await this.orderRepo.getOrderById(orderId);
     if (!order) {
       throw new RpcException({
@@ -169,16 +228,29 @@ export class OrderUseCasesImpl implements OrderUseCases {
         message: `Order with ID ${orderId} not found.`,
       });
     }
-    return this.orderRepo.approveOrder(orderId);
+    if (order.status !== 'PENDING_APPROVAL') {
+        throw new RpcException({
+        statusCode: 404,
+        message: `Order with Tracking code  ['${order.trackingCode}'] can not be approved. It may not be Validated or it already approved.`,
+      });
+    }
+    
+    const location = order.branchId;
+    const updatedBy = order.customerId;
+    return this.orderRepo.approveOrder(order, reason, location, updatedBy);
   }
 
   //DONE
   async getFragileOrders(data: any): Promise<any> {
     const { page, pageSize } = data;
     const skip = (page - 1) * pageSize;
-console.log("This is getting fragile orders with page and page size of this : ", page,pageSize)
+    console.log(
+      'This is getting fragile orders with page and page size of this : ',
+      page,
+      pageSize,
+    );
     const [order, total] = await this.orderRepo.getFragileOrder(skip, pageSize);
-    console.log("Fragile total and fragile orders are :", total, order)
+    console.log('Fragile total and fragile orders are :', total, order);
     const totalPages = Math.ceil(total / pageSize);
     return {
       order,
@@ -229,7 +301,10 @@ console.log("This is getting fragile orders with page and page size of this : ",
   async getPendingApprovalOrders(data: any): Promise<any> {
     const { page, pageSize } = data;
     const skip = (page - 1) * pageSize;
-    const [order, total] = await this.orderRepo.getPendingApprovalOrder(skip, pageSize);
+    const [order, total] = await this.orderRepo.getPendingApprovalOrder(
+      skip,
+      pageSize,
+    );
     const totalPages = Math.ceil(total / pageSize);
     return {
       order,
@@ -246,7 +321,10 @@ console.log("This is getting fragile orders with page and page size of this : ",
   async getPendingPickupOrders(data: any): Promise<any> {
     const { page, pageSize } = data;
     const skip = (page - 1) * pageSize;
-    const [order, total] = await this.orderRepo.getPendingPickupOrder(skip, pageSize);
+    const [order, total] = await this.orderRepo.getPendingPickupOrder(
+      skip,
+      pageSize,
+    );
     const totalPages = Math.ceil(total / pageSize);
     return {
       order,
@@ -325,7 +403,26 @@ console.log("This is getting fragile orders with page and page size of this : ",
     throw new Error('Method not implemented.');
   }
   async trackOrder(code: string): Promise<any> {
-    return this.orderRepo.getOrderByTrackingCode(code);
+    console.log('Controller received tracking code:', code);
+    const order = await this.orderRepo.getOrderByTrackingCode(code);
+    if (!order) {
+      throw new RpcException({
+        code: 404,
+        message: `Order with tracking code ${code} not found`,
+      });
+    }
+    const tracking = await this.orderRepo.trackOrder(order.id);
+    if (!tracking) {
+      throw new RpcException({
+        code: 404,
+        message: `Order with tracking code ${code} Does not have a tracking`,
+      });
+    }
+
+    return {
+      order,
+      tracking,
+    };
   }
   async getOrderByBranch(id: string, data: any): Promise<any> {
     console.log('Controller received branch id:', id);
@@ -477,7 +574,7 @@ console.log("This is getting fragile orders with page and page size of this : ",
     }
 
     let trackingCode: string;
-    const usedCodes = new Set(); // Should be managed in a service or database in production
+    const usedCodes = new Set();
     do {
       const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
       const randomSuffix = Math.floor(Math.random() * 1000)

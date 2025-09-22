@@ -29,15 +29,15 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     if (order.driverId) {
       throw new RpcException({
         statusCode: 400,
-        message: `Order with ID ${data.orderId} is already assigned to a driver.`,
+        message: `Order with ID ${data.orderId} is already assigned to another driver.`,
       });
     }
     // Status checks
     if (order.status !== 'CREATED') {
       let message = `Order with ID ${data.orderId} is not eligible for driver assignment. Current status: ${order.status}.`;
 
-      if (order.status === 'APPROVED') {
-        message = `Order with ID ${data.orderId} has been approved. The driver is already coming to pick up the package.`;
+      if (order.status === 'ASSIGNED') {
+        message = `Order with ID ${data.orderId} has been ASSIGNED. The driver is already coming to pick up the package.`;
       }
 
       throw new RpcException({
