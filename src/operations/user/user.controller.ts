@@ -73,7 +73,9 @@ export class UserMessageController {
   @MessagePattern(PATTERNS.USER_FIND_BY_EMAIL)
   async findByEmail(@Payload() payload: { email: string }) {
     try {
-      return this.usecases.findUserByEmail(payload.email);
+      const result= await this.usecases.findUserByEmail(payload.email);
+
+      return IResponse.success('User fetched successfully', result);
     } catch (error) {
       handleCatch(error);
     }

@@ -16,8 +16,13 @@ import { RpcException } from '@nestjs/microservices';
 export class UserUseCasesImp implements UserUsecase {
   constructor(private readonly userRepo: UserRepository) {}
 
-  findUserByEmail(email: string): Promise<User | null> {
-    return this.userRepo.findUserByEmail(email);
+ async findUserByEmail(email: string): Promise<User | null> {
+
+    const user = await this.userRepo.findUserByEmail(email);
+    if (!user) {
+      throw new RpcException(`User with email ${email} not found`);
+    }
+    return user;
   }
 
   async getUser(id: string) {

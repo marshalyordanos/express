@@ -48,10 +48,12 @@ export class StaffUseCasesImpl implements StaffUsecase {
 
     const skip = (page - 1) * pageSize;
 
+    console.log("role name:", role);
+    
     // Check role existence
     const roles = await this.staffRepo.findRoleByName(role);
 
-    if (!role) {
+    if (!roles) {
       throw new RpcException(`Invalid role: ${role}`);
     }
     const roleId = roles.id;
