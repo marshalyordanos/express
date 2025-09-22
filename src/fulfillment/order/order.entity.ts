@@ -151,4 +151,8 @@ export class ValidateOrderDto extends PartialType(CreateOrderDto) {
   @IsString()
   @IsNotEmpty()
   validatedBy: string; // officer doing the validation
+
+  @IsString()
+  @IsOptional()
+  validatedNotes?: string;
 }

@@ -18,6 +18,7 @@ import {
   RegisterStaffDto,
   UpdateStaffDto,
 } from '../operations/staff/staff.entity';
+import { Request } from 'express';
 
 @Controller('staff')
 export class StaffGatewayController {
@@ -43,7 +44,7 @@ export class StaffGatewayController {
 
   //Create staff with roles like Internal driver,customer service, dispatch officer, branch manager
   @Post()
-  async createStaff(@Req() req: Request, @Body() dto: RegisterStaffDto) {
+  async createStaff(@Req() req, @Body() dto: RegisterStaffDto) {
     const authHeader = req.headers['authorization'] || null;
     console.log('=========================: ', authHeader);
     return this.staffClient.send(PATTERNS.STAFF_CREATE, {

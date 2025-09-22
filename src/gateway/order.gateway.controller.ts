@@ -29,6 +29,11 @@ export class OrderGatewayController {
   async createOrder(@Body() data: CreateOrderDto) {
     return this.orderClient.send(PATTERNS.ORDER_CREATE, data);
   }
+  
+  @Post('/create-validate')
+  async orderCreateValidate(@Body() data: ValidateOrderDto) {
+    return this.orderClient.send(PATTERNS.ORDER_CREATE_AND_VALIDATE, data);
+  }
 
   @Post('/accept')
   async acceptDropOffOrder(@Body() data: any) {
