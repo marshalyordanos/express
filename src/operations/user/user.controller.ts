@@ -2,7 +2,12 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PATTERNS } from '../../contracts';
 import { UserUseCasesImp } from './user.usecase.impl';
-import { AddressDto, ChangeRoleDto, UserDto } from './user.entity';
+import {
+  AddressDto,
+  ChangeRoleDto,
+  PreferencesDto,
+  UserDto,
+} from './user.entity';
 import { Public } from '../../common/decorator/public.decorator';
 import { IResponse } from '../../common/types';
 import { handleCatch } from '../../common/handleCatch';
@@ -121,6 +126,21 @@ export class UserMessageController {
     try {
       const address = await this.usecases.deleteAddress(payload.id);
       return IResponse.success('Address deleted successfully', address);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+  @MessagePattern(PATTERNS.PREFERENCES_UPDATE)
+  async updatePreferences(
+    @Payload() payload: { userId: string; data: PreferencesDto },
+  ) {
+    try {
+      console.log('userid: ', payload);
+      const preff = await this.usecases.updatePreferences(
+        payload.userId,
+        payload.data,
+      );
+      return IResponse.success('Preferences updated  successfully', preff);
     } catch (error) {
       handleCatch(error);
     }

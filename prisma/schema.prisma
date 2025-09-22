@@ -38,6 +38,8 @@ model User {
   approvals         ParcelApproval[]   @relation("StaffApprovals")
 
   addresses         Address[]
+    preferences       UserPreferences?
+
 }
 
 model Address {
@@ -56,6 +58,19 @@ model Address {
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model UserPreferences {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  defaultPayment      String?
+  defaultDropoffBranch String?
+  deliveryNotes       String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model Permission {
   id              String           @id @default(cuid())
   resource        String // e.g., "User", "Order", "Branch"

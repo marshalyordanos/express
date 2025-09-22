@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AddressDto, UserUpdateDto } from './user.entity';
+import { AddressDto, PreferencesDto, UserUpdateDto } from './user.entity';
 import { User } from '@prisma/client';
 
 @Injectable()
@@ -57,5 +57,13 @@ export class UserRepository {
 
   async deleteAddress(id: string) {
     return this.prisma.address.delete({ where: { id } });
+  }
+
+  async updatePreferences(userId: string, data: PreferencesDto) {
+    return this.prisma.userPreferences.upsert({
+      where: { userId },
+      create: { userId, ...data },
+      update: { ...data },
+    });
   }
 }

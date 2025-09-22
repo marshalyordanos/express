@@ -3,6 +3,7 @@ import {
   AddressDto,
   AddressUpdateDto,
   ChangeRoleDto,
+  PreferencesDto,
   UserDto,
 } from './user.entity';
 import { User } from '@prisma/client';
@@ -24,4 +25,6 @@ export interface UserUsecase {
   listAddresses(userId: string): Promise<any[]>;
   updateAddress(id: string, data: Partial<AddressUpdateDto>): Promise<any>;
   deleteAddress(id: string): Promise<any>;
+
+  updatePreferences(userId: string, data: PreferencesDto): Promise<any>;
 }
