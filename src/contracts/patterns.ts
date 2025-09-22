@@ -16,6 +16,7 @@ export const PATTERNS = {
   ADDRESS_LIST: 'address.list',
   ADDRESS_UPDATE: 'address.update',
   ADDRESS_DELETE: 'address.delete',
+  PREFERENCES_UPDATE: 'preferences.update',
 
   STAFF_CREATE: 'staff.register',
   STAFF_DELETE: 'staff.delete',

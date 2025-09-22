@@ -19,6 +19,7 @@ import {
   AddressDto,
   AddressUpdateDto,
   ChangeRoleDto,
+  PreferencesDto,
   UserDto,
 } from '../operations/user/user.entity';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
@@ -68,6 +69,21 @@ export class UserGatewayController {
     return this.usersClient.send(PATTERNS.ADDRESS_DELETE, {
       headers: { authorization: authHeader },
       id,
+    });
+  }
+
+  @Patch('preferences/:id')
+  async updatePreferences(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() dto: PreferencesDto,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+
+    return this.usersClient.send(PATTERNS.PREFERENCES_UPDATE, {
+      headers: { authorization: authHeader },
+      userId: id,
+      data: dto,
     });
   }
 

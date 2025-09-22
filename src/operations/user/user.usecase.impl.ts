@@ -4,6 +4,7 @@ import {
   AddressDto,
   AddressUpdateDto,
   ChangeRoleDto,
+  PreferencesDto,
   UserDto,
 } from './user.entity';
 import { User } from '@prisma/client';
@@ -87,5 +88,9 @@ export class UserUseCasesImp implements UserUsecase {
 
   async deleteAddress(id: string) {
     return this.userRepo.deleteAddress(id);
+  }
+
+  updatePreferences(userId: string, data: PreferencesDto) {
+    return this.userRepo.updatePreferences(userId, data);
   }
 }
