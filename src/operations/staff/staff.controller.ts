@@ -14,6 +14,7 @@ export class StaffMessageController {
 
   //COmpleted as Marshal wants
   //Create staff
+  @Public()
   @MessagePattern(PATTERNS.STAFF_CREATE)
   async createStaff(@Payload() payload: { user: any; data: RegisterStaffDto }) {
     try {

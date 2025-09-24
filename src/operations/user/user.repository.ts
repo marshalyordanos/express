@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AddressDto, PreferencesDto, UserUpdateDto } from './user.entity';
-import { User } from '@prisma/client';
+import {
+  AddressDto,
+  PreferencesDto,
+  UpdateCorporateInfoDto,
+  UserUpdateDto,
+} from './user.entity';
+import { CorporateInfo, User } from '@prisma/client';
+import { RpcException } from '@nestjs/microservices';
+import { ListQueryDto } from '../../common/query/query.dto';
+import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 
 @Injectable()
 export class UserRepository {
@@ -11,26 +19,70 @@ export class UserRepository {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  async findAll(skip: number, pageSize: number, where: any) {
-    return await Promise.all([
+  async findAll(payload: ListQueryDto) {
+    console.log('quest1: ', payload);
+
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['name'],
+    });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
       this.prisma.user.findMany({
-        skip,
-        take: pageSize,
-        where,
+        ...query,
         select: {
-          email: true,
-          id: true,
-          createdAt: true,
-          emailVerified: true,
-          branchId: true,
           name: true,
+          email: true,
           phone: true,
+
+          isStaff: true,
+          isSuperAdmin: true,
+
+          createdAt: true,
+          branch: true,
+          addresses: true,
+          customerType: true,
           role: true,
-          refreshTokens: true,
+          corporateInfo: true,
+          preferences: true,
         },
+        where: query.where || {},
       }),
-      this.prisma.user.count({ where }),
+      this.prisma.user.count({ where: query.where || {} }),
     ]);
+
+    const models = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      models,
+      pagination: feature.getPagination(total),
+    };
+    // return await Promise.all([
+    //   this.prisma.user.findMany({
+    //     skip,
+    //     take: pageSize,
+    //     where,
+    //     select: {
+    //       email: true,
+    //       id: true,
+    //       createdAt: true,
+    //       emailVerified: true,
+    //       branchId: true,
+    //       name: true,
+    //       phone: true,
+    //       role: true,
+    //       refreshTokens: true,
+    //     },
+    //   }),
+    //   this.prisma.user.count({ where }),
+    // ]);
   }
 
   async updateUser(id: string, data: Partial<UserUpdateDto>): Promise<User> {
@@ -65,5 +117,42 @@ export class UserRepository {
       create: { userId, ...data },
       update: { ...data },
     });
+  }
+
+  async updateCorporateInfo(
+    userId: string,
+    data: UpdateCorporateInfoDto,
+  ): Promise<CorporateInfo> {
+    // Check if user exists and is corporate
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { corporateInfo: true },
+    });
+
+    if (!user) {
+      throw new RpcException('User not found');
+    }
+
+    if (user.customerType != 'CORPORATE') {
+      throw new RpcException('This user is not a corporate customer');
+    }
+
+    // Update corporate info
+    const updatedCorporate = await this.prisma.corporateInfo.update({
+      where: { userId: userId },
+      data: {
+        companyName: data.companyName ?? undefined,
+        taxId: data.taxId ?? undefined,
+        contactPerson: data.contactPerson ?? undefined,
+        contactPhone: data.contactPhone ?? undefined,
+        contactEmail: data.contactEmail ?? undefined,
+        industryType: data.industryType ?? undefined,
+        website: data.website ?? undefined,
+        address: data.address ?? undefined,
+        notes: data.notes ?? undefined,
+      },
+    });
+
+    return updatedCorporate;
   }
 }

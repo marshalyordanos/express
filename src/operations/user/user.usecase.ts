@@ -7,18 +7,11 @@ import {
   UserDto,
 } from './user.entity';
 import { User } from '@prisma/client';
+import { ListQueryDto } from 'src/common/query/query.dto';
 
 export interface UserUsecase {
   getUser(id: string): Promise<User | null>;
-  getAllUsers(
-    page: number,
-    pageSize: number,
-    search?: string,
-    branchId?: number,
-  ): Promise<{
-    users: Partial<User>[];
-    pagination: IPagination;
-  }>;
+  getAllUsers(query: ListQueryDto);
   updateUser(id: string, data: Partial<UserDto>): Promise<User>;
   deleteUser(id: string): Promise<User>;
   addAddress(data: AddressDto): Promise<any>;

@@ -79,3 +79,15 @@ export class AddressUpdateDto {
   @IsString()
   postalCode?: string;
 }
+
+export class UpdateCorporateInfoDto {
+  @IsOptional() companyName?: string;
+  @IsOptional() taxId?: string;
+  @IsOptional() contactPerson?: string;
+  @IsOptional() contactPhone?: string;
+  @IsOptional() contactEmail?: string;
+  @IsOptional() industryType?: string;
+  @IsOptional() website?: string;
+  @IsOptional() address?: string;
+  @IsOptional() notes?: string;
+}

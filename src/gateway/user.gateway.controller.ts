@@ -20,9 +20,11 @@ import {
   AddressUpdateDto,
   ChangeRoleDto,
   PreferencesDto,
+  UpdateCorporateInfoDto,
   UserDto,
 } from '../operations/user/user.entity';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
+import { ListQueryDto } from '../common/query/query.dto';
 
 @Controller('users')
 export class UserGatewayController {
@@ -87,6 +89,21 @@ export class UserGatewayController {
     });
   }
 
+  @Patch('corporate-info/:id')
+  async updateCorporateInfo(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() dto: UpdateCorporateInfoDto,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+
+    return this.usersClient.send(PATTERNS.CORPORATEINFO_UPDATE, {
+      headers: { authorization: authHeader },
+      userId: id,
+      data: dto,
+    });
+  }
+
   // user
   @Get('addresses/:id')
   async findUser(@Param('id') id: string) {
@@ -94,21 +111,12 @@ export class UserGatewayController {
   }
 
   @Get()
-  async findAll(
-    @Req() req,
-    @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,
-    @Query('search') search?: string,
-    @Query('branchId') branchId?: string,
-  ) {
+  async findAll(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
-
+    console.log('=================: ', query);
     return this.usersClient.send(PATTERNS.USER_FIND_ALL, {
       headers: { authorization: authHeader },
-      page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10,
-      search: search || null,
-      branchId: branchId ? Number(branchId) : null,
+      query,
     });
   }
 

@@ -6,11 +6,13 @@ import {
   AddressDto,
   ChangeRoleDto,
   PreferencesDto,
+  UpdateCorporateInfoDto,
   UserDto,
 } from './user.entity';
 import { Public } from '../../common/decorator/public.decorator';
 import { IResponse } from '../../common/types';
 import { handleCatch } from '../../common/handleCatch';
+import { ListQueryDto } from 'src/common/query/query.dto';
 
 @Controller()
 export class UserMessageController {
@@ -29,23 +31,17 @@ export class UserMessageController {
 
   // @Public()
   @MessagePattern(PATTERNS.USER_FIND_ALL)
-  async findAll(@Payload() data: any) {
+  async findAll(@Payload() payload: { query: ListQueryDto }) {
     try {
-      const user = data.user;
-      console.log('Current user:', user);
+      // const user = data.user;
+      // console.log('Current user:', user);
+      console.log('usecase: ', payload);
 
-      const { page = 1, pageSize = 10, search, branchId } = data;
-
-      const result = await this.usecases.getAllUsers(
-        page,
-        pageSize,
-        search,
-        branchId,
-      );
+      const result = await this.usecases.getAllUsers(payload.query);
 
       return IResponse.success(
         'Users fetched successfully',
-        result.users,
+        result.models,
         result.pagination,
       );
     } catch (error) {
@@ -78,7 +74,9 @@ export class UserMessageController {
   @MessagePattern(PATTERNS.USER_FIND_BY_EMAIL)
   async findByEmail(@Payload() payload: { email: string }) {
     try {
-      return this.usecases.findUserByEmail(payload.email);
+      const result = await this.usecases.findUserByEmail(payload.email);
+
+      return IResponse.success('User fetched successfully', result);
     } catch (error) {
       handleCatch(error);
     }
@@ -139,6 +137,25 @@ export class UserMessageController {
         payload.data,
       );
       return IResponse.success('Preferences updated  successfully', preff);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @MessagePattern(PATTERNS.CORPORATEINFO_UPDATE)
+  async updateCorporateInfo(
+    @Payload() payload: { userId: string; data: UpdateCorporateInfoDto },
+  ) {
+    try {
+      console.log('userid: ', payload);
+      const corporateInfo = await this.usecases.updateCorporateInfo(
+        payload.userId,
+        payload.data,
+      );
+      return IResponse.success(
+        'Corporate info updated  successfully',
+        corporateInfo,
+      );
     } catch (error) {
       handleCatch(error);
     }

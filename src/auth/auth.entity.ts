@@ -30,13 +30,57 @@ export class AuthRegisterDto {
   @IsString({ message: 'Branch ID must be a string' })
   branchId?: string;
 
+  @IsString()
+  customerType: string = 'INDIVIDUAL';
+
   @IsNotEmpty({ message: 'Phone is required' })
   @IsString({ message: 'Phone must be a string' })
   phone: string;
+
+  // --- Corporate only fields ---
+  @IsOptional()
+  @IsString({ message: 'Company name must be a string' })
+  companyName?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Tax ID must be a string' })
+  taxId?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Contact person must be a string' })
+  contactPerson?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Contact phone must be a string' })
+  contactPhone?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Contact email must be a string' })
+  contactEmail?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Industry type must be a string' })
+  industryType?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Website must be a string' })
+  website?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Address must be a string' })
+  address?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Notes must be a string' })
+  notes?: string;
 }
 
 export interface AuthLoginDto {
   email: string;
+  password: string;
+}
+export interface AuthLoginMobileDto {
+  phone: string;
   password: string;
 }
 

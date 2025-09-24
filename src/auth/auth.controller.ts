@@ -6,6 +6,7 @@ import {
   AuthRegisterDto,
   AuthLoginDto,
   AuthChangePasswordDto,
+  AuthLoginMobileDto,
 } from './auth.entity';
 import { Public } from '../common/decorator/public.decorator';
 import { IResponse } from '../common/types';
@@ -35,6 +36,19 @@ export class AuthMessageController {
       console.log('data: ', dto);
 
       const data = await this.usecases.login(dto);
+      return new IResponse(true, 'User is logged in Succuessfuly', data);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.AUTH_LOGIN_MOBILE)
+  async loginMobile(@Payload() dto: AuthLoginMobileDto) {
+    try {
+      console.log('data: ', dto);
+
+      const data = await this.usecases.loginMobile(dto);
       return new IResponse(true, 'User is logged in Succuessfuly', data);
     } catch (error) {
       handleCatch(error);

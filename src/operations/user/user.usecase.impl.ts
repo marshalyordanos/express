@@ -5,6 +5,7 @@ import {
   AddressUpdateDto,
   ChangeRoleDto,
   PreferencesDto,
+  UpdateCorporateInfoDto,
   UserDto,
 } from './user.entity';
 import { User } from '@prisma/client';
@@ -12,58 +13,50 @@ import { IPagination } from 'src/common/types';
 import { UserUsecase } from './user.usecase';
 import { RoleRepository } from '../role/role.repository';
 import { RpcException } from '@nestjs/microservices';
+import { ListQueryDto } from 'src/common/query/query.dto';
 
 @Injectable()
 export class UserUseCasesImp implements UserUsecase {
   constructor(private readonly userRepo: UserRepository) {}
 
-  findUserByEmail(email: string): Promise<User | null> {
-    return this.userRepo.findUserByEmail(email);
+  async findUserByEmail(email: string): Promise<User | null> {
+    const user = await this.userRepo.findUserByEmail(email);
+    if (!user) {
+      throw new RpcException(`User with email ${email} not found`);
+    }
+    return user;
   }
 
   async getUser(id: string) {
     return this.userRepo.findUserById(id);
   }
 
-  async getAllUsers(
-    page: number,
-    pageSize: number,
-    search?: string,
-    branchId?: number,
-  ): Promise<{
-    users: Partial<User>[];
-    pagination: IPagination;
-  }> {
-    const skip = (page - 1) * pageSize;
+  async getAllUsers(query: ListQueryDto) {
+    // const skip = (page - 1) * pageSize;
 
-    // Dynamic filters
-    const where: any = {};
+    // // Dynamic filters
+    // const where: any = {};
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
-      ];
-    }
+    // if (search) {
+    //   where.OR = [
+    //     { name: { contains: search, mode: 'insensitive' } },
+    //     { email: { contains: search, mode: 'insensitive' } },
+    //     { phone: { contains: search, mode: 'insensitive' } },
+    //   ];
+    // }
 
-    if (branchId) {
-      where.branchId = branchId;
-    }
+    // if (branchId) {
+    //   where.branchId = branchId;
+    // }
 
-    const [users, total] = await this.userRepo.findAll(skip, pageSize, where);
+    // const [users, total] = await this.userRepo.findAll(skip, pageSize, where);
 
-    const totalPages = Math.ceil(total / pageSize);
+    // const totalPages = Math.ceil(total / pageSize);
+    console.log('usecase: ', query);
 
-    return {
-      users,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
+    const res = await this.userRepo.findAll(query);
+
+    return res;
   }
 
   async updateUser(id: string, data: Partial<UserDto>) {
@@ -92,5 +85,9 @@ export class UserUseCasesImp implements UserUsecase {
 
   updatePreferences(userId: string, data: PreferencesDto) {
     return this.userRepo.updatePreferences(userId, data);
+  }
+
+  updateCorporateInfo(userId: string, data: UpdateCorporateInfoDto) {
+    return this.userRepo.updateCorporateInfo(userId, data);
   }
 }

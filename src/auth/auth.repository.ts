@@ -31,13 +31,54 @@ export class AuthRepository {
   async findRoleById(id: string) {
     return this.prisma.role.findUnique({ where: { id } });
   }
+  // async createUser(
+  //   data: AuthRegisterDto,
+  //   // role: Role,
+  //   hashedPassword: string,
+  // ): Promise<User> {
+  //   console.log('Data for creating user :', data);
+  //   const { name, email, phone, branchId, role } = data;
+
+  //   return this.prisma.user.create({
+  //     data: {
+  //       name,
+  //       email,
+  //       phone,
+  //       password: hashedPassword,
+  //       role: {
+  //         connect: { id: role },
+  //       },
+  //       branch: branchId ? { connect: { id: branchId } } : undefined,
+  //     },
+  //   });
+  // }
+
+  //   async createUser(data: Prisma.UserCreateInput): Promise<User> {
+
+  //   return this.prisma.user.create({ data });
+  // }
+
   async createUser(
     data: AuthRegisterDto,
-    // role: Role,
     hashedPassword: string,
   ): Promise<User> {
-    console.log('Data for creating user :', data);
-    const { name, email, phone, branchId, role } = data;
+    const {
+      name,
+      email,
+      phone,
+      branchId,
+      role,
+      customerType,
+      companyName,
+      taxId,
+      contactPerson,
+      contactPhone,
+      contactEmail,
+      industryType,
+      website,
+      address,
+      notes,
+    } = data;
 
     return this.prisma.user.create({
       data: {
@@ -45,18 +86,37 @@ export class AuthRepository {
         email,
         phone,
         password: hashedPassword,
-        role: {
-          connect: { id: role },
-        },
+        customerType: customerType
+          ? customerType === 'CORPORATE'
+            ? 'CORPORATE'
+            : 'INDIVIDUAL'
+          : undefined,
+        role: { connect: { id: role } },
         branch: branchId ? { connect: { id: branchId } } : undefined,
+
+        // Create CorporateInfo if corporate
+        corporateInfo:
+          customerType === 'CORPORATE'
+            ? {
+                create: {
+                  companyName: companyName ?? '',
+                  taxId: taxId ?? null,
+                  contactPerson: contactPerson ?? null,
+                  contactPhone: contactPhone ?? null,
+                  contactEmail: contactEmail ?? null,
+                  industryType: industryType ?? null,
+                  website: website ?? null,
+                  address: address ?? null,
+                  notes: notes ?? null,
+                },
+              }
+            : undefined,
+      },
+      include: {
+        corporateInfo: true, // include for response
       },
     });
   }
-
-  //   async createUser(data: Prisma.UserCreateInput): Promise<User> {
-
-  //   return this.prisma.user.create({ data });
-  // }
 
   // ----------------- Refresh Tokens -----------------
   async saveRefreshToken(userId: string, token: string): Promise<void> {

@@ -13,6 +13,7 @@ import {
   AuthVerifyEmailDto,
   AuthMfaDto,
   AuthSession,
+  AuthLoginMobileDto,
 } from './auth.entity';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -65,6 +66,41 @@ export class AuthUseCaseImpl implements AuthUseCase {
     console.log('=========================: 2');
 
     const user = await this.authRepository.findByEmail(data.email);
+    console.log('=========================: 22', user);
+
+    if (!user) {
+      console.log('=========================: 22', user);
+
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Invalid credentials',
+      });
+    }
+    console.log('=========================: ');
+
+    const isPasswordValid = await bcrypt.compare(data.password, user.password);
+    if (!isPasswordValid) {
+      throw new RpcException({
+        statusCode: 404,
+        message: 'Invalid credentials',
+      });
+    }
+
+    const tokens = await this.generateTokens(user);
+
+    await this.authRepository.saveRefreshToken(user.id, tokens.refreshToken);
+    delete user.password;
+    console.log('=========================: ', user, tokens);
+
+    return { user, tokens };
+  }
+
+  async loginMobile(
+    data: AuthLoginMobileDto,
+  ): Promise<{ user: User; tokens: AuthTokens }> {
+    console.log('=========================: 2');
+
+    const user = await this.authRepository.findByPhone(data.phone);
     console.log('=========================: 22', user);
 
     if (!user) {

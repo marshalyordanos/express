@@ -15,6 +15,7 @@ import { MicroserviceClientsModule } from './clients.module';
 import {
   AuthChangePasswordDto,
   AuthLoginDto,
+  AuthLoginMobileDto,
   AuthRegisterDto,
 } from '../auth/auth.entity';
 @Controller('auth')
@@ -31,6 +32,11 @@ export class AuthGatewayController {
   @Post('login')
   async login(@Body() dto: AuthLoginDto) {
     return this.authClient.send(PATTERNS.AUTH_LOGIN, dto);
+  }
+
+  @Post('login-mobile')
+  async loginMobile(@Body() dto: AuthLoginMobileDto) {
+    return this.authClient.send(PATTERNS.AUTH_LOGIN_MOBILE, dto);
   }
 
   @Get('refresh')

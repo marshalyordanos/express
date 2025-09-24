@@ -38,29 +38,38 @@ model User {
   customerType      CustomerType?   
   approvals         ParcelApproval[]   @relation("StaffApprovals")
 
-  addresses         Address[]
-  preferences       UserPreferences?
-  corporateInfo     CorporateInfo?
-
-
+  addresses      Address[]
+  preferences    UserPreferences?
+  createdBatches BatchDispatch[] @relation("CreatedBatches")
+  driverBatches  BatchDispatch[] @relation("BatchDispatchDriver")
+  officerBatches  BatchDispatch[] @relation("BatchDispatchOfficer")
+  corporateInfo CorporateInfo?
 }
+
 
 model CorporateInfo {
-  userId     String   @id
-  companyName String
-  taxId       String?
-  creditLimit Float? 
+  userId        String   @id
+  companyName   String
+  taxId         String?
+  registrationNo String?
+  contactPerson String?
+  contactPhone  String?
+  contactEmail  String?
+  industryType  String?
+  website       String?
+  address       String?
+  notes         String?
 
-  user        User     @relation(fields: [userId], references: [id])
+  user          User     @relation(fields: [userId], references: [id])
 }
+
 enum CustomerType {
   INDIVIDUAL
   CORPORATE
 }
-
 model Address {
   id          String   @id @default(cuid())
-  label       String   // e.g. "Home", "Office"
+  label       String // e.g. "Home", "Office"
   addressLine String
   city        String
   state       String?
@@ -72,19 +81,19 @@ model Address {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model UserPreferences {
-  id                  String   @id @default(cuid())
-  userId              String   @unique
-  defaultPayment      String?
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  defaultPayment       String?
   defaultDropoffBranch String?
-  deliveryNotes       String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  deliveryNotes        String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Permission {
@@ -147,6 +156,7 @@ model Vehicle {
   updatedAt   DateTime      @updatedAt
   fleetLogs   FleetLog[]
   driver      User?         @relation(fields: [driverId], references: [id])
+  batchDispatches BatchDispatch[] @relation("BatchDispatchVehicle")
 }
 
 model FleetLog {
@@ -181,9 +191,9 @@ model Order {
   unusualReason String?
 
   // Delivery info
-  pickupAddress     String?  // lan+*+long+*+NAME
+  pickupAddress     String? // lan+*+long+*+NAME
   pickupDate        DateTime?
-  deliveryAddress   String   // lan+*+long+*+NAME
+  deliveryAddress   String // lan+*+long+*+NAME
   deliveryDate      DateTime?
   pickupConfirmed   Boolean   @default(false)
   dropoffConfirmed  Boolean   @default(false)
@@ -198,6 +208,8 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  batchId String?
+
   // Relations
   branch          Branch?          @relation(fields: [branchId], references: [id])
   customer        User             @relation("CustomerOrders", fields: [customerId], references: [id])
@@ -207,7 +219,7 @@ model Order {
   payment         Payment?
   approvalRequest ParcelApproval?
   orderTracking   OrderTracking[]
-
+  batch           BatchDispatch?   @relation("BatchOrders", fields: [batchId], references: [id])
 }
 
 model ParcelApproval {
@@ -225,15 +237,15 @@ model ParcelApproval {
 }
 
 model OrderTracking {
-  id         String      @id @default(cuid())
-  orderId    String
-  status     OrderStatus
-  location   String?      
-  updatedBy  String?      
-  notes      String?
-  createdAt  DateTime     @default(now())
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  location  String?
+  updatedBy String?
+  notes     String?
+  createdAt DateTime    @default(now())
 
-  order      Order        @relation(fields: [orderId], references: [id])
+  order Order @relation(fields: [orderId], references: [id])
 
   @@index([orderId])
 }
@@ -245,6 +257,35 @@ model OrderException {
   reason    String
   createdAt DateTime @default(now())
   order     Order    @relation(fields: [orderId], references: [id])
+}
+
+model BatchDispatch {
+  id          String         @id @default(cuid())
+  batchCode   String         @unique
+  scope       ShippingScope // IN_TOWN, REGIONAL, INTERNATIONAL
+  serviceType ServiceType // SAME_DAY, EXPRESS, etc.
+  category    String? // e.g., Electronics, Documents, Mixed
+  isFragile   Boolean        @default(false)
+  origin      String // e.g., branch code or location
+  destination String // e.g., branch code or airport
+  status      DispatchStatus @default(PENDING)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  createdById String?
+  notes       String?
+  weight      Float?
+
+  // Relations
+  orders    Order[] @relation("BatchOrders")
+  createdBy User?   @relation("CreatedBatches", fields: [createdById], references: [id])
+  driverId      String?
+  driver        User?     @relation("BatchDispatchDriver",fields: [driverId], references: [id])
+  vehicleId     String?
+  vehicle       Vehicle?  @relation("BatchDispatchVehicle",fields: [vehicleId], references: [id])
+  awbNumber     String?   // for international shipments
+  officerId     String?
+  officer       User?     @relation("BatchDispatchOfficer",fields: [officerId], references: [id])
+  
 }
 
 model Payment {
@@ -429,4 +470,19 @@ enum ApprovalStatus {
   APPROVED
   REJECTED
   ESCALATED
+}
+
+enum DispatchStatus {
+  PENDING // Created, not yet started
+  READY // Orders grouped, waiting for shipping
+  ASSIGNED
+  COLLECTED
+  PICKEDUP
+  IN_TRANSIT // On the way
+  ARRIVED_AT_DESTINATION
+  OUT_FOR_BRANCH_TRANSFER
+  AT_BRANCH
+  OUT_FOR_DELIVERY
+  COMPLETED // Delivered successfully
+  CANCELLED
 }
