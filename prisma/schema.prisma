@@ -35,11 +35,27 @@ model User {
   branch            Branch?            @relation(fields: [branchId], references: [id])
   role              Role?              @relation(fields: [roleId], references: [id], onDelete: Cascade)
   vehicles          Vehicle[]
+  customerType      CustomerType?   
   approvals         ParcelApproval[]   @relation("StaffApprovals")
 
   addresses         Address[]
-    preferences       UserPreferences?
+  preferences       UserPreferences?
+  corporateInfo     CorporateInfo?
 
+
+}
+
+model CorporateInfo {
+  userId     String   @id
+  companyName String
+  taxId       String?
+  creditLimit Float? 
+
+  user        User     @relation(fields: [userId], references: [id])
+}
+enum CustomerType {
+  INDIVIDUAL
+  CORPORATE
 }
 
 model Address {
