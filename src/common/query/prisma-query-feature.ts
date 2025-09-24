@@ -41,7 +41,7 @@ export class PrismaQueryFeature<
     this.executeBuild(this.buildWhere.bind(this));
     this.executeBuild(this.buildOrderBy.bind(this));
   }
-
+  //
   private executeBuild(fn: () => void) {
     try {
       return fn();
