@@ -101,7 +101,8 @@ export const PATTERNS = {
   ORDER_FIND_UNUSUAL: 'order.getUnusual',
   ORDER_FIND_PENDING_PICKUP: 'order.getPendingPickup',
   ORDER_CREATE_AND_VALIDATE: 'order.createAndValidate',
-
+  ORDER_FIND_CATEGORICAL: 'order.getCategorical',
+  
   //Dispatch Management System
   DISPATCH_CREATE: 'dispatch.create',
   DISPATCH_FIND_BY_ID: 'dispatch.findById',
@@ -113,8 +114,13 @@ export const PATTERNS = {
   DISPATCH_FIND_BY_TRACK_CODE: 'dispatch.findByTrackCode',
   DISPATCH_FIND_BY_PAYMENT: 'dispatch.findByPayment',
   DISPATCH_UPDATE: 'dispatch.update',
+  DISPATCH_APPROVE_CATEGORIZATION: 'dispatch.approveCategorization',
   DISPATCH_ASSIGN_DRIVER_FOR_PICKUP: 'dispatch.assignDriverForPickup',
   DISPATCH_ASSIGN_DRIVER_FOR_DELIVERY: 'dispatch.assignDriverForDelivery',
   DISPATCH_REMOVE_DRIVER_FROM_ORDER: 'dispatch.removeDriverFromOrder',
   DISPATCH_CHANGE_DRIVER_FOR_ORDER: 'dispatch.changeDriverForOrder',
+  DISPATCH_CREATE_BATCH_DISPATCH: 'dispatch.createBatchDispatch',
+  DISPATCH_ADD_ORDERS_TO_BATCH: 'dispatch.addOrdersToBatch',
+  DISPATCH_ASSIGN_DRIVER_TO_BATCH: 'dispatch.assignDriverToBatch',
+
 } as const;

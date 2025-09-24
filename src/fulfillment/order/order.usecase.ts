@@ -16,17 +16,7 @@ export interface OrderUseCases {
     confirmPickupOrder(orderId: string, driverId: string): Promise<any>;
     validateOrder(orderId: string, data: ValidateOrderDto,): Promise<any>;
     trackOrder(code: string): Promise<any>;
-    getOrderByBranch(id: string, data: any): Promise<any>;
-    getOrderByCustomer(id: string, data: any): Promise<any>;
-    getOrderByStatus(status: OrderStatus, data: any): Promise<any>;
-    getOrderByDriver(id: string, data: any): Promise<any>;
-    getOrderByType(type: ServiceType, data: any): Promise<any>;
-    getOrderByPayment(payment: string): Promise<any>;
-    getOrderByFullfillmentType(type: string, data: any): Promise<any>;
+    markUnusualOrder(orderId: string, data: any): Promise<any>;
     approveOrder(orderId: string,reason: string): Promise<any>;
-    getFragileOrders(data: any): Promise<any>;
-    getUnusualOrders(data: any): Promise<any>;
-    getPendingOrders(data: any): Promise<any>;
-    getPendingApprovalOrders(data: any): Promise<any>;
-    getPendingPickupOrders(data: any): Promise<any>;
+    getOrdersGroupedByScope(data: any): Promise<any>;
 }

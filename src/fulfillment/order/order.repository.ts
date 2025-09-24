@@ -11,19 +11,12 @@ import { AddressDto } from 'src/operations/user/user.entity';
 
 @Injectable()
 export class OrderRepository {
+  constructor(private prisma: PrismaService) {}
   async trackOrder(orderId: string) {
     return this.prisma.orderTracking.findMany({
       where: { orderId },
     });
   }
-  getOrderByDriverId(
-    id: string,
-    skip: number,
-    pageSize: any,
-  ): [any, any] | PromiseLike<[any, any]> {
-    throw new Error('Method not implemented.');
-  }
-  constructor(private prisma: PrismaService) {}
 
   async createCustomer(customerData: {
     name: string;
@@ -248,66 +241,6 @@ export class OrderRepository {
     });
   }
 
-  async getFragileOrder(skip: number, pageSize: number) {
-    return await Promise.all([
-      this.prisma.order.findMany({
-        skip,
-        take: pageSize,
-        where: {
-          isFragile: true,
-        },
-        include: {
-          customer: true,
-          branch: true,
-          driver: true,
-          payment: true,
-          validator: true,
-        },
-      }),
-      this.prisma.order.count({ where: { isFragile: true } }),
-    ]);
-  }
-
-  async getUnusualOrder(skip: number, pageSize: number) {
-    return await Promise.all([
-      this.prisma.order.findMany({
-        skip,
-        take: pageSize,
-        where: {
-          isUnusual: true,
-        },
-        include: {
-          customer: true,
-          branch: true,
-          driver: true,
-          payment: true,
-          validator: true,
-        },
-      }),
-      this.prisma.order.count({ where: { isUnusual: true } }),
-    ]);
-  }
-
-  async getPendingApprovalOrder(skip: number, pageSize: number) {
-    return await Promise.all([
-      this.prisma.order.findMany({
-        skip,
-        take: pageSize,
-        where: {
-          status: 'PENDING_APPROVAL',
-        },
-        include: {
-          customer: true,
-          branch: true,
-          driver: true,
-          payment: true,
-          validator: true,
-        },
-      }),
-      this.prisma.order.count({ where: { status: 'PENDING_APPROVAL' } }),
-    ]);
-  }
-
   async approveOrder(
     order: any,
     reason: string,
@@ -341,49 +274,46 @@ export class OrderRepository {
     return result;
   }
 
-  async getPendingOrder(skip: number, pageSize: number) {
-    return await Promise.all([
-      this.prisma.order.findMany({
-        skip,
-        take: pageSize,
-        where: {
-          status: 'PICKED_UP',
-        },
-        include: {
-          customer: true,
-          branch: true,
-          driver: true,
-          payment: true,
-        },
-      }),
-      this.prisma.order.count({ where: { status: 'PICKED_UP' } }),
-    ]);
-  }
+  async getAllOrders(
+    filters: {
+      fragile?: boolean;
+      unusual?: boolean;
+      pending?: boolean;
+      pendingApproval?: boolean;
+      pendingPickup?: boolean;
+      branchId?: string;
+      customerId?: string;
+      status?: OrderStatus | string;
+      driverId?: string;
+      serviceType?: ServiceType | string;
+      payment?: string;
+      fulfillmentType?: FulfillmentType | string;
+    },
+    data: { page: number; pageSize: number },
+  ): Promise<any> {
+    const { page, pageSize } = data;
+    const skip = (page - 1) * pageSize;
 
-  async getPendingPickupOrder(skip: number, pageSize: number) {
-    return await Promise.all([
-      this.prisma.order.findMany({
-        skip,
-        take: pageSize,
-        where: {
-          status: 'READY_FOR_PICKUP',
-        },
-        include: {
-          customer: true,
-          branch: true,
-          driver: true,
-          payment: true,
-        },
-      }),
-      this.prisma.order.count({ where: { status: 'READY_FOR_PICKUP' } }),
-    ]);
-  }
+    // Build where clause dynamically
+    const where: any = {};
+    if (filters.fragile) where.isFragile = true;
+    if (filters.unusual) where.isUnusual = true;
+    if (filters.pending) where.status = 'PICKED_UP';
+    if (filters.pendingApproval) where.status = 'PENDING_APPROVAL';
+    if (filters.pendingPickup) where.status = 'READY_FOR_PICKUP';
+    if (filters.branchId) where.branchId = filters.branchId;
+    if (filters.customerId) where.customerId = filters.customerId;
+    if (filters.status) where.status = filters.status;
+    if (filters.driverId) where.driverId = filters.driverId;
+    if (filters.serviceType) where.serviceType = filters.serviceType;
+    if (filters.payment) where.paymentId = filters.payment;
+    if (filters.fulfillmentType) where.fulfillmentType = filters.fulfillmentType;
 
-  async getAllOrders(skip: number, pageSize: number): Promise<any> {
-    return await Promise.all([
+    const [orders, total] = await Promise.all([
       this.prisma.order.findMany({
         skip,
         take: pageSize,
+        where,
         include: {
           customer: true,
           branch: true,
@@ -394,8 +324,20 @@ export class OrderRepository {
           orderTracking: true,
         },
       }),
-      this.prisma.order.count(),
+      this.prisma.order.count({ where }),
     ]);
+
+    const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      orders,
+      pagination: {
+        total,
+        page,
+        pageSize,
+        totalPages,
+      },
+    };
   }
   async getOrderById(id: string): Promise<any> {
     return this.prisma.order.findUnique({
@@ -410,27 +352,6 @@ export class OrderRepository {
     });
   }
 
-  async getOrderByFullfillmentType(
-    fulfillmentType: FulfillmentType,
-    skip: number,
-    pageSize: number,
-  ): Promise<any> {
-    return await Promise.all([
-      this.prisma.order.findMany({
-        skip,
-        take: pageSize,
-        where: { fulfillmentType },
-        include: {
-          customer: true,
-          branch: true,
-          driver: true,
-          payment: true,
-          validator: true,
-        },
-      }),
-      this.prisma.order.count({ where: { fulfillmentType } }),
-    ]);
-  }
   async getOrderByTrackingCode(trackingCode: string): Promise<any> {
     return this.prisma.order.findUnique({
       where: { trackingCode: trackingCode },
@@ -442,114 +363,6 @@ export class OrderRepository {
       },
     });
   }
-  async getOrderByCustomerId(
-    customerId: string,
-    skip: number,
-    pageSize: number,
-  ): Promise<any> {
-    return await Promise.all([
-      this.prisma.order.findMany({
-        skip,
-        take: pageSize,
-        where: { customerId },
-        include: {
-          customer: true,
-          branch: true,
-          driver: true,
-          payment: true,
-        },
-      }),
-      this.prisma.order.count({ where: { customerId } }),
-    ]);
-  }
-
-  async getOrderByBranch(
-    branchId: string,
-    skip: number,
-    pageSize: number,
-  ): Promise<any> {
-    return await Promise.all([
-      this.prisma.order.findMany({
-        skip,
-        take: pageSize,
-        where: { branchId },
-        include: {
-          customer: true,
-          branch: true,
-          driver: true,
-          payment: true,
-          validator: true,
-        },
-      }),
-      this.prisma.order.count({ where: { branchId } }),
-    ]);
-  }
-
-  async getOrderByStatus(
-    status: OrderStatus,
-    skip: number,
-    pageSize: number,
-  ): Promise<any> {
-    return await Promise.all([
-      this.prisma.order.findMany({
-        skip,
-        take: pageSize,
-        where: { status },
-        include: {
-          customer: true,
-          branch: true,
-          driver: true,
-          payment: true,
-        },
-      }),
-      this.prisma.order.count({ where: { status } }),
-    ]);
-  }
-
-  async getOrderByServiceType(
-    serviceType: ServiceType,
-    skip: number,
-    pageSize: number,
-  ): Promise<any> {
-    return await Promise.all([
-      this.prisma.order.findMany({
-        skip,
-        take: pageSize,
-        where: { serviceType },
-        include: {
-          customer: true,
-          branch: true,
-          driver: true,
-          payment: true,
-          validator: true,
-        },
-      }),
-      this.prisma.order.count({ where: { serviceType } }),
-    ]);
-  }
-
-  async getOrderByFulfillmentType(
-    fulfillmentType: FulfillmentType,
-    skip: number,
-    pageSize: number,
-  ): Promise<any> {
-    return await Promise.all([
-      this.prisma.order.findMany({
-        skip,
-        take: pageSize,
-        where: { fulfillmentType },
-        include: {
-          customer: true,
-          branch: true,
-          driver: true,
-          payment: true,
-          validator: true,
-        },
-      }),
-      this.prisma.order.count({ where: { fulfillmentType } }),
-    ]);
-  }
-
   async acceptDropOffOrder(
     trackingCode: string,
     orderId: string,
@@ -631,6 +444,36 @@ export class OrderRepository {
     return result;
   }
 
+   async getOrdersGroupedByScope(skip: number, pageSize: number) {
+    const orders = await Promise.all([
+      await this.prisma.order.findMany({
+      skip,
+      take: pageSize,
+      where: { batchId: null, status: "APPROVED" },
+      select: {
+        id: true,
+        trackingCode: true,
+        shippingScope: true,
+        serviceType: true,
+        category: true,
+        isFragile: true,
+        deliveryAddress: true,
+        weight: true,
+        height: true,
+        width: true,
+        length: true,
+        shipmentType: true,
+        isUnusual: true,
+        unusualReason: true,
+        notes: true,
+        validatedNotes: true
+      },
+    }),
+      await this.prisma.order.count({ where: { batchId: null, status: "APPROVED" } }),
+    ])
+    return orders;
+  }
+
   private async logOrderStatus(
     orderId: string,
     status: OrderStatus,
@@ -642,4 +485,5 @@ export class OrderRepository {
       data: { orderId, status, location, updatedBy, notes },
     });
   }
+
 }

@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { OrderUseCases } from './order.usecase';
 import { CreateOrderDto, ValidateOrderDto } from './order.entity';
 import { OrderRepository } from './order.repository';
-import { FulfillmentType, OrderStatus, ServiceType } from '@prisma/client'; // assuming you use Prisma enums
+import {
+  FulfillmentType,
+  OrderStatus,
+  ServiceType,
+  ShippingScope,
+} from '@prisma/client'; // assuming you use Prisma enums
 import { RpcException } from '@nestjs/microservices';
 import { IResponse } from 'src/common/types';
 
@@ -229,164 +234,27 @@ export class OrderUseCasesImpl implements OrderUseCases {
       });
     }
     if (order.status !== 'PENDING_APPROVAL') {
-        throw new RpcException({
+      throw new RpcException({
         statusCode: 404,
         message: `Order with Tracking code  ['${order.trackingCode}'] can not be approved. It may not be Validated or it already approved.`,
       });
     }
-    
+
     const location = order.branchId;
     const updatedBy = order.customerId;
     return this.orderRepo.approveOrder(order, reason, location, updatedBy);
   }
 
-  //DONE
-  async getFragileOrders(data: any): Promise<any> {
-    const { page, pageSize } = data;
-    const skip = (page - 1) * pageSize;
-    console.log(
-      'This is getting fragile orders with page and page size of this : ',
-      page,
-      pageSize,
-    );
-    const [order, total] = await this.orderRepo.getFragileOrder(skip, pageSize);
-    console.log('Fragile total and fragile orders are :', total, order);
-    const totalPages = Math.ceil(total / pageSize);
-    return {
-      order,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
-  }
-
-  //done
-  async getUnusualOrders(data: any): Promise<any> {
-    const { page, pageSize } = data;
-    const skip = (page - 1) * pageSize;
-    const [order, total] = await this.orderRepo.getUnusualOrder(skip, pageSize);
-    const totalPages = Math.ceil(total / pageSize);
-    return {
-      order,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
-  }
-
-  //done
-  async getPendingOrders(data: any): Promise<any> {
-    const { page, pageSize } = data;
-    const skip = (page - 1) * pageSize;
-    const [order, total] = await this.orderRepo.getPendingOrder(skip, pageSize);
-    const totalPages = Math.ceil(total / pageSize);
-    return {
-      order,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
-  }
-
-  //done
-  async getPendingApprovalOrders(data: any): Promise<any> {
-    const { page, pageSize } = data;
-    const skip = (page - 1) * pageSize;
-    const [order, total] = await this.orderRepo.getPendingApprovalOrder(
-      skip,
-      pageSize,
-    );
-    const totalPages = Math.ceil(total / pageSize);
-    return {
-      order,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
-  }
-
-  //done
-  async getPendingPickupOrders(data: any): Promise<any> {
-    const { page, pageSize } = data;
-    const skip = (page - 1) * pageSize;
-    const [order, total] = await this.orderRepo.getPendingPickupOrder(
-      skip,
-      pageSize,
-    );
-    const totalPages = Math.ceil(total / pageSize);
-    return {
-      order,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
-  }
-
-  //done
-  async getAllOrders(data: any): Promise<any> {
-    const { page, pageSize } = data;
-    const skip = (page - 1) * pageSize;
-    const [order, total] = await this.orderRepo.getAllOrders(skip, pageSize);
-    const totalPages = Math.ceil(total / pageSize);
-    return {
-      order,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
+  async getAllOrders(payload: { filters: any; page: number; pageSize: number }) {
+    const { filters, page, pageSize } = payload;
+    const result = await this.orderRepo.getAllOrders(filters, { page, pageSize });
+    return result;
   }
   async getOrderById(id: string): Promise<any> {
     return this.orderRepo.getOrderById(id);
   }
 
-  async getOrderByFullfillmentType(
-    type: FulfillmentType,
-    data: any,
-  ): Promise<any> {
-    console.log('Controller received fullfillment type:', type);
-    console.log('Controller received fullfillment payload:', data);
-    const { page, pageSize } = data;
-    const skip = (page - 1) * pageSize;
-    console.log(
-      '=================== this is getOrderByFullfillmentType =========================',
-    );
-    console.log('page', page);
-    console.log('pageSize', pageSize);
-    console.log('============================================');
-    const [order, total] = await this.orderRepo.getOrderByFullfillmentType(
-      type,
-      skip,
-      pageSize,
-    );
-    const totalPages = Math.ceil(total / pageSize);
-    return {
-      order,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
-  }
+
   updateOrder(id: string, data: any): Promise<any> {
     throw new Error('Method not implemented.');
   }
@@ -424,80 +292,30 @@ export class OrderUseCasesImpl implements OrderUseCases {
       tracking,
     };
   }
-  async getOrderByBranch(id: string, data: any): Promise<any> {
-    console.log('Controller received branch id:', id);
-    console.log('Controller received branch payload:', data);
-    const { page, pageSize } = data;
-    const skip = (page - 1) * pageSize;
-    console.log(
-      '=================== this is getOrderByBranch =========================',
-    );
-    console.log('page', page);
-    console.log('pageSize', pageSize);
-    console.log('============================================');
-    const [order, total] = await this.orderRepo.getOrderByBranch(
-      id,
-      skip,
-      pageSize,
-    );
-    const totalPages = Math.ceil(total / pageSize);
-    return {
-      order,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
-  }
-  async getOrderByCustomer(id: string, data: any): Promise<any> {
-    console.log('Controller received customer id:', id);
-    console.log('Controller received customer payload:', data);
-    const { page, pageSize } = data;
-    const skip = (page - 1) * pageSize;
-    console.log(
-      '=================== this is getOrderByCustomer =========================',
-    );
-    console.log('page', page);
-    console.log('pageSize', pageSize);
-    console.log('============================================');
-    const [order, total] = await this.orderRepo.getOrderByCustomerId(
-      id,
-      skip,
-      pageSize,
-    );
-    const totalPages = Math.ceil(total / pageSize);
-    return {
-      order,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
-  }
-  async getOrderByStatus(status: OrderStatus, data: any): Promise<any> {
-    console.log('Controller received status status:', status);
-    console.log('Controller received status payload:', data);
 
+  async getOrdersGroupedByScope(data: any): Promise<any> {
     const { page, pageSize } = data;
     const skip = (page - 1) * pageSize;
-    console.log(
-      '=================== this is getOrderByStatus =========================',
-    );
-    console.log('page', page);
-    console.log('pageSize', pageSize);
-    console.log('============================================');
-    const [order, total] = await this.orderRepo.getOrderByStatus(
-      status,
+    const [orders, total] = await this.orderRepo.getOrdersGroupedByScope(
       skip,
       pageSize,
     );
+    // Initialize structure
+    const grouped: Record<ShippingScope, Record<ServiceType, any[]>> = {
+      TOWN: { STANDARD: [], EXPRESS: [], SAME_DAY: [], OVERNIGHT: [] },
+      REGIONAL: { STANDARD: [], EXPRESS: [], SAME_DAY: [], OVERNIGHT: [] },
+      INTERNATIONAL: { STANDARD: [], EXPRESS: [], SAME_DAY: [], OVERNIGHT: [] },
+    };
+
+    // Group orders
+    for (const order of orders) {
+      if (order.shippingScope && order.serviceType) {
+        grouped[order.shippingScope][order.serviceType].push(order);
+      }
+    }
     const totalPages = Math.ceil(total / pageSize);
     return {
-      order,
+      grouped,
       pagination: {
         total,
         page,
@@ -505,66 +323,6 @@ export class OrderUseCasesImpl implements OrderUseCases {
         totalPages,
       },
     };
-  }
-  async getOrderByDriver(id: string, data: any): Promise<any> {
-    console.log('Controller received driver id:', id);
-    console.log('Controller received driver payload:', data);
-    const { page, pageSize } = data;
-    const skip = (page - 1) * pageSize;
-    console.log(
-      '=================== this is getOrderByDriver =========================',
-    );
-    console.log('page', page);
-    console.log('pageSize', pageSize);
-    console.log('============================================');
-
-    const [order, total] = await this.orderRepo.getOrderByDriverId(
-      id,
-      skip,
-      pageSize,
-    );
-
-    const totalPages = Math.ceil(total / pageSize);
-    return {
-      order,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
-  }
-  async getOrderByType(type: ServiceType, data: any): Promise<any> {
-    console.log('Controller received type:', type);
-    console.log('Controller received type payload:', data);
-    const { page, pageSize } = data;
-    console.log(
-      '===================this is getOrderByType=========================',
-    );
-    console.log('page', page);
-    console.log('pageSize', pageSize);
-    console.log('============================================');
-
-    const skip = (page - 1) * pageSize;
-    const [order, total] = await this.orderRepo.getOrderByServiceType(
-      type,
-      skip,
-      pageSize,
-    );
-    const totalPages = Math.ceil(total / pageSize);
-    return {
-      order,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
-  }
-  async getOrderByPayment(payment: string): Promise<any> {
-    throw new Error('Method not implemented.');
   }
 
   // Local method for tracking code generation
