@@ -19,4 +19,5 @@ export interface OrderUseCases {
     markUnusualOrder(orderId: string, data: any): Promise<any>;
     approveOrder(orderId: string,reason: string): Promise<any>;
     getOrdersGroupedByScope(data: any): Promise<any>;
+    getOrderStatusLog(data: any): Promise<any>;
 }

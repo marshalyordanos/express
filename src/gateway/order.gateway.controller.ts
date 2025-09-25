@@ -83,11 +83,12 @@ export class OrderGatewayController {
   //   });
   // }
 
-   // ✅ NEW unified GET endpoint with filters
+  // ✅ NEW unified GET endpoint with filters
   @Get()
   async getAllOrders(
     @Req() req: Request,
-    @Query() filters: {
+    @Query()
+    filters: {
       fragile?: boolean;
       unusual?: boolean;
       pending?: boolean;
@@ -114,6 +115,23 @@ export class OrderGatewayController {
     });
   }
 
+  @Get('/status/log')
+  async getOrderStatusLog(
+    @Query('orderId') orderId?: string,
+    @Query('staffId') staffId?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number
+  ) {
+    return this.orderClient.send(PATTERNS.ORDER_FIND_STATUS_LOG, {
+      orderId: orderId ,
+      updatedBy: staffId,
+      search: search ,
+      page: page ? Number(page) : 1,
+      pageSize: pageSize ? Number(pageSize) : 10
+    });
+  }
+
   @Get('/categorical')
   async getCategoricalOrders(
     @Req() req: Request,
@@ -123,7 +141,7 @@ export class OrderGatewayController {
     const authHeader = req.headers['authorization'] || null;
 
     console.log('authHeader: ', authHeader);
-    
+
     return this.orderClient.send(PATTERNS.ORDER_FIND_CATEGORICAL, {
       headers: { authorization: authHeader },
       page: page ? Number(page) : 1,

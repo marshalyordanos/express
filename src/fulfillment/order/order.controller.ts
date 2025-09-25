@@ -112,9 +112,17 @@ export class OrderMessageController {
   }
   
   @Public()
+  @MessagePattern(PATTERNS.ORDER_FIND_STATUS_LOG)
+  async getOrdersStatusLog(data: any){
+    const result= await this.orderUseCases.getOrderStatusLog(data);
+    return IResponse.success('Orders Log with status fetched successfully', result);
+  }
+
+  @Public()
   @MessagePattern(PATTERNS.ORDER_FIND_BY_ID)
   async getOrderById(id: string) {
-    return this.orderUseCases.getOrderById(id);
+    const result= await this.orderUseCases.getOrderById(id);
+    return IResponse.success('Order fetched successfully', result);
   }
 
   @Public()

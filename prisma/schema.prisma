@@ -43,6 +43,8 @@ model User {
   createdBatches BatchDispatch[] @relation("CreatedBatches")
   driverBatches  BatchDispatch[] @relation("BatchDispatchDriver")
   officerBatches  BatchDispatch[] @relation("BatchDispatchOfficer")
+    handOverBatchesOfficer  BatchHandover[] @relation("HandoverBatchesOfficer")
+
   corporateInfo CorporateInfo?
 }
 
@@ -220,6 +222,7 @@ model Order {
   approvalRequest ParcelApproval?
   orderTracking   OrderTracking[]
   batch           BatchDispatch?   @relation("BatchOrders", fields: [batchId], references: [id])
+  orderScans OrderScan[]  @relation("OrderToOrderScan")
 }
 
 model ParcelApproval {
@@ -274,6 +277,7 @@ model BatchDispatch {
   createdById String?
   notes       String?
   weight      Float?
+  shipmentDate  DateTime?  @db.Date
 
   // Relations
   orders    Order[] @relation("BatchOrders")
@@ -285,8 +289,37 @@ model BatchDispatch {
   awbNumber     String?   // for international shipments
   officerId     String?
   officer       User?     @relation("BatchDispatchOfficer",fields: [officerId], references: [id])
-  
+  handovers   BatchHandover[] @relation("HandoverBatches")
 }
+
+model BatchHandover {
+  id          String          @id @default(cuid())
+  handedById  String          // cargo officer
+  handedAt    DateTime        @default(now())
+  method      String?         // e.g., "handed to airport", "receipt scanned"
+  reference   String?         // optional: receipt number or photo URL
+  notes       String?
+
+  // Relations
+  batches     BatchDispatch[] @relation("HandoverBatches")
+  officer     User            @relation("HandoverBatchesOfficer", fields: [handedById], references: [id])
+}
+
+model OrderScan {
+  id        String   @id @default(cuid())
+  orderId   String
+  scannedBy String   // officerId
+  scannedAt DateTime @default(now())
+  batchId   String?  // optional
+  notes     String?  // optional notes
+  valid     Boolean  @default(true)
+
+  order     Order    @relation("OrderToOrderScan", fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([batchId])
+}
+
 
 model Payment {
   id            String        @id @default(cuid())
@@ -402,6 +435,7 @@ enum OrderStatus {
   APPROVED
   REJECTED
   VALIDATED
+  SUCCESS
 
   ASSIGNED
   READY_FOR_PICKUP
@@ -417,6 +451,7 @@ enum OrderStatus {
   PENDING
   DELIVERED
   FAILED
+  EXCEPTION
   CANCELED
 }
 
@@ -477,7 +512,9 @@ enum DispatchStatus {
   READY // Orders grouped, waiting for shipping
   ASSIGNED
   COLLECTED
+  DISPATCHED
   PICKEDUP
+  DELIVERED_TO_AIRPORT
   IN_TRANSIT // On the way
   ARRIVED_AT_DESTINATION
   OUT_FOR_BRANCH_TRANSFER
@@ -485,4 +522,5 @@ enum DispatchStatus {
   OUT_FOR_DELIVERY
   COMPLETED // Delivered successfully
   CANCELLED
+  CLOSED
 }

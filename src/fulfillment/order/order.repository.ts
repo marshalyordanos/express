@@ -368,6 +368,7 @@ export class OrderRepository {
     orderId: string,
     branchId: string,
     updatedBy: string,
+    location: string,
   ) {
     console.log('trackingCode: ', trackingCode);
 
@@ -436,7 +437,7 @@ export class OrderRepository {
       await this.logOrderStatus(
         orderId,
         'PICKED_UP',
-        branchId,
+        location,
         updatedBy,
         'Dropoff confirmed by customer',
       ),
@@ -472,6 +473,19 @@ export class OrderRepository {
       await this.prisma.order.count({ where: { batchId: null, status: "APPROVED" } }),
     ])
     return orders;
+  }
+
+  async getOrderStatusLog(skip: number, pageSize: number, where: any) {
+    return await Promise.all([
+      this.prisma.orderTracking.findMany({
+        skip,
+        take: pageSize,
+        where,
+      }),
+      this.prisma.orderTracking.count({
+        where
+      })
+    ])
   }
 
   private async logOrderStatus(

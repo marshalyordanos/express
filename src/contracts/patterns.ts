@@ -104,7 +104,8 @@ export const PATTERNS = {
   ORDER_FIND_PENDING_PICKUP: 'order.getPendingPickup',
   ORDER_CREATE_AND_VALIDATE: 'order.createAndValidate',
   ORDER_FIND_CATEGORICAL: 'order.getCategorical',
-
+  ORDER_FIND_STATUS_LOG: 'order.getStatusLog',
+  
   //Dispatch Management System
   DISPATCH_CREATE: 'dispatch.create',
   DISPATCH_FIND_BY_ID: 'dispatch.findById',
@@ -124,4 +125,14 @@ export const PATTERNS = {
   DISPATCH_CREATE_BATCH_DISPATCH: 'dispatch.createBatchDispatch',
   DISPATCH_ADD_ORDERS_TO_BATCH: 'dispatch.addOrdersToBatch',
   DISPATCH_ASSIGN_DRIVER_TO_BATCH: 'dispatch.assignDriverToBatch',
+  DISPATCH_ASSIGN_OFFICER_TO_BATCH: 'dispatch.assignOfficerToBatch',
+  DISPATCH_COLLECT_BATCH_BY_CARGO_OFFICER: 'dispatch.collectBatchByCargoOfficer',
+  DISPATCH_HAND_OVER_BATCHES_TO_AIRPORT: 'dispatch.handoverBatchesToAirport',
+  DISPATCH_COLLECT_FROM_AIRPORT: 'dispatch.collectFromAirport',
+  DISPATCH_COMPARE_SCANNED_ORDERS: 'dispatch.compareScannedOrders',
+  DISPATCH_CONFIRM_ARRIVAL_AND_HANDOVER: 'dispatch.confirmArrivalAndHandover',
+  DISPATCH_ACCEPT_LAST_MILE_DELIVERY: 'dispatch.acceptLastMileDelivery',
+  DISPATCH_COMPLETE_DELIVERY: 'dispatch.completeDelivery',
+
+
 } as const;

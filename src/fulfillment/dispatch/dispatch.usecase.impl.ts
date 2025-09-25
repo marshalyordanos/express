@@ -6,17 +6,33 @@ import {
 import { DispatchUseCases } from './dispatch.usecase';
 import { DispatchRepository } from './dispatch.repository';
 import {
-  AssignDriverForBatch,
   AssignDriverForPickup,
+  AssignOfficerForBatch,
   BatchDispatchDto,
+  BatchHandoverDto,
+  ConfirmBatchHandoverDto,
 } from './dispatch.entity';
 import { RpcException } from '@nestjs/microservices';
-import { DispatchStatus, ShippingScope, ServiceType } from '@prisma/client';
+import {
+  DispatchStatus,
+  ShippingScope,
+  ServiceType,
+  Order,
+} from '@prisma/client';
 import { IResponse } from 'src/common/types';
+import {
+  generateOrderQRCode,
+  decodeAndValidateQRCode,
+  OrderQRCodeData,
+} from '../utils/qr-code.helper';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class DispatchUseCasesImpl implements DispatchUseCases {
-  constructor(private readonly dispatchRepo: DispatchRepository) {}
+  constructor(
+    private readonly dispatchRepo: DispatchRepository,
+    private readonly qrCodeService: PrismaService,
+  ) {}
 
   async assignDriverForPickup(data: AssignDriverForPickup): Promise<any> {
     const driver = await this.dispatchRepo.findUserById(data.driverId);
@@ -84,11 +100,13 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     };
   }
 
-  async confirmDispatch(data: AssignDriverForBatch): Promise<any> {
-    // 1. Check if driver exists (optional, depending on your business rules)
-    const driver = await this.dispatchRepo.findUserById(data.driverId);
-    if (!driver) {
-      throw new NotFoundException(`Driver with ID ${data.driverId} not found`);
+  async confirmDispatch(data: AssignOfficerForBatch): Promise<any> {
+    // 1. Check if Officer exists (optional, depending on your business rules)
+    const officer = await this.dispatchRepo.findUserById(data.officerId);
+    if (!officer) {
+      throw new NotFoundException(
+        `Officer with ID ${data.officerId} not found`,
+      );
     }
 
     // 2. Check that all batch IDs exist
@@ -100,17 +118,20 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       throw new NotFoundException(`Batch IDs not found: ${missing.join(', ')}`);
     }
 
-    // 3. Assign driver to the batches
-    const result = await this.dispatchRepo.confirmDispatch(data.batchId);
+    // 3. Assign Officer to the batches
+    const result = await this.dispatchRepo.confirmDispatch(
+      data.batchId,
+      data.officerId,
+    );
 
     return {
       success: true,
-      message: `Batches are ready for delivering to the airport or given to the cargo officer.`,
+      message: `Batches are ready for delivering to the airport or Assigned to the cargo officer.`,
       result,
     };
   }
 
-  async collectBatchByCargoOfficer(data: any): Promise<any> {
+  async collectBatchByCargoOfficer(data: AssignOfficerForBatch): Promise<any> {
     const officer = await this.dispatchRepo.findUserById(data.officerId);
     if (!officer) {
       throw new RpcException({
@@ -118,6 +139,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         message: `Officer with ID ${data.officerId} not found.`,
       });
     }
+
     //  Check that all batch IDs exist
     const batches = await this.dispatchRepo.findBatches(data.batchId);
 
@@ -138,30 +160,155 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     };
   }
 
-  async deliverBatchToAirport(data: any): Promise<any> {
-    //  Check that all batch IDs exist
-    const batches = await this.dispatchRepo.findBatches(data.batchId);
+  async deliverBatchToAirport(data: BatchHandoverDto): Promise<any> {
+    // 1. Fetch all batches from DB
+    const batches = await this.dispatchRepo.findBatches(data.batchIds);
 
-    if (batches.length !== data.batchId.length) {
+    // 2. Check which batch IDs were not found
+    if (batches.length !== data.batchIds.length) {
       const foundIds = batches.map((b) => b.id);
-      const missing = data.batchId.filter((id) => !foundIds.includes(id));
+      const missing = data.batchIds.filter((id) => !foundIds.includes(id));
       throw new NotFoundException(`Batch IDs not found: ${missing.join(', ')}`);
     }
-    const result = await this.dispatchRepo.deliverBatchToAirport(
+
+    // 3. Check if batches are in READY or COLLECTED status (cannot deliver already IN_TRANSIT)
+    const invalidStatusBatches = batches.filter(
+      (b) => b.status !== 'READY' && b.status !== 'COLLECTED',
+    );
+
+    if (invalidStatusBatches.length > 0) {
+      const ids = invalidStatusBatches.map((b) => b.id);
+      throw new BadRequestException(
+        `The following batches cannot be delivered to airport due to invalid status: ${ids.join(', ')}`,
+      );
+    }
+
+    // 4. Validate officer exists
+    const officer = await this.dispatchRepo.findUserById(data.handedById);
+    if (!officer) {
+      throw new RpcException({
+        statusCode: 404,
+        message: `Officer with ID ${data.handedById} not found.`,
+      });
+    }
+
+    // 5. Call repository to perform transaction: update status + create handover
+    const result = await this.dispatchRepo.handoverBatchToAirport(
       batches.map((b) => b.id),
+      officer.id,
+      {
+        method: data.method,
+        reference: data.reference,
+        notes: data.notes,
+        location: data.currentLocation,
+      },
     );
 
     return {
       success: true,
-      message: `Batches are delivered to the airport.`,
+      message: `Batches are successfully delivered to the airport.`,
       result,
     };
   }
 
-  
-
   async assignDriverForDelivery(data: AssignDriverForPickup): Promise<any> {
     return this.dispatchRepo.assignDriverForDelivery(data);
+  }
+
+  async assignDriverToOrder(data: AssignDriverForPickup): Promise<any> {
+    const { orderId, driverId } = data;
+    const order = await this.dispatchRepo.findOrderById(orderId);
+    if (!order) {
+      throw new RpcException({
+        statusCode: 404,
+        message: `Order with ID ${orderId} not found.`,
+      });
+    }
+    if (order.status === 'ASSIGNED') {
+      throw new RpcException({
+        statusCode: 400,
+        message: `Order with ID ${orderId} is not eligible for driver assignment or already assigned to another driver. Current status: ${order.status}.`,
+      });
+    }
+    if (order.driverId && order.driverId !== driverId) {
+      throw new RpcException({
+        statusCode: 400,
+        message: `Order with ID ${orderId} is already assigned to another driver.`,
+      });
+    }
+    const driver = await this.dispatchRepo.findUserById(driverId);
+    if (!driver) {
+      throw new RpcException({
+        statusCode: 404,
+        message: `Driver with ID ${driverId} not found.`,
+      });
+    }
+    const result = await this.dispatchRepo.assignOrder(orderId, driverId);
+    return { success: true, message: 'Driver assigned for delivery', result };
+  }
+
+  async lastMileDelivery(orderId: string, driverId: string, notes?: string) {
+    const order = await this.dispatchRepo.findOrderById(orderId);
+    if (!order) {
+      throw new RpcException({
+        statusCode: 404,
+        message: `Order with ID ${orderId} not found.`,
+      });
+    }
+    if (order.driverId !== driverId) {
+      throw new RpcException({
+        statusCode: 403, // Forbidden
+        message: `Order with ID ${orderId} is not assigned to this driver.`,
+      });
+    }
+    if (order.status !== 'ASSIGNED') {
+      throw new RpcException({
+        statusCode: 400,
+        message: `Order with ID ${orderId} is not eligible for last mile delivery. Current status: ${order.status}.`,
+      });
+    }
+    const result = await this.dispatchRepo.lastMileDelivery(
+      orderId,
+      driverId,
+      notes,
+    );
+    return {
+      success: true,
+      message: 'Order picked up for last mile delivery by driver',
+      result,
+    };
+  }
+
+  async completeDelivery(
+    orderId: string,
+    driverId: string,
+    notes?: string,
+  ) {
+    const order = await this.dispatchRepo.findOrderById(orderId);
+    if (!order) {
+      throw new RpcException({
+        statusCode: 404,
+        message: `Order with ID ${orderId} not found.`,
+      });
+    }
+    if (order.driverId !== driverId) {
+      throw new RpcException({
+        statusCode: 403, // Forbidden
+        message: `Order with ID ${orderId} is not assigned to this driver.`,
+      });
+    }
+    if (order.status !== 'OUT_FOR_DELIVERY') {
+      throw new RpcException({
+        statusCode: 400,
+        message: `Order with ID ${orderId} is not eligible for delivery and it is not out for delivery. Current status: ${order.status}.`,
+      });
+    }
+    const result = await this.dispatchRepo.deliverOrder(
+      order.trackingCode,
+      driverId,
+      notes,
+    );
+    return { success: true, message: 'Order delivered to customer.', result };
   }
 
   async removeDriverFromOrder(orderId: string): Promise<any> {
@@ -280,8 +427,49 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     newOrderIds: string[],
     updateData?: Partial<BatchDispatchDto>,
   ) {
+    console.log("Controller received payload:", batchId);
+    
     const batch = await this.dispatchRepo.findBatchById(batchId);
-    if (!batch) throw new RpcException(`Batch ${batchId} not found.`);
+
+    console.log(" batch :", batch);
+    
+    if (!batch) {
+      throw new RpcException({
+        statusCode: 404,
+        message: `Batch ${batchId} not found.`,
+      });
+    }
+
+    // Normalize to date-only (strip time)
+    function toDateOnly(date: Date): Date {
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+
+    const today = toDateOnly(new Date());
+    const shipmentDate = toDateOnly(batch.shipmentDate);
+
+    // 1. Check if shipment day is already over
+    if (shipmentDate < today) {
+      throw new RpcException({
+        statusCode: 400,
+        message: `Batch ${batchId} has missed its shipment day (${shipmentDate.toDateString()}).`,
+      });
+    }
+
+    // 2. Check if batch is already dispatched to airport
+    if (
+      [
+        'DISPATCHED',
+        'DELIVERED_TO_AIRPORT',
+        'ARRIVED_AT_DESTINATION',
+        'CLOSED',
+      ].includes(batch.status)
+    ) {
+      throw new RpcException({
+        statusCode: 400,
+        message: `Batch ${batchId} is already in status '${batch.status}' and cannot be modified.`,
+      });
+    }
 
     const orders = await this.dispatchRepo.findOrdersByIds(newOrderIds);
     const foundIds = orders.map((o) => o.id);
@@ -354,6 +542,191 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         total: result.total,
         totalPages: Math.ceil(result.total / pageSize),
       },
+    };
+  }
+
+  async prepareQRCodes(input: {
+    orderIds?: string[];
+    batchId?: string;
+    branchId?: string;
+  }) {
+    return this.qrCodeService.$transaction(async (tx) => {
+      let orders: any;
+
+      if (input.orderIds && input.orderIds.length > 0) {
+        orders = await this.dispatchRepo.findOrdersByIds(input.orderIds);
+      } else if (input.batchId) {
+        orders = await this.dispatchRepo.findBatchById(input.batchId);
+      } else {
+        throw new RpcException(
+          'Must provide at least orderIds, batchId, or branchId',
+        );
+      }
+
+      if (orders.length === 0) {
+        throw new RpcException('No orders found for the given criteria.');
+      }
+
+      const qrResults = [];
+
+      for (const order of orders) {
+        const qrPayload: OrderQRCodeData = {
+          trackingCode: order.trackingCode,
+          branchId: order.branchId,
+          serviceType: order.serviceType,
+          weight: order.weight,
+          length: order.length,
+          width: order.width,
+          height: order.height,
+          deliveryAddress: order.deliveryAddress,
+          batchId: order.batchId,
+          shippingScope: order.shippingScope,
+          shipmentType: order.shipmentType,
+        };
+
+        // const qrCode = await generateOrderQRCode(qrPayload);
+
+        try {
+          const qrCode = await generateOrderQRCode(qrPayload);
+          qrResults.push({
+            orderId: order.id,
+            batchId: order.batchId,
+            trackingCode: order.trackingCode,
+            qrCode,
+          });
+        } catch (err) {
+          throw new RpcException(
+            `Failed to generate QR for order ${order.id}: ${err}`,
+          );
+        }
+      }
+
+      return qrResults;
+    });
+  }
+
+  async scanOrder(officerId: string, scannedToken: string) {
+    // 1️⃣ Decode token first
+    let payload: OrderQRCodeData;
+    try {
+      const jsonString = Buffer.from(
+        scannedToken.split(',')[1],
+        'base64',
+      ).toString();
+      payload = JSON.parse(jsonString);
+    } catch (err) {
+      throw new RpcException('Invalid QR token format');
+    }
+
+    // 2️⃣ Find order by trackingCode
+    const order = await this.dispatchRepo.findByTrackingCode(
+      payload.trackingCode,
+    );
+    if (!order) throw new RpcException('Order not found');
+
+    // 3️⃣ Validate
+    const result = decodeAndValidateQRCode(scannedToken, order);
+
+    // 4️⃣ Save scan log
+    await this.dispatchRepo.createScan({
+      orderId: order.id,
+      scannedBy: officerId,
+      valid: result.valid,
+      notes: result.notes,
+      batchId: order.batchId ?? undefined,
+      location: 'At airport',
+    });
+
+    return result;
+  }
+
+  async compareOrders(officerId: string) {
+    // 1️⃣ Validate officer
+    const officer = await this.dispatchRepo.findUserById(officerId);
+    if (!officer) {
+      throw new NotFoundException(`Officer with ID ${officerId} not found.`);
+    }
+
+    // 2️⃣ Validate branch
+    if (!officer.branchId) {
+      throw new BadRequestException(
+        `Officer ${officerId} is not assigned to any branch.`,
+      );
+    }
+
+    const branch = await this.dispatchRepo.findBranchById(officer.branchId);
+    if (!branch) {
+      throw new NotFoundException(
+        `Branch with ID ${officer.branchId} not found.`,
+      );
+    }
+
+    // 3️⃣ Find all batches sent to this branch that are IN_TRANSIT or ARRIVED_AT_DESTINATION
+    const batches = await this.dispatchRepo.findBatchesByBranchId(branch.id, [
+      'IN_TRANSIT',
+      'ARRIVED_AT_DESTINATION',
+    ]);
+    if (batches.length === 0) {
+      return {
+        message: 'No batches pending for this branch.',
+        missingOrders: [],
+        scannedOrders: [],
+      };
+    }
+
+    // 4️⃣ Collect all orders from these batches
+    const batchIds = batches.map((b) => b.id);
+    const expectedOrders =
+      await this.dispatchRepo.findOrdersByBatchIds(batchIds);
+
+    // 5️⃣ Collect all scanned orders by this officer for these batches
+    const scannedOrders = await this.dispatchRepo.findScannedOrdersByOfficer(
+      officer.id,
+      batchIds,
+    );
+
+    // 6️⃣ Compare expected vs scanned
+    const expectedTrackingCodes = expectedOrders.map((o) => o.trackingCode);
+    const scannedTrackingCodes = scannedOrders.map((s) => s.order.trackingCode);
+
+    const missingOrders = expectedOrders.filter(
+      (o) => !scannedTrackingCodes.includes(o.trackingCode),
+    );
+    const mismatchedOrders = scannedOrders.filter(
+      (s) => !expectedTrackingCodes.includes(s.order.trackingCode),
+    );
+
+    return {
+      branchId: branch.id,
+      officerId: officer.id,
+      totalExpected: expectedOrders.length,
+      totalScanned: scannedOrders.length,
+      missingOrders: missingOrders.map((o) => ({
+        orderId: o.id,
+        trackingCode: o.trackingCode,
+      })),
+      mismatchedOrders: mismatchedOrders.map((s) => ({
+        orderId: s.orderId,
+        trackingCode: s.order.trackingCode,
+      })),
+    };
+  }
+
+  async confirmHandover(dto: ConfirmBatchHandoverDto) {
+    const officer = await this.dispatchRepo.findUserById(dto.handedById);
+    if (!officer) throw new RpcException('Officer not found');
+
+    const result = await this.dispatchRepo.confirmBatchHandoverAutomatic(
+      dto.handedById,
+      dto.method,
+      dto.reference,
+      dto.notes,
+    );
+
+    return {
+      success: true,
+      message: 'All scanned valid orders have been confirmed.',
+      ...result,
     };
   }
 }

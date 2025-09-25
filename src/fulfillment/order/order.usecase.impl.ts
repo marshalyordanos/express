@@ -4,12 +4,14 @@ import { CreateOrderDto, ValidateOrderDto } from './order.entity';
 import { OrderRepository } from './order.repository';
 import {
   FulfillmentType,
+  Order,
   OrderStatus,
+  OrderTracking,
   ServiceType,
   ShippingScope,
 } from '@prisma/client'; // assuming you use Prisma enums
 import { RpcException } from '@nestjs/microservices';
-import { IResponse } from 'src/common/types';
+import { IPagination, IResponse } from 'src/common/types';
 
 @Injectable()
 export class OrderUseCasesImpl implements OrderUseCases {
@@ -78,12 +80,13 @@ export class OrderUseCasesImpl implements OrderUseCases {
       this.orderRepo.findPayment.bind(this.orderRepo),
     );
 
-    let location = null;
+    let location: string | null = null;
+
     if (data.fulfillmentType === 'PICKUP') {
       location = data.pickupAddress;
-    }
-    if (data.fulfillmentType === 'DROPOFF') {
-      location = data.branchId;
+    } else if (data.fulfillmentType === 'DROPOFF' && data.branchId) {
+      const branch = await this.orderRepo.findBranch(data.branchId);
+      location = branch?.location ?? null;
     }
 
     const updatedBy = customer.id;
@@ -109,23 +112,24 @@ export class OrderUseCasesImpl implements OrderUseCases {
       );
     }
 
-    let branchId: string | null = null;
-
-    if (order.branchId) {
-      console.log('order.branchId: ', order.branchId);
-      // If order already has a branch assigned
-      branchId = order.branchId;
-    } else if (order.driver && order.driver.branchId) {
-      console.log('order.driver.branchId: ', order.driver.branchId);
-      // If order has a driver, use driver's branch
-      branchId = order.driver.branchId;
-    }
+    // Determine branchId from order or driver's branch
+    const branchId = order.branchId ?? order.driver?.branchId;
 
     if (!branchId) {
       throw new RpcException(
         `Order with tracking code ${trackingCode} does not have a branch assigned`,
       );
     }
+
+    // Fetch branch details
+    const branch = await this.orderRepo.findBranch(branchId);
+
+    if (!branch) {
+      throw new RpcException(
+        `Branch with ID ${branchId} not found for order ${trackingCode}`,
+      );
+    }
+
     if (order.status !== 'CREATED' && order.status !== 'PICKED_UP') {
       throw new RpcException(
         `Order with tracking code ['${trackingCode}'] or Order Id ['${order.id}'] can not be COLLECTED because it does not meet the requirement for COLLECTED it have to be in CREATED or PICKED_UP state.`,
@@ -137,6 +141,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
       order.id,
       branchId,
       updatedBy,
+      branch.location,
     );
   }
 
@@ -188,10 +193,19 @@ export class OrderUseCasesImpl implements OrderUseCases {
     }
     console.log('Office for validation: ', officer);
 
-    let location = null;
+    let location: string | null = null;
+
     if (order.branchId || officer.branchId) {
-      location = order.branchId ? order.branchId : officer.branchId;
+      // Choose the branchId from order first, then officer
+      const branchId = order.branchId ?? officer.branchId;
+
+      // Fetch branch location from DB
+      const branch = await this.orderRepo.findBranch(branchId);
+      console.log('Found location in branch : ', branch);
+
+      location = branch ? branch.location : null;
     }
+
     console.log('location for validation: ', location);
 
     if (!location) {
@@ -245,15 +259,21 @@ export class OrderUseCasesImpl implements OrderUseCases {
     return this.orderRepo.approveOrder(order, reason, location, updatedBy);
   }
 
-  async getAllOrders(payload: { filters: any; page: number; pageSize: number }) {
+  async getAllOrders(payload: {
+    filters: any;
+    page: number;
+    pageSize: number;
+  }) {
     const { filters, page, pageSize } = payload;
-    const result = await this.orderRepo.getAllOrders(filters, { page, pageSize });
+    const result = await this.orderRepo.getAllOrders(filters, {
+      page,
+      pageSize,
+    });
     return result;
   }
   async getOrderById(id: string): Promise<any> {
     return this.orderRepo.getOrderById(id);
   }
-
 
   updateOrder(id: string, data: any): Promise<any> {
     throw new Error('Method not implemented.');
@@ -316,6 +336,66 @@ export class OrderUseCasesImpl implements OrderUseCases {
     const totalPages = Math.ceil(total / pageSize);
     return {
       grouped,
+      pagination: {
+        total,
+        page,
+        pageSize,
+        totalPages,
+      },
+    };
+  }
+
+  async getOrderStatusLog(data: any): Promise<{
+    // ordersLog: OrderTracking[];
+    ordersLog: { id: string; logs: OrderTracking[] }[];
+    pagination: IPagination;
+  }> {
+    const { page, pageSize, updatedBy, orderId, search } = data;
+    const skip = (page - 1) * pageSize;
+
+    const where: any = {};
+
+    if (updatedBy) {
+      where.updatedBy = updatedBy;
+    }
+    if (orderId) {
+      where.orderId = orderId;
+    }
+    if (search) {
+      where.OR = [
+        { location: { contains: search, mode: 'insensitive' } },
+        { notes: { contains: search, mode: 'insensitive' } },
+        { status: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    const [ordersLogFlat, total] = await this.orderRepo.getOrderStatusLog(
+      skip,
+      pageSize,
+      where,
+    );
+
+    // Group by orderId
+    const ordersLogGrouped = Object.entries(
+      ordersLogFlat.reduce(
+        (acc, log) => {
+          if (!acc[log.orderId]) acc[log.orderId] = [];
+          acc[log.orderId].push(log);
+          return acc;
+        },
+        {} as Record<string, OrderTracking[]>,
+      ),
+    ).map(([orderId, logs]) => ({
+      id: orderId,
+      logs,
+    }));
+
+    // const ordersLogFlatSorted = ordersLogFlat.sort((a, b) =>
+    //   a.orderId.localeCompare(b.orderId),
+    // );
+    const totalPages = Math.ceil(total / pageSize);
+    return {
+      ordersLog: ordersLogGrouped,
+      // ordersLog: ordersLogFlatSorted,
       pagination: {
         total,
         page,

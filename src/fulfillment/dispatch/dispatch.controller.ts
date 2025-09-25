@@ -3,7 +3,7 @@ import { MessagePattern, Payload } from "@nestjs/microservices";
 import { Public } from "src/common/decorator/public.decorator";
 import { PATTERNS } from "src/contracts";
 import { DispatchUseCasesImpl } from "./dispatch.usecase.impl";
-import { AssignDriverForBatch, AssignDriverForPickup, BatchDispatchDto } from "./dispatch.entity";
+import { AssignDriverForPickup, AssignOfficerForBatch, BatchDispatchDto, BatchHandoverDto, CompleteDeliveryDto, ConfirmBatchHandoverDto, LastMileDeliveryDto } from "./dispatch.entity";
 import { IResponse } from "src/common/types";
 
 
@@ -39,16 +39,59 @@ export class DispatchMessageController {
         console.log('data: ', data);
         return this.usecases.addOrdersToBatch(batchId, newOrderIds, body);
     }
+
     @Public()
-    @MessagePattern(PATTERNS.DISPATCH_ASSIGN_DRIVER_TO_BATCH)
-    async assignDriverToBatch(data: AssignDriverForBatch): Promise<any> {
-        // return this.usecases.assignDriverToBatch(data);
-        return;
+    @MessagePattern(PATTERNS.DISPATCH_ASSIGN_OFFICER_TO_BATCH)
+    async assignOfficerToBatch(data: AssignOfficerForBatch): Promise<any> {
+        return this.usecases.confirmDispatch(data);
     }
+
+    @Public()
+    @MessagePattern(PATTERNS.DISPATCH_COLLECT_BATCH_BY_CARGO_OFFICER)
+    async collectBatchByCargoOfficer(data: any): Promise<any> {
+        return this.usecases.collectBatchByCargoOfficer(data);
+    }
+
+    @Public()
+    @MessagePattern(PATTERNS.DISPATCH_HAND_OVER_BATCHES_TO_AIRPORT)
+    async handoverBatchesToAirport(data: BatchHandoverDto): Promise<any> {
+        return this.usecases.deliverBatchToAirport(data);
+    }
+
+    @Public()
+    @MessagePattern(PATTERNS.DISPATCH_COLLECT_FROM_AIRPORT)
+    async collectFromAirport(data: any): Promise<any> {
+        return this.usecases.scanOrder(data.officerId, data.scannedToken);
+    }
+
+    @Public()
+    @MessagePattern(PATTERNS.DISPATCH_COMPARE_SCANNED_ORDERS)
+    async comapreOrders(officerId: string): Promise<any> {
+        return this.usecases.compareOrders(officerId);
+    }
+
+    @Public()
+    @MessagePattern(PATTERNS.DISPATCH_CONFIRM_ARRIVAL_AND_HANDOVER)
+    async arriveAndInbound(data: ConfirmBatchHandoverDto): Promise<any> {
+        return this.usecases.confirmHandover(data);
+    }
+
     @Public()
     @MessagePattern(PATTERNS.DISPATCH_ASSIGN_DRIVER_FOR_DELIVERY)
     async assignDriverForDelivery(data: AssignDriverForPickup): Promise<any> {
-        return this.usecases.assignDriverForDelivery(data);
+        return this.usecases.assignDriverToOrder(data);
+    }
+
+    @Public()
+    @MessagePattern(PATTERNS.DISPATCH_ACCEPT_LAST_MILE_DELIVERY)
+    async lastMileDelivery(data: LastMileDeliveryDto): Promise<any> {
+        return this.usecases.lastMileDelivery(data.orderId, data.driverId, data.notes);
+    }
+
+    @Public()
+    @MessagePattern(PATTERNS.DISPATCH_COMPLETE_DELIVERY)
+    async completeDelivery(data: CompleteDeliveryDto): Promise<any> {
+        return this.usecases.completeDelivery(data.orderId, data.driverId, data.notes);
     }
 
     @Public()
