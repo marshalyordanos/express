@@ -1,4 +1,4 @@
-import { CreateOrderDto, ValidateOrderDto } from "./order.entity";
+import { AddException, CancelOrderDto, CreateOrderDto, UpdateOrderDto, ValidateOrderDto } from "./order.entity";
 import { OrderStatus,ServiceType } from '@prisma/client'; // assuming you use Prisma enums
 
 
@@ -20,4 +20,8 @@ export interface OrderUseCases {
     approveOrder(orderId: string,reason: string): Promise<any>;
     getOrdersGroupedByScope(data: any): Promise<any>;
     getOrderStatusLog(data: any): Promise<any>;
+    cancelOrder(data: CancelOrderDto): Promise<any>;
+    addException(data: AddException): Promise<any>;
+    getPendingApproval(filters: string, page: number, pageSize: number): Promise<any>;
+    updateOrder(orderId: string, data: UpdateOrderDto): Promise<any>;
 }

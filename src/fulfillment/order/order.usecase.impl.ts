@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OrderUseCases } from './order.usecase';
-import { CreateOrderDto, ValidateOrderDto } from './order.entity';
+import { AddException, CancelOrderDto, CreateOrderDto, UpdateOrderDto, ValidateOrderDto } from './order.entity';
 import { OrderRepository } from './order.repository';
 import {
   FulfillmentType,
@@ -275,8 +275,16 @@ export class OrderUseCasesImpl implements OrderUseCases {
     return this.orderRepo.getOrderById(id);
   }
 
-  updateOrder(id: string, data: any): Promise<any> {
-    throw new Error('Method not implemented.');
+  async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
+    const order= await this.orderRepo.getOrderById(orderId);
+    if(!order){
+      throw new RpcException({
+        statusCode: 404,
+        message: `Order with ID ${orderId} not found.`,
+      });
+    }
+
+    return this.orderRepo.updateOrder(orderId, data);
   }
   deleteOrder(id: string): Promise<any> {
     throw new Error('Method not implemented.');
@@ -373,7 +381,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
       pageSize,
       where,
     );
-
+    
     // Group by orderId
     const ordersLogGrouped = Object.entries(
       ordersLogFlat.reduce(
@@ -405,6 +413,35 @@ export class OrderUseCasesImpl implements OrderUseCases {
     };
   }
 
+  async getPendingApproval(filters: string, page: number, pageSize: number): Promise<any> {
+    const skip = (page - 1) * pageSize;
+
+    return await this.orderRepo.getPendingApprovals(skip, pageSize);
+  }
+
+  async cancelOrder(data: CancelOrderDto): Promise<any> {
+    const { orderId, reason } = data;
+    return await this.orderRepo.cancelOrder(orderId, reason );
+  }
+
+  async addException(data: AddException): Promise<any> {
+    const { orderId, reason, type } = data;
+    const order= await this.orderRepo.getOrderById(orderId);
+    if(!order){
+      throw new RpcException({
+        code: 404,
+        message: `Order with id ${orderId} not found`,
+      });
+    }
+    const exception = await this.orderRepo.addException(orderId, reason, type);
+    if (!exception) {
+      throw new RpcException({
+        code: 404,
+        message: `Order with id ${orderId} not found`,
+      });
+    }
+    return exception;
+  }
   // Local method for tracking code generation
   private generateTrackingCode(username: string): string {
     if (!username || username.length !== 3) {

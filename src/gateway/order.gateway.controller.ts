@@ -14,7 +14,10 @@ import { Request } from 'express';
 import { ClientProxy } from '@nestjs/microservices';
 import { PATTERNS } from '../contracts';
 import {
+  AddException,
+  CancelOrderDto,
   CreateOrderDto,
+  UpdateOrderDto,
   ValidateOrderDto,
 } from '../fulfillment/order/order.entity';
 import { OrderStatus, ServiceType } from '@prisma/client';
@@ -68,20 +71,15 @@ export class OrderGatewayController {
     return this.orderClient.send(PATTERNS.ORDER_APPROVE, data);
   }
 
-  // @Get()
-  // async getAllOrders(
-  //   @Req() req: Request,
-  //   @Query('page') page?: number,
-  //   @Query('pageSize') pageSize?: number,
-  // ) {
-  //   const authHeader = req.headers['authorization'] || null;
+  @Patch('/cancel')
+  async cancelOrder(@Body() data: CancelOrderDto) {
+    return this.orderClient.send(PATTERNS.ORDER_CANCEL, data);
+  }
 
-  //   return this.orderClient.send(PATTERNS.ORDER_FIND_ALL, {
-  //     headers: { authorization: authHeader },
-  //     page: page ? Number(page) : 1,
-  //     pageSize: pageSize ? Number(pageSize) : 10,
-  //   });
-  // }
+  @Post('/exception')
+  async exceptionOrder(@Body() data: AddException) {
+    return this.orderClient.send(PATTERNS.ORDER_ADD_EXCEPTION, data);
+  }
 
   // ✅ NEW unified GET endpoint with filters
   @Get()
@@ -114,6 +112,20 @@ export class OrderGatewayController {
       pageSize: filters.pageSize ? Number(filters.pageSize) : 10,
     });
   }
+
+ @Get('/approval/pending')
+  async getPendingApprovalOrders(
+    @Query('search') search?: string,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number
+  ) {
+    return this.orderClient.send(PATTERNS.ORDER_FIND_PENDING_APPROVAL, {
+      search: search ,
+      page: page ? Number(page) : 1,
+      pageSize: pageSize ? Number(pageSize) : 10
+    });
+  }
+
 
   @Get('/status/log')
   async getOrderStatusLog(
@@ -154,23 +166,8 @@ export class OrderGatewayController {
     return this.orderClient.send(PATTERNS.ORDER_FIND_BY_TRACK_CODE, code);
   }
   @Patch(':id')
-  async updateOrder(@Param('id') id: string, data: any) {
+  async updateOrder(@Param('id') id: string, @Body() data: UpdateOrderDto) {
     return this.orderClient.send(PATTERNS.ORDER_UPDATE, { id, data });
-  }
-
-  @Patch('/status/:id')
-  async updateOrderStatus(@Param('id') id: string, data: any) {
-    return this.orderClient.send(PATTERNS.ORDER_UPDATE_STATUS, { id, data });
-  }
-
-  @Patch('/type/:type')
-  async updateOrderType(@Param('type') type: string, data: any) {
-    return this.orderClient.send(PATTERNS.ORDER_UPDATE_TYPE, { type, data });
-  }
-
-  @Patch('/driver/:id')
-  async updateOrderDriver(@Param('id') id: string, data: any) {
-    return this.orderClient.send(PATTERNS.ORDER_UPDATE_DRIVER, { id, data });
   }
 
   @Get(':id')

@@ -57,8 +57,11 @@ export class StaffGatewayController {
   async findStaff(
     @Req() req: Request,
     @Query('search') search?: string,
+    @Query('branchId') branchId?: string,
+    @Query('roleId') roleId?: string,
     @Query('page') page = 1,
     @Query('pageSize') pageSize = 10,
+
   ) {
     console.log('Getting all staff');
 
@@ -71,6 +74,8 @@ export class StaffGatewayController {
         page: Number(page),
         pageSize: Number(pageSize),
         search,
+        branchId,
+        roleId
       }),
     );
 

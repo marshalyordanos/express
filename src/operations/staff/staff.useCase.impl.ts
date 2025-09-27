@@ -25,7 +25,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
       }
       data.role = role.id;
     }
-     if (data.branchId) {
+    if (data.branchId) {
       const branch = await this.staffRepo.findBranchById(data.branchId);
 
       if (!branch) {
@@ -48,8 +48,8 @@ export class StaffUseCasesImpl implements StaffUsecase {
 
     const skip = (page - 1) * pageSize;
 
-    console.log("role name:", role);
-    
+    console.log('role name:', role);
+
     // Check role existence
     const roles = await this.staffRepo.findRoleByName(role);
 
@@ -77,7 +77,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
   async findAllStaff(
     data: any,
   ): Promise<{ users: Partial<User>[]; pagination: IPagination }> {
-    const { page = 1, pageSize = 10, search } = data;
+    const { page = 1, pageSize = 10, search, branchId, roleId } = data;
 
     const skip = (page - 1) * pageSize;
 
@@ -91,6 +91,17 @@ export class StaffUseCasesImpl implements StaffUsecase {
         { email: { contains: search, mode: 'insensitive' } },
         { phone: { contains: search, mode: 'insensitive' } },
       ];
+    }
+
+    // Add optional filters
+    if (branchId) {
+      where.branchId = branchId; // direct column if staff has branchId field
+    }
+
+    if (roleId) {
+      where.roles = {
+        some: { id: roleId }, // if staff <-> role is many-to-many
+      };
     }
 
     const [users, total] = await this.staffRepo.findAllStaff(
@@ -113,7 +124,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
   }
 
   async changeUserRole(data: ChangeRoleDto): Promise<User> {
-     const user = await this.staffRepo.findStaffById(data.userId);
+    const user = await this.staffRepo.findStaffById(data.userId);
 
     if (!user) {
       throw new RpcException(`User with id ${data.userId} not found`);
@@ -125,7 +136,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
       throw new RpcException(`Role ${data.role} not found`);
     }
 
-    return this.staffRepo.changeUserRole(user,role);
+    return this.staffRepo.changeUserRole(user, role);
   }
 
   async deleteStaff(id: string): Promise<string> {
@@ -135,7 +146,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
     if (!staff) {
       throw new RpcException(`User with id ${id} not found`);
     }
-     await this.staffRepo.deleteStaff(id);
+    await this.staffRepo.deleteStaff(id);
     return 'User deleted successfully with id: ' + id;
   }
   async findStaffById(id: string): Promise<User> {

@@ -105,6 +105,8 @@ export const PATTERNS = {
   ORDER_CREATE_AND_VALIDATE: 'order.createAndValidate',
   ORDER_FIND_CATEGORICAL: 'order.getCategorical',
   ORDER_FIND_STATUS_LOG: 'order.getStatusLog',
+  ORDER_CANCEL: 'order.cancel',
+  ORDER_ADD_EXCEPTION: 'order.addException',
   
   //Dispatch Management System
   DISPATCH_CREATE: 'dispatch.create',

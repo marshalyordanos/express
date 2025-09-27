@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PATTERNS } from 'src/contracts';
-import { CreateOrderDto, ValidateOrderDto } from './order.entity';
+import { AddException, CancelOrderDto, CreateOrderDto, UpdateOrderDto, ValidateOrderDto } from './order.entity';
 import { Public } from 'src/common/decorator/public.decorator';
 import { OrderUseCasesImpl } from './order.usecase.impl';
 import { FulfillmentType, OrderStatus, ServiceType } from '@prisma/client'; // assuming you use Prisma enums
@@ -76,6 +76,13 @@ export class OrderMessageController {
   }
 
   @Public()
+  @MessagePattern(PATTERNS.ORDER_UPDATE)
+  async updateOrder(@Payload() payload: { id: string; data: UpdateOrderDto}) {
+    
+    const result = await this.orderUseCases.updateOrder(payload.id, payload.data);
+    return IResponse.success('Order updated successfully', result);
+  }
+  @Public()
   @MessagePattern(PATTERNS.ORDER_APPROVE)
   async approveOrder(@Payload() payload: any) {
     const orderId = payload.orderId;
@@ -89,12 +96,47 @@ export class OrderMessageController {
     );
   }
 
+  @Public()
+  @MessagePattern(PATTERNS.ORDER_CANCEL)
+  async cancelOrder(@Payload() payload: CancelOrderDto) {
+    console.log("payload: ", payload);
+    
+    const orderId = payload.orderId;
+    const result = await this.orderUseCases.cancelOrder(payload);
+    return IResponse.success(
+      `Order with id: ${orderId} cancelled.`,
+      result,
+    );
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.ORDER_FIND_PENDING_APPROVAL)
+  async getPendingApproval(@Payload() payload: any) {
+    const { filters, page, pageSize } = payload;
+
+    const result = await this.orderUseCases.getPendingApproval(filters,
+      page,
+      pageSize);
+    return IResponse.success(
+      `Order pending for approval fetched successfully.`,
+      result,
+    );
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.ORDER_ADD_EXCEPTION)
+  async addException(@Payload() payload: AddException) {
+      const orderId = payload.orderId;
+    const result = await this.orderUseCases.addException(payload);
+    return IResponse.success(`Order with id: ${orderId} Added to Exception successfully.`,result);
+  }
+
   //COMPLETED
   @Public()
   @MessagePattern(PATTERNS.ORDER_FIND_CATEGORICAL)
   async getOrdersGroupedByScope(@Payload() payload: any) {
     const result = await this.orderUseCases.getOrdersGroupedByScope(payload);
-    return IResponse.success('Dangerous Orders fetched successfully ', result);
+    return IResponse.success('Categorization Orders fetched successfully ', result);
   }
 
   //COMPLETED
@@ -125,11 +167,6 @@ export class OrderMessageController {
     return IResponse.success('Order fetched successfully', result);
   }
 
-  @Public()
-  @MessagePattern(PATTERNS.ORDER_UPDATE_STATUS)
-  async updateOrderStatus(id: string, data: any) {
-    return this.orderUseCases.updateOrderStatus(id, data);
-  }
 
   @Public()
   @MessagePattern(PATTERNS.ORDER_FIND_BY_TRACK_CODE)
