@@ -131,6 +131,30 @@ export class OrderMessageController {
     return IResponse.success(`Order with id: ${orderId} Added to Exception successfully.`,result);
   }
 
+  @Public()
+  @MessagePattern(PATTERNS.ORDER_FIND_EXCEPTIONS)
+  async getException(@Payload() payload: any) {
+    const { search, page, pageSize } = payload;
+    const result = await this.orderUseCases.getException(search,
+      page,
+      pageSize);
+    return IResponse.success(
+      `Order Exception fetched successfully.`,
+      result,
+    );
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.ORDER_REMOVE_EXCEPTION)
+  async solveExceptions(@Payload() payload: any) {
+    const { orderId, data } = payload;
+    const result = await this.orderUseCases.solveExceptions(orderId,data);
+    return IResponse.success(
+      `Order exception resolved successfully.`,
+      result,
+    );
+  }
+
   //COMPLETED
   @Public()
   @MessagePattern(PATTERNS.ORDER_FIND_CATEGORICAL)

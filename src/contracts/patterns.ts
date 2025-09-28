@@ -107,6 +107,8 @@ export const PATTERNS = {
   ORDER_FIND_STATUS_LOG: 'order.getStatusLog',
   ORDER_CANCEL: 'order.cancel',
   ORDER_ADD_EXCEPTION: 'order.addException',
+  ORDER_FIND_EXCEPTIONS: 'order.getExceptions',
+  ORDER_REMOVE_EXCEPTION: 'order.removeException',
   
   //Dispatch Management System
   DISPATCH_CREATE: 'dispatch.create',

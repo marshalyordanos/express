@@ -24,4 +24,5 @@ export interface OrderUseCases {
     addException(data: AddException): Promise<any>;
     getPendingApproval(filters: string, page: number, pageSize: number): Promise<any>;
     updateOrder(orderId: string, data: UpdateOrderDto): Promise<any>;
+    getException(search: any, page: number, pageSize: number): Promise<any>
 }

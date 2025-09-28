@@ -279,11 +279,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     };
   }
 
-  async completeDelivery(
-    orderId: string,
-    driverId: string,
-    notes?: string,
-  ) {
+  async completeDelivery(orderId: string, driverId: string, notes?: string) {
     const order = await this.dispatchRepo.findOrderById(orderId);
     if (!order) {
       throw new RpcException({
@@ -427,12 +423,12 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     newOrderIds: string[],
     updateData?: Partial<BatchDispatchDto>,
   ) {
-    console.log("Controller received payload:", batchId);
-    
+    console.log('Controller received payload:', batchId);
+
     const batch = await this.dispatchRepo.findBatchById(batchId);
 
-    console.log(" batch :", batch);
-    
+    console.log(' batch :', batch);
+
     if (!batch) {
       throw new RpcException({
         statusCode: 404,
@@ -463,6 +459,13 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         'DELIVERED_TO_AIRPORT',
         'ARRIVED_AT_DESTINATION',
         'CLOSED',
+        'PICKEDUP',
+        'COLLECTED',
+        'IN_TRANSIT',
+        'OUT_FOR_BRANCH_TRANSFER',
+        'OUT_FOR_DELIVERY',
+        'COMPLETED',
+        'CANCELLED',
       ].includes(batch.status)
     ) {
       throw new RpcException({
@@ -502,6 +505,21 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     //   throw new RpcException(
     //     `Service type mismatch: ${serviceMismatch.map((o) => o.id).join(', ')}`,
     //   );
+
+    // Branch validation when batch is at branch
+    if (batch.status === 'AT_BRANCH') {
+      const branchMismatch = orders.filter((o) => o.branchId !== batch.origin);
+      if (branchMismatch.length) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Branch mismatch: Orders ${branchMismatch
+            .map((o) => o.id)
+            .join(
+              ', ',
+            )} do not belong to the batch's origin branch (${batch.origin}).`,
+        });
+      }
+    }
 
     // Update batch info if provided
     const updatedBatch = await this.dispatchRepo.addOrdersToBatch(

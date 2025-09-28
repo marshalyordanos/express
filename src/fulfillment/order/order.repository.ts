@@ -1,6 +1,10 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateOrderDto, UpdateOrderDto, ValidateOrderDto } from './order.entity';
+import {
+  CreateOrderDto,
+  UpdateOrderDto,
+  ValidateOrderDto,
+} from './order.entity';
 import {
   VehicleStatus,
   OrderStatus,
@@ -11,7 +15,6 @@ import { AddressDto } from 'src/operations/user/user.entity';
 
 @Injectable()
 export class OrderRepository {
-
   constructor(private prisma: PrismaService) {}
   async trackOrder(orderId: string) {
     return this.prisma.orderTracking.findMany({
@@ -33,7 +36,6 @@ export class OrderRepository {
         isStaff: false,
         roleId: null,
       },
-
     });
   }
 
@@ -76,6 +78,56 @@ export class OrderRepository {
       where: { id: paymentId },
     });
   }
+
+  async getException(skip: number, pageSize: number, where: any) {
+    return await this.prisma.orderException.findMany({
+      skip,
+      take: pageSize,
+      where,
+      include: {
+        order: {
+          include: {
+            customer: true,
+            branch: true,
+            driver: true,
+            payment: true,
+          },
+        },
+      },
+    });
+  }
+
+  async solveException(orderId: string, data: UpdateOrderDto) {
+    return this.prisma.$transaction(async (tx) => {
+      // Clean incoming data (remove null/undefined)
+      const cleanedData = Object.fromEntries(
+        Object.entries(data).filter(
+          ([_, value]) => value !== undefined && value !== null,
+        ),
+      );
+
+      // Force status back to PENDING
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          ...cleanedData,
+          status: 'PENDING',
+        },
+      });
+
+      await tx.orderTracking.create({
+        data: {
+          orderId,
+          status: updatedOrder.status, // log current status after update
+          // updatedBy,
+          notes: `Order resolved for exception `,
+        },
+      });
+
+      return updatedOrder;
+    });
+  }
+
   async createOrder(
     data: any,
     customerConnect: any,
@@ -123,33 +175,34 @@ export class OrderRepository {
     return order;
   }
 
-async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
-  return this.prisma.$transaction(async (tx) => {
-    // remove undefined / null values so Prisma only updates what's present
-    const cleanedData = Object.fromEntries(
-      Object.entries(data).filter(([_, value]) => value !== undefined && value !== null)
-    );
+  async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
+    return this.prisma.$transaction(async (tx) => {
+      // remove undefined / null values so Prisma only updates what's present
+      const cleanedData = Object.fromEntries(
+        Object.entries(data).filter(
+          ([_, value]) => value !== undefined && value !== null,
+        ),
+      );
 
-    // 1. Update the order
-    const updatedOrder = await tx.order.update({
-      where: { id: orderId },
-      data: cleanedData,
+      // 1. Update the order
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: cleanedData,
+      });
+
+      // 2. Track the update
+      await tx.orderTracking.create({
+        data: {
+          orderId,
+          status: updatedOrder.status, // log current status after update
+          // updatedBy,
+          notes: `Order updated with fields: ${Object.keys(cleanedData).join(', ')}`,
+        },
+      });
+
+      return updatedOrder;
     });
-
-    // 2. Track the update
-    await tx.orderTracking.create({
-      data: {
-        orderId,
-        status: updatedOrder.status, // log current status after update
-        // updatedBy,
-        notes: `Order updated with fields: ${Object.keys(cleanedData).join(', ')}`,
-      },
-    });
-
-    return updatedOrder;
-  });
-}
-
+  }
 
   async createOrderAndValidate(
     data: ValidateOrderDto,
@@ -161,8 +214,8 @@ async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
     location: string,
     updatedBy: string,
   ) {
-    console.log("Validator: ", data.validatedBy);
-    
+    console.log('Validator: ', data.validatedBy);
+
     const order = await this.prisma.order.create({
       data: {
         trackingCode,
@@ -234,7 +287,12 @@ async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
     return result;
   }
 
-  async validateOrder(orderId: string, officerId: string,location: string, data: any) {
+  async validateOrder(
+    orderId: string,
+    officerId: string,
+    location: string,
+    data: any,
+  ) {
     console.log('updates: ', data);
 
     const result = await Promise.all([
@@ -304,21 +362,21 @@ async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
     return result;
   }
 
-   async getPendingApprovals(skip: number, pageSize: number): Promise<any> {
+  async getPendingApprovals(skip: number, pageSize: number): Promise<any> {
     return await Promise.all([
       await this.prisma.parcelApproval.findMany({
-      skip,
-      take: pageSize,
-      where: {
-        status: 'PENDING',
-      },
-    }),
+        skip,
+        take: pageSize,
+        where: {
+          status: 'PENDING',
+        },
+      }),
       await this.prisma.parcelApproval.count({
         where: {
           status: 'PENDING',
         },
       }),
-    ])
+    ]);
   }
 
   async getAllOrders(
@@ -354,7 +412,8 @@ async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
     if (filters.driverId) where.driverId = filters.driverId;
     if (filters.serviceType) where.serviceType = filters.serviceType;
     if (filters.payment) where.paymentId = filters.payment;
-    if (filters.fulfillmentType) where.fulfillmentType = filters.fulfillmentType;
+    if (filters.fulfillmentType)
+      where.fulfillmentType = filters.fulfillmentType;
 
     const [orders, total] = await Promise.all([
       this.prisma.order.findMany({
@@ -492,33 +551,35 @@ async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
     return result;
   }
 
-   async getOrdersGroupedByScope(skip: number, pageSize: number) {
+  async getOrdersGroupedByScope(skip: number, pageSize: number) {
     const orders = await Promise.all([
       await this.prisma.order.findMany({
-      skip,
-      take: pageSize,
-      where: { batchId: null, status: "APPROVED" },
-      select: {
-        id: true,
-        trackingCode: true,
-        shippingScope: true,
-        serviceType: true,
-        category: true,
-        isFragile: true,
-        deliveryAddress: true,
-        weight: true,
-        height: true,
-        width: true,
-        length: true,
-        shipmentType: true,
-        isUnusual: true,
-        unusualReason: true,
-        notes: true,
-        validatedNotes: true
-      },
-    }),
-      await this.prisma.order.count({ where: { batchId: null, status: "APPROVED" } }),
-    ])
+        skip,
+        take: pageSize,
+        where: { batchId: null, status: 'APPROVED' },
+        select: {
+          id: true,
+          trackingCode: true,
+          shippingScope: true,
+          serviceType: true,
+          category: true,
+          isFragile: true,
+          deliveryAddress: true,
+          weight: true,
+          height: true,
+          width: true,
+          length: true,
+          shipmentType: true,
+          isUnusual: true,
+          unusualReason: true,
+          notes: true,
+          validatedNotes: true,
+        },
+      }),
+      await this.prisma.order.count({
+        where: { batchId: null, status: 'APPROVED' },
+      }),
+    ]);
     return orders;
   }
 
@@ -530,85 +591,89 @@ async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
         where,
       }),
       this.prisma.orderTracking.count({
-        where
-      })
-    ])
+        where,
+      }),
+    ]);
   }
 
-async addException(orderId: string, reason: string, type: string, userId?: string) {
-  return this.prisma.$transaction(async (tx) => {
-    // Step 1: Add the exception
-    const exception = await tx.orderException.create({
-      data: {
-        orderId,
-        reason,
-        type,
-      },
-    });
-
-    // Step 2: Update order status
-    const updatedOrder = await tx.order.update({
-      where: { id: orderId },
-      data: { status: 'EXCEPTION' }, 
-    });
-
-    // Step 3: Add order tracking
-    await tx.orderTracking.create({
-      data: {
-        orderId,
-        status: 'EXCEPTION',
-        // updatedBy: userId || 'system',
-        notes: `Exception: ${reason} (Type: ${type})`,
-      },
-    });
-
-    return { exception, updatedOrder };
-  });
-}
-
-
-async cancelOrder(orderId: string, reason: string, userId?: string) {
-  return this.prisma.$transaction(async (tx) => {
-    // 1. Update order status to CANCELED
-    const canceledOrder = await tx.order.update({
-      where: { id: orderId },
-      data: { status: OrderStatus.CANCELED },
-    });
-
-    // 2. If the order is part of a batch, remove it from that batch
-    if (canceledOrder.batchId) {
-      await tx.batchDispatch.update({
-        where: { id: canceledOrder.batchId },
+  async addException(
+    orderId: string,
+    reason: string,
+    type: string,
+    userId?: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      // Step 1: Add the exception
+      const exception = await tx.orderException.create({
         data: {
-          orders: {
-            disconnect: { id: orderId }, 
-          },
+          orderId,
+          reason,
+          type,
         },
       });
-    }
 
-    // 3. Add the exception with cancelation reason
-    await tx.orderException.create({
-      data: {
-        orderId,
-        reason,
-        type: "CANCELLED",
-      },
+      // Step 2: Update order status
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: { status: 'EXCEPTION' },
+      });
+
+      // Step 3: Add order tracking
+      await tx.orderTracking.create({
+        data: {
+          orderId,
+          status: 'EXCEPTION',
+          // updatedBy: userId || 'system',
+          notes: `Exception: ${reason} (Type: ${type})`,
+        },
+      });
+
+      return { exception, updatedOrder };
     });
+  }
 
-    // 4. Log the cancellation for tracking
-    await tx.orderTracking.create({
-      data: {
-        orderId,
-        status: OrderStatus.CANCELED,
-        // updatedBy: 'User', 
-        notes: 'Order canceled and removed from batch (if any).',
-      },
+  async cancelOrder(orderId: string, reason: string, userId?: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Update order status to CANCELED
+      const canceledOrder = await tx.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.CANCELED },
+      });
+
+      // 2. If the order is part of a batch, remove it from that batch
+      if (canceledOrder.batchId) {
+        await tx.batchDispatch.update({
+          where: { id: canceledOrder.batchId },
+          data: {
+            orders: {
+              disconnect: { id: orderId },
+            },
+          },
+        });
+      }
+
+      // 3. Add the exception with cancelation reason
+      await tx.orderException.create({
+        data: {
+          orderId,
+          reason,
+          type: 'CANCELLED',
+        },
+      });
+
+      // 4. Log the cancellation for tracking
+      await tx.orderTracking.create({
+        data: {
+          orderId,
+          status: OrderStatus.CANCELED,
+          // updatedBy: 'User',
+          notes: 'Order canceled and removed from batch (if any).',
+        },
+      });
+
+      return canceledOrder;
     });
-
-    return canceledOrder;
-  });
-}
+  }
   private async logOrderStatus(
     orderId: string,
     status: OrderStatus,

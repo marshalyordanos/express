@@ -81,6 +81,24 @@ export class OrderGatewayController {
     return this.orderClient.send(PATTERNS.ORDER_ADD_EXCEPTION, data);
   }
 
+  @Get('/exception')
+  async getException(
+    @Query('search') search?: string,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+  ) {
+    return this.orderClient.send(PATTERNS.ORDER_FIND_EXCEPTIONS, {
+      page: page ? Number(page) : 1,
+      pageSize: pageSize ? Number(pageSize) : 10,
+      search: search || null,
+    });
+  }
+
+  @Patch('/exception/:id')
+  async updateException(@Body() data: UpdateOrderDto, @Param('id') orderId: string) {
+    return this.orderClient.send(PATTERNS.ORDER_REMOVE_EXCEPTION, { orderId, data });
+  }
+
   // ✅ NEW unified GET endpoint with filters
   @Get()
   async getAllOrders(
@@ -113,19 +131,18 @@ export class OrderGatewayController {
     });
   }
 
- @Get('/approval/pending')
+  @Get('/approval/pending')
   async getPendingApprovalOrders(
     @Query('search') search?: string,
     @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number
+    @Query('pageSize') pageSize?: number,
   ) {
     return this.orderClient.send(PATTERNS.ORDER_FIND_PENDING_APPROVAL, {
-      search: search ,
+      search: search,
       page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10
+      pageSize: pageSize ? Number(pageSize) : 10,
     });
   }
-
 
   @Get('/status/log')
   async getOrderStatusLog(
@@ -133,14 +150,14 @@ export class OrderGatewayController {
     @Query('staffId') staffId?: string,
     @Query('search') search?: string,
     @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number
+    @Query('pageSize') pageSize?: number,
   ) {
     return this.orderClient.send(PATTERNS.ORDER_FIND_STATUS_LOG, {
-      orderId: orderId ,
+      orderId: orderId,
       updatedBy: staffId,
-      search: search ,
+      search: search,
       page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10
+      pageSize: pageSize ? Number(pageSize) : 10,
     });
   }
 

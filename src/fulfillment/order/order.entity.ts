@@ -16,6 +16,7 @@ import {
   ShipmentType,
   ShippingScope,
   ParcelCategory,
+  OrderStatus,
 } from '@prisma/client';
 import { PartialType } from '@nestjs/mapped-types';
 
@@ -163,6 +164,10 @@ export class UpdateOrderDto {
   // @IsString()
   // @IsOptional()
   // driverId?: string;
+
+  @IsEnum(ServiceType)
+  @IsOptional()
+  status: OrderStatus;
 
   @IsEnum(ServiceType)
   @IsOptional()

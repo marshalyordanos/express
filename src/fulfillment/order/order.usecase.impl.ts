@@ -15,6 +15,8 @@ import { IPagination, IResponse } from 'src/common/types';
 
 @Injectable()
 export class OrderUseCasesImpl implements OrderUseCases {
+
+
   constructor(private readonly orderRepo: OrderRepository) {}
   //Customer order creating API: For customer to create for it self and staff/Admin to create for customer
   async createOrder(data: any): Promise<any> {
@@ -100,6 +102,17 @@ export class OrderUseCasesImpl implements OrderUseCases {
       location,
       updatedBy,
     );
+  }
+
+   async solveExceptions(orderId: string,data: UpdateOrderDto): Promise<any> {
+    const order= await this.orderRepo.getOrderById(orderId);
+    if (!order) {
+      throw new RpcException(`Order with ID ${orderId} not found`);
+    }
+    if(order.status !== 'EXCEPTION'){
+      throw new RpcException(`Order with ID ${orderId} is not in exception state`);
+    }
+    return this.orderRepo.solveException(orderId,data);
   }
 
   async acceptDropOff(trackingCode: string): Promise<any> {
@@ -275,6 +288,19 @@ export class OrderUseCasesImpl implements OrderUseCases {
     return this.orderRepo.getOrderById(id);
   }
 
+   async getException(search: any, page: number, pageSize: number): Promise<any> {
+    const skip = (page - 1) * pageSize;
+
+        const where: any = {};
+    if (search) {
+      where.OR = [
+        { location: { contains: search, mode: 'insensitive' } },
+        { notes: { contains: search, mode: 'insensitive' } },
+        { status: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    return await this.orderRepo.getException(skip, pageSize, where);
+  }
   async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
     const order= await this.orderRepo.getOrderById(orderId);
     if(!order){
