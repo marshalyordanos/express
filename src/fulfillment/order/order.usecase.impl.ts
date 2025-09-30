@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { OrderUseCases } from './order.usecase';
-import { AddException, CancelOrderDto, CreateOrderDto, UpdateOrderDto, ValidateOrderDto } from './order.entity';
+import {
+  AddException,
+  CancelOrderDto,
+  CreateOrderDto,
+  UpdateOrderDto,
+  ValidateOrderDto,
+} from './order.entity';
 import { OrderRepository } from './order.repository';
 import {
   FulfillmentType,
@@ -15,8 +21,6 @@ import { IPagination, IResponse } from 'src/common/types';
 
 @Injectable()
 export class OrderUseCasesImpl implements OrderUseCases {
-
-
   constructor(private readonly orderRepo: OrderRepository) {}
   //Customer order creating API: For customer to create for it self and staff/Admin to create for customer
   async createOrder(data: any): Promise<any> {
@@ -104,15 +108,17 @@ export class OrderUseCasesImpl implements OrderUseCases {
     );
   }
 
-   async solveExceptions(orderId: string,data: UpdateOrderDto): Promise<any> {
-    const order= await this.orderRepo.getOrderById(orderId);
+  async solveExceptions(orderId: string, data: UpdateOrderDto): Promise<any> {
+    const order = await this.orderRepo.getOrderById(orderId);
     if (!order) {
       throw new RpcException(`Order with ID ${orderId} not found`);
     }
-    if(order.status !== 'EXCEPTION'){
-      throw new RpcException(`Order with ID ${orderId} is not in exception state`);
+    if (order.status !== 'EXCEPTION') {
+      throw new RpcException(
+        `Order with ID ${orderId} is not in exception state`,
+      );
     }
-    return this.orderRepo.solveException(orderId,data);
+    return this.orderRepo.solveException(orderId, data);
   }
 
   async acceptDropOff(trackingCode: string): Promise<any> {
@@ -288,10 +294,14 @@ export class OrderUseCasesImpl implements OrderUseCases {
     return this.orderRepo.getOrderById(id);
   }
 
-   async getException(search: any, page: number, pageSize: number): Promise<any> {
+  async getException(
+    search: any,
+    page: number,
+    pageSize: number,
+  ): Promise<any> {
     const skip = (page - 1) * pageSize;
 
-        const where: any = {};
+    const where: any = {};
     if (search) {
       where.OR = [
         { location: { contains: search, mode: 'insensitive' } },
@@ -302,8 +312,8 @@ export class OrderUseCasesImpl implements OrderUseCases {
     return await this.orderRepo.getException(skip, pageSize, where);
   }
   async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
-    const order= await this.orderRepo.getOrderById(orderId);
-    if(!order){
+    const order = await this.orderRepo.getOrderById(orderId);
+    if (!order) {
       throw new RpcException({
         statusCode: 404,
         message: `Order with ID ${orderId} not found.`,
@@ -407,7 +417,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
       pageSize,
       where,
     );
-    
+
     // Group by orderId
     const ordersLogGrouped = Object.entries(
       ordersLogFlat.reduce(
@@ -439,7 +449,11 @@ export class OrderUseCasesImpl implements OrderUseCases {
     };
   }
 
-  async getPendingApproval(filters: string, page: number, pageSize: number): Promise<any> {
+  async getPendingApproval(
+    filters: string,
+    page: number,
+    pageSize: number,
+  ): Promise<any> {
     const skip = (page - 1) * pageSize;
 
     return await this.orderRepo.getPendingApprovals(skip, pageSize);
@@ -447,13 +461,13 @@ export class OrderUseCasesImpl implements OrderUseCases {
 
   async cancelOrder(data: CancelOrderDto): Promise<any> {
     const { orderId, reason } = data;
-    return await this.orderRepo.cancelOrder(orderId, reason );
+    return await this.orderRepo.cancelOrder(orderId, reason);
   }
 
   async addException(data: AddException): Promise<any> {
     const { orderId, reason, type } = data;
-    const order= await this.orderRepo.getOrderById(orderId);
-    if(!order){
+    const order = await this.orderRepo.getOrderById(orderId);
+    if (!order) {
       throw new RpcException({
         code: 404,
         message: `Order with id ${orderId} not found`,

@@ -61,14 +61,18 @@ export class BranchGatewayController {
   @Post('assign-manager')
   async assignManager(@Body() data: { branchId: string; managerId: string }) {
     console.log('Controller received:', data); // Debug log
-    return this.branchClient.send(PATTERNS.BRANCH_ASSIGN_MANAGER,{ branchId: data.branchId, managerId: data.managerId });
+    return this.branchClient.send(PATTERNS.BRANCH_ASSIGN_MANAGER, {
+      branchId: data.branchId,
+      managerId: data.managerId,
+    });
   }
-
 
   @Post('revoke-manager')
   async revokeManager(@Body() data: { branchId: string; managerId: string }) {
     console.log('Controller received:', data); // Debug log
-    return this.branchClient.send(PATTERNS.BRANCH_REVOKE_MANAGER,{ branchId: data.branchId, managerId: data.managerId });
+    return this.branchClient.send(PATTERNS.BRANCH_REVOKE_MANAGER, {
+      branchId: data.branchId,
+      managerId: data.managerId,
+    });
   }
-
 }

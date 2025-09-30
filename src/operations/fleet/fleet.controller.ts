@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common';
+import { Controller, UseGuards } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PATTERNS } from '../../contracts';
 import { FleetUseCasesImp } from './fleet.usecase.impl';
@@ -12,6 +12,9 @@ import {
 import { IResponse } from '../../common/types';
 import { handleCatch } from '../../common/handleCatch';
 import { Public } from '../../common/decorator/public.decorator';
+import { CheckPermission } from '../../common/decorator/check-permission.decorator';
+import { PermissionGuard } from '../../common/permission.guard';
+import { PermissionActions } from '../../contracts/permission-actions.enum';
 
 @Controller()
 export class FleetMessageController {
@@ -32,6 +35,8 @@ export class FleetMessageController {
   }
 
   // Get all vehicles (with pagination)
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.READ)
   @MessagePattern(PATTERNS.FLEET_GET_ALL_VEHICLES)
   async getAllVehicles(@Payload() payload: any) {
     try {

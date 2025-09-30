@@ -32,28 +32,6 @@ export class UserUseCasesImp implements UserUsecase {
   }
 
   async getAllUsers(query: ListQueryDto) {
-    // const skip = (page - 1) * pageSize;
-
-    // // Dynamic filters
-    // const where: any = {};
-
-    // if (search) {
-    //   where.OR = [
-    //     { name: { contains: search, mode: 'insensitive' } },
-    //     { email: { contains: search, mode: 'insensitive' } },
-    //     { phone: { contains: search, mode: 'insensitive' } },
-    //   ];
-    // }
-
-    // if (branchId) {
-    //   where.branchId = branchId;
-    // }
-
-    // const [users, total] = await this.userRepo.findAll(skip, pageSize, where);
-
-    // const totalPages = Math.ceil(total / pageSize);
-    console.log('usecase: ', query);
-
     const res = await this.userRepo.findAll(query);
 
     return res;
@@ -89,5 +67,15 @@ export class UserUseCasesImp implements UserUsecase {
 
   updateCorporateInfo(userId: string, data: UpdateCorporateInfoDto) {
     return this.userRepo.updateCorporateInfo(userId, data);
+  }
+  async getCustomerOrder(query: ListQueryDto, customerId: string) {
+    return this.userRepo.getCustomerOrders(query, customerId);
+  }
+  async getAllCustomer(query: ListQueryDto) {
+    const role = await this.userRepo.findRoleByName('CUSTOMER');
+    if (!role) {
+      throw new RpcException('CUSTOMER role is not found!');
+    }
+    return this.userRepo.getAllCustomer(query, role.id);
   }
 }

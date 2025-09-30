@@ -28,7 +28,7 @@ export class UserRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['name'],
+      searchableFields: ['name', 'email', 'phone'],
     });
 
     const query = feature.getQuery();
@@ -37,6 +37,8 @@ export class UserRepository {
     const results = await Promise.all([
       this.prisma.user.findMany({
         ...query,
+
+        where: query.where || {},
         select: {
           name: true,
           email: true,
@@ -53,7 +55,6 @@ export class UserRepository {
           corporateInfo: true,
           preferences: true,
         },
-        where: query.where || {},
       }),
       this.prisma.user.count({ where: query.where || {} }),
     ]);
@@ -64,25 +65,63 @@ export class UserRepository {
       models,
       pagination: feature.getPagination(total),
     };
-    // return await Promise.all([
-    //   this.prisma.user.findMany({
-    //     skip,
-    //     take: pageSize,
-    //     where,
-    //     select: {
-    //       email: true,
-    //       id: true,
-    //       createdAt: true,
-    //       emailVerified: true,
-    //       branchId: true,
-    //       name: true,
-    //       phone: true,
-    //       role: true,
-    //       refreshTokens: true,
-    //     },
-    //   }),
-    //   this.prisma.user.count({ where }),
-    // ]);
+  }
+  async getAllCustomer(payload: ListQueryDto, roleId: string) {
+    if (/roleId:[^,]*/.test(payload.filter)) {
+      payload.filter = payload.filter.replace(
+        /roleId:[^,]*/,
+        `roleId:${roleId}`,
+      );
+    } else {
+      payload.filter = payload.filter
+        ? payload.filter + `,roleId:${roleId}`
+        : `roleId:${roleId}`;
+    }
+    console.log('quest1: ', payload);
+
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['name', 'email', 'phone'],
+    });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
+      this.prisma.user.findMany({
+        ...query,
+
+        where: query.where || {},
+        select: {
+          name: true,
+          email: true,
+          phone: true,
+
+          isStaff: true,
+          isSuperAdmin: true,
+
+          createdAt: true,
+          branch: true,
+          addresses: true,
+          customerType: true,
+          role: true,
+          corporateInfo: true,
+          preferences: true,
+        },
+      }),
+      this.prisma.user.count({ where: query.where || {} }),
+    ]);
+
+    const models = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      models,
+      pagination: feature.getPagination(total),
+    };
   }
 
   async updateUser(id: string, data: Partial<UserUpdateDto>): Promise<User> {
@@ -154,5 +193,45 @@ export class UserRepository {
     });
 
     return updatedCorporate;
+  }
+  async getCustomerOrders(payload: ListQueryDto, id: string): Promise<any> {
+    if (/customerId:[^,]*/.test(payload.filter)) {
+      payload.filter = payload.filter.replace(
+        /customerId:[^,]*/,
+        `customerId:${id}`,
+      );
+    } else {
+      payload.filter = payload.filter
+        ? payload.filter + `,customerId:${id}`
+        : `customerId:${id}`;
+    }
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: [],
+    });
+    const query = feature.getQuery();
+
+    const results = await Promise.all([
+      this.prisma.order.findMany({
+        ...query,
+        where: query.where || {},
+      }),
+      this.prisma.order.count({ where: query.where || {} }),
+    ]);
+
+    const models = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      models,
+      pagination: feature.getPagination(total),
+    };
+  }
+
+  async findRoleByName(name: string) {
+    return this.prisma.role.findUnique({ where: { name: name } });
   }
 }

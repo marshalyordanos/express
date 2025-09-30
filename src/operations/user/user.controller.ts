@@ -160,6 +160,42 @@ export class UserMessageController {
       handleCatch(error);
     }
   }
+  @MessagePattern(PATTERNS.USER_ALL_CUSTOMERS)
+  async findAllCustomers(@Payload() payload: { query: ListQueryDto }) {
+    try {
+      const result = await this.usecases.getAllCustomer(payload.query);
+
+      return IResponse.success(
+        'Customers fetched successfully',
+        result.models,
+        result.pagination,
+      );
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @MessagePattern(PATTERNS.CUSTOMER_ORDERS)
+  async getCustomerOrder(
+    @Payload() payload: { user: any; query: ListQueryDto },
+  ) {
+    try {
+      const user = payload.user;
+
+      const result = await this.usecases.getCustomerOrder(
+        payload.query,
+        user.sub,
+      );
+
+      return IResponse.success(
+        'Customer orders fetched successfully',
+        result.models,
+        result.pagination,
+      );
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
 }
 
 // import { Controller, Get, Post, Put, Param, Body } from '@nestjs/common';

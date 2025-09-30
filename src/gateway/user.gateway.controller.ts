@@ -110,6 +110,24 @@ export class UserGatewayController {
     return this.usersClient.send(PATTERNS.USER_FIND_BY_ID, { id });
   }
 
+  @Get('customers/order')
+  async getCustomerOrder(@Req() req, @Query() query: ListQueryDto) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.usersClient.send(PATTERNS.CUSTOMER_ORDERS, {
+      headers: { authorization: authHeader },
+      query,
+    });
+  }
+  @Get('customers')
+  async findAllCustomers(@Req() req, @Query() query: ListQueryDto) {
+    const authHeader = req.headers['authorization'] || null;
+    console.log('=================: ', query);
+    return this.usersClient.send(PATTERNS.USER_ALL_CUSTOMERS, {
+      headers: { authorization: authHeader },
+      query,
+    });
+  }
+
   @Get()
   async findAll(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;

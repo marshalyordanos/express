@@ -47,12 +47,7 @@ export class PermissionGuard implements CanActivate {
       include: { permission: true },
     });
     // console.log(rolePermissions);
-    console.log(
-      rolePermissions[0].permission.resource,
-      resource,
-      action,
-      rolePermissions[0][action],
-    );
+
     // Dynamically check the action
     const hasPermission = rolePermissions.some(
       (rp) => rp.permission.resource === resource && rp[action],

@@ -1,4 +1,4 @@
-import { Controller, Inject } from '@nestjs/common';
+import { Controller, Inject, UseGuards } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PATTERNS } from '../../contracts';
 import { IResponse } from '../../common/types';
@@ -11,11 +11,16 @@ import {
   BranchUpdateDto,
 } from './branch.entity';
 import { BranchUseCaseImpl } from './branch.useCase.impl';
+import { PermissionGuard } from '../../common/permission.guard';
+import { PermissionActions } from '../../contracts/permission-actions.enum';
+import { CheckPermission } from '../../common/decorator/check-permission.decorator';
 
 @Controller()
 export class BranchMessageController {
   constructor(private readonly usecases: BranchUseCaseImpl) {}
 
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Branch', PermissionActions.CREATE)
   @Public()
   @MessagePattern(PATTERNS.BRANCH_CREATE)
   async createBranch(@Payload() data: BranchCreateDto) {
@@ -100,6 +105,8 @@ export class BranchMessageController {
     } catch (error) {}
   }
 
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Branch', PermissionActions.READ)
   @Public()
   @MessagePattern(PATTERNS.BRANCH_FIND_ALL)
   async findAllBranches(@Payload() data: any) {
