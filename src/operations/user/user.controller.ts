@@ -5,14 +5,16 @@ import { UserUseCasesImp } from './user.usecase.impl';
 import {
   AddressDto,
   ChangeRoleDto,
+  CustomerCategoryDto,
   PreferencesDto,
   UpdateCorporateInfoDto,
+  UpdateCustomerCategoryDto,
   UserDto,
 } from './user.entity';
 import { Public } from '../../common/decorator/public.decorator';
 import { IResponse } from '../../common/types';
 import { handleCatch } from '../../common/handleCatch';
-import { ListQueryDto } from 'src/common/query/query.dto';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Controller()
 export class UserMessageController {
@@ -192,6 +194,119 @@ export class UserMessageController {
         result.models,
         result.pagination,
       );
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  //===============================================================================Customer Category==============================================================================================
+
+  @Public()
+  @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_CREATE)
+  async createCategory(@Payload() payload: { data: CustomerCategoryDto }) {
+    try {
+      const category = await this.usecases.createCategory(payload.data);
+      return IResponse.success('Category created successfully', category);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_FIND_ALL)
+  async listCategories(@Payload() payload: { query: ListQueryDto }) {
+    try {
+      console.log("Category payload: ", payload);
+      console.log("Category payload query: ", payload.query);
+      
+      const categories = await this.usecases.listCategories(payload.query);
+      return IResponse.success('Categories fetched successfully', categories);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_FIND_BY_ID)
+  async findCategory(@Payload() payload: { id: string }) {
+    try {
+      const category = await this.usecases.findCategory(payload.id);
+      return IResponse.success('Category fetched successfully', category);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_UPDATE)
+  async updateCategory(
+    @Payload() payload: { id: string; data: UpdateCustomerCategoryDto },
+  ) {
+    try {
+      const category = await this.usecases.updateCategory(
+        payload.id,
+        payload.data,
+      );
+      return IResponse.success('Category updated successfully', category);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_DELETE)
+  async deleteCategory(@Payload() payload: { id: string }) {
+    try {
+      const category = await this.usecases.deleteCategory(payload.id);
+      return IResponse.success('Category deleted successfully', category);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_ASSIGN_USER)
+  async findCategoryByName(@Payload() payload: { name: string }) {
+    try {
+      const category = await this.usecases.findCategoryByName(payload.name);
+      return IResponse.success('Category fetched successfully', category);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_ASSIGN_USER)
+  async assignCategoryToUser(
+    @Payload() payload: { data: { customerIds: string[]; customerCategoryId: string }},
+  ) {
+    try {
+      console.log("payload as payload :", payload);
+      
+       const { customerIds, customerCategoryId } = payload.data;
+      console.log('payload: ', customerIds);
+      console.log('payload: ', customerCategoryId);
+      
+      const category = await this.usecases.assignCustomersToCategory(
+        customerIds,
+        customerCategoryId,
+      );
+      return IResponse.success('Category assigned successfully', category);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_UNASSIGN_USER)
+  async unassignCategoryToUser(
+    @Payload() payload: { customerIds: string[]; customerCategoryId: string },
+  ) {
+    try {
+      const category = await this.usecases.removeCustomersFromCategory(
+        payload.customerIds
+      );
+      return IResponse.success('Category unassigned successfully', category);
     } catch (error) {
       handleCatch(error);
     }

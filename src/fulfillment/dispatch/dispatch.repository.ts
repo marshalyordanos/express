@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { AssignDriverForPickup, BatchDispatchDto } from './dispatch.entity';
 import {
   DispatchStatus,
@@ -8,6 +8,8 @@ import {
   OrderStatus,
   Prisma,
 } from '@prisma/client';
+import { ListQueryDto } from '../../common/query/query.dto';
+import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 
 @Injectable()
 export class DispatchRepository {
@@ -218,8 +220,8 @@ export class DispatchRepository {
         include: { batch: true }, // include to get batch info
       });
 
-      console.log("batches for order :", updatedOrder);
-      
+      console.log('batches for order :', updatedOrder);
+
       // 2. If the order has a batch and it's not closed → close it
       if (updatedOrder.batchId) {
         const batch = await tx.batchDispatch.findUnique({
@@ -279,16 +281,12 @@ export class DispatchRepository {
   }
 
   // 3. Deliver order to customer
-  async deliverOrder(
-    trackingCode: string,
-    driverId: string,
-    notes?: string,
-  ) {
+  async deliverOrder(trackingCode: string, driverId: string, notes?: string) {
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({ where: { trackingCode } });
 
       const updatedOrder = await tx.order.update({
-        where: {  trackingCode },
+        where: { trackingCode },
         data: { status: 'DELIVERED', deliveryDate: new Date(), notes },
       });
 
@@ -461,67 +459,59 @@ export class DispatchRepository {
     });
   }
 
-  async getBatches(params: {
-    status?: DispatchStatus;
-    scope?: ShippingScope;
-    serviceType?: ServiceType;
-    fragile?: boolean;
-    unusual?: boolean;
-    search?: string;
-    page: number;
-    pageSize: number;
-  }) {
-    console.log('params', params);
+  async getBatches(payload: ListQueryDto) {
+    console.log('params', payload);
 
-    const {
-      status,
-      scope,
-      serviceType,
-      fragile,
-      unusual,
-      search,
-      page,
-      pageSize,
-    } = params;
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['batchCode', 'origin', 'destination', 'awbNumber'],
+    });
 
-    console.log('scope', scope);
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
 
-    const skip = (page - 1) * pageSize;
-
-    const where: any = {};
-
-    if (status) where.status = status;
-    if (scope) where.scope = scope;
-    if (serviceType) where.serviceType = serviceType;
-    if (fragile !== undefined) where.isFragile = fragile;
-    if (unusual !== undefined) where.orders = { some: { isUnusual: unusual } };
-
-    if (search) {
-      where.OR = [
-        { batchCode: { contains: search, mode: 'insensitive' } },
-        { origin: { contains: search, mode: 'insensitive' } },
-        { destination: { contains: search, mode: 'insensitive' } },
-        { awbNumber: { contains: search, mode: 'insensitive' } },
-        {
-          orders: {
-            some: { trackingCode: { contains: search, mode: 'insensitive' } },
+    // 🔹 If there's a search term, extend query.where.OR with trackingCode search
+    if (payload.search) {
+      query.where = {
+        ...query.where,
+        OR: [
+          ...(query.where?.OR || []),
+          {
+            orders: {
+              some: {
+                trackingCode: { contains: payload.search, mode: 'insensitive' },
+              },
+            },
           },
-        },
-      ];
+        ],
+      };
     }
 
-    const [data, total] = await this.prisma.$transaction([
+    const results = await Promise.all([
       this.prisma.batchDispatch.findMany({
-        where,
-        skip,
-        take: pageSize,
+        ...query,
+        where: query.where || {},
+        include: {
+          orders: true,
+          driver: true,
+          vehicle: true,
+          createdBy: true,
+        },
         orderBy: { createdAt: 'desc' },
-        include: { orders: true, driver: true, vehicle: true, createdBy: true },
       }),
-      this.prisma.batchDispatch.count({ where }),
+      this.prisma.batchDispatch.count({ where: query.where || {} }),
     ]);
 
-    return { data, total };
+    const batches = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      batches,
+      total,
+    };
   }
 
   // New method for batch handover logging

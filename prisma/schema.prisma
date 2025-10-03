@@ -36,6 +36,8 @@ model User {
   role              Role?              @relation(fields: [roleId], references: [id], onDelete: Cascade)
   vehicles          Vehicle[]
   customerType      CustomerType?   
+  customerCategoryId String?
+  customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id]) 
   approvals         ParcelApproval[]   @relation("StaffApprovals")
 
   addresses      Address[]
@@ -43,11 +45,10 @@ model User {
   createdBatches BatchDispatch[] @relation("CreatedBatches")
   driverBatches  BatchDispatch[] @relation("BatchDispatchDriver")
   officerBatches  BatchDispatch[] @relation("BatchDispatchOfficer")
-    handOverBatchesOfficer  BatchHandover[] @relation("HandoverBatchesOfficer")
+  handOverBatchesOfficer  BatchHandover[] @relation("HandoverBatchesOfficer")
 
   corporateInfo CorporateInfo?
 }
-
 
 model CorporateInfo {
   userId        String   @id
@@ -69,6 +70,7 @@ enum CustomerType {
   INDIVIDUAL
   CORPORATE
 }
+
 model Address {
   id          String   @id @default(cuid())
   label       String // e.g. "Home", "Office"
@@ -203,14 +205,20 @@ model Order {
   actualDropoffDate DateTime?
   notes             String?
   cost              Float?
+  distance      Float? 
   validatedBy       String?
   validatedAt       DateTime?
   validatedNotes    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   batchId String?
+
+    // Tariff & Pricing
+  tariffId      String?
+  tariff        Tariff ?    @relation(fields: [tariffId], references: [id], onDelete: Restrict)
+  finalPrice    Float?     // after all surcharges, fees, discounts, margins
+  currency      String?      @default("ETB")
 
   // Relations
   branch          Branch?          @relation(fields: [branchId], references: [id])
@@ -223,6 +231,8 @@ model Order {
   orderTracking   OrderTracking[]
   batch           BatchDispatch?   @relation("BatchOrders", fields: [batchId], references: [id])
   orderScans OrderScan[]  @relation("OrderToOrderScan")
+
+  priceLogs       PriceCalculationLog[] 
 }
 
 model ParcelApproval {
@@ -320,7 +330,6 @@ model OrderScan {
   @@index([batchId])
 }
 
-
 model Payment {
   id            String        @id @default(cuid())
   orderId       String        @unique
@@ -339,10 +348,179 @@ model Pricing {
   zoneFrom    String
   zoneTo      String
   serviceType ServiceType
+  shippingScope ShippingScope?
+  
   surcharge   Float?
   corporateId String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+}
+
+/// ─────────────────── Pricing & Tariff Management ────────────────────────────────
+
+model Tariff {
+  id           String      @id @default(cuid())
+  name         String      // e.g., "Express Tariff"
+  serviceType  ServiceType
+  baseFee      Float       @default(0)   // Minimum starting fee
+  perKmRate    Float       @default(0)   // Cost per kilometer
+  perKgRate    Float       @default(0)   // Cost per kilogram
+  currency     String      @default("ETB")
+  isActive     Boolean     @default(true)
+  effectiveFrom DateTime   @default(now())
+  effectiveTo   DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  shippingScope  ShippingScope?
+  customerCategoryId String?
+  customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id])
+
+  // Relations
+  orders        Order[]
+  surcharges    Surcharge[]
+  discounts     DiscountRule[]
+  miscFees      MiscFee[]
+  airportFees   AirportFee[]
+  profitMargins ProfitMargin[]
+}
+
+model ProfitMargin {
+  id          String      @id @default(cuid())
+  tariffId    String
+  tariff      Tariff      @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+
+  serviceType ServiceType?
+  shippingScope ShippingScope?
+
+  percentage  Float       // e.g. 10% of tariff cost
+  minAmount   Float?      // enforce minimum margin
+  maxAmount   Float?      // optional cap on margin
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model AirportFee {
+  id           String      @id @default(cuid())
+  tariffId     String
+  tariff       Tariff      @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+
+  serviceType   ServiceType?
+  shippingScope ShippingScope?
+
+  airportCode  String      // e.g., "ADD", "DXB"
+  perKgRate    Float?      // Cost per kilogram
+  flatFee      Float?      // Flat airport charge
+  effectiveFrom DateTime   @default(now())
+  effectiveTo   DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model MiscFee {
+  id           String      @id @default(cuid())
+  tariffId     String
+  tariff       Tariff      @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+
+  serviceType ServiceType?
+  shippingScope ShippingScope?
+
+  name         String      // e.g. "Fragile Handling"
+  description  String?
+  feeType     FeeType?   // PERCENTAGE, FLAT, PER_KG
+  amount       Float
+  currency    String?    // e.g., "ETB", "USD"
+  isPercentage Boolean     @default(false) // true = percentage of base tariff
+
+    // New dynamic conditions
+  condition    Json?       // e.g., { "isFragile": true, "category": "ELECTRONICS" }
+
+  effectiveFrom DateTime? @default(now())
+  effectiveTo   DateTime?
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Surcharge {
+  id          String   @id @default(cuid())
+  tariffId    String
+  tariff      Tariff   @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+
+  serviceType ServiceType?
+  shippingScope ShippingScope?
+  name        String   // e.g., "Fuel Surcharge"
+  type        String   // "percentage" or "fixed"
+  value       Float
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DiscountRule {
+  id          String   @id @default(cuid())
+  tariffId    String
+  tariff      Tariff   @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+  
+  shippingScope ShippingScope?
+  serviceType ServiceType?
+  name        String
+  type        String   // "percentage" or "fixed"
+  value       Float
+  validFrom   DateTime
+  validTo     DateTime?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customerCategoryId String?
+  customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id])
+}
+
+model CustomerCategory {
+  id          String   @id @default(cuid())
+  name        String   // e.g., "Individual", "Corporate", "VIP"
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users        User[]
+  tariffs      Tariff[]
+  pricingRules PricingRule[]
+  discountRules DiscountRule[]
+}
+
+model PricingRule {
+  id               String   @id @default(cuid())
+  shippingScope    ShippingScope
+  customerCategoryId String?
+  customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id])
+  adjustmentType    String   // PERCENTAGE, FIXED
+  adjustmentValue   Float
+  validFrom   DateTime
+  validTo     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PriceCalculationLog {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  weight      Float
+  distance    Float?
+  baseRate    Float
+  appliedRate Float
+  surcharges  Json     // applied surcharges
+  discounts   Json     // applied discounts
+  miscFees    Json     // applied misc fees
+  profit      Json     // profit margin applied
+  airportFee  Json?    // applied airport fee if any
+  finalPrice  Float
+  currency    String   @default("ETB")
+  createdAt   DateTime @default(now())
 }
 
 model Notification {
@@ -426,6 +604,13 @@ enum VehicleStatus {
   ACTIVE
   INACTIVE
   MAINTENANCE
+}
+
+enum FeeType {
+  PERCENTAGE   // e.g., 5% of base price
+  FLAT         // fixed amount (e.g., 100 ETB per order)
+  PER_KG       // amount applied per kilogram
+  PER_KM       // amount applied per kilometer
 }
 
 enum OrderStatus {

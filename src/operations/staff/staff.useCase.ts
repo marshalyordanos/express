@@ -1,23 +1,21 @@
 import { Prisma, User } from '@prisma/client';
 import { ChangeRoleDto } from '../user/user.entity';
 import { RegisterStaffDto,UpdateStaffDto } from './staff.entity';
-import { IPagination } from 'src/common/types';
+import { IPagination } from '../../common/types';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 export interface StaffUsecase {
   changeUserRole(data: ChangeRoleDto): Promise<User>;
   createStaff(data: RegisterStaffDto, email: string): Promise<User>;
-  findStaffByRole(data: any): Promise<{
-    users: Partial<User>[];
-    pagination: IPagination;
-  }>;
+  findStaffByRole(query: ListQueryDto, role: string): Promise<any>;
   findAllStaff(
-    data: any,
-  ): Promise<{ users: Partial<User>[]; pagination: IPagination }>;
+    query: ListQueryDto
+  ): Promise<any>;
 //   findUserByEmail(email: string): Promise<User | null>;
 
 deleteStaff(id: string): Promise<string>;
 findStaffById(id: string): Promise<User>;
 updateStaff(id: string, data: UpdateStaffDto): Promise<User>;
-findStaffByBranch(data: any): Promise<{ staffs: Partial<User>[]; pagination: IPagination }>;
+findStaffByBranch( query: ListQueryDto, branchId: string): Promise<any>;
 assignStaffToBranch(staffIds: string[], branchId: string): Promise<Prisma.BatchPayload>;
 }

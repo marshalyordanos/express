@@ -6,6 +6,7 @@ import { Public } from '../../common/decorator/public.decorator';
 import { RoleUseCaseImpl } from './role.useCase.impl';
 import { PATTERNS } from '../../contracts';
 import { RoleCreateDto, RoleUpdateDto } from './role.entity';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Controller()
 export class RoleMessageController {
@@ -33,14 +34,14 @@ export class RoleMessageController {
 
   @Public()
   @MessagePattern(PATTERNS.ROLE_FIND_ALL)
-  async getAllRoles(@Payload() data: any) {
+  async getAllRoles(@Payload() payload: { query: ListQueryDto , headers: { authorization: string } }) {
     try {
-      const user = data.user;
+      const user = payload.headers;
       console.log('Current user:', user);
 
-      const { page = 1, pageSize = 10, search } = data;
+      // const { page = 1, pageSize = 10, search } = data;
 
-      const result = await this.usecases.findAllRoles(page, pageSize, search);
+      const result = await this.usecases.findAllRoles(payload.query);
 
       return IResponse.success(
         'Roles fetched successfully',

@@ -17,7 +17,8 @@ import {
   ShippingScope,
 } from '@prisma/client'; // assuming you use Prisma enums
 import { RpcException } from '@nestjs/microservices';
-import { IPagination, IResponse } from 'src/common/types';
+import { IPagination, IResponse } from '../../common/types';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Injectable()
 export class OrderUseCasesImpl implements OrderUseCases {
@@ -278,38 +279,16 @@ export class OrderUseCasesImpl implements OrderUseCases {
     return this.orderRepo.approveOrder(order, reason, location, updatedBy);
   }
 
-  async getAllOrders(payload: {
-    filters: any;
-    page: number;
-    pageSize: number;
-  }) {
-    const { filters, page, pageSize } = payload;
-    const result = await this.orderRepo.getAllOrders(filters, {
-      page,
-      pageSize,
-    });
+  async getAllOrders(query: ListQueryDto) {
+    const result = await this.orderRepo.getAllOrders(query);
     return result;
   }
   async getOrderById(id: string): Promise<any> {
     return this.orderRepo.getOrderById(id);
   }
 
-  async getException(
-    search: any,
-    page: number,
-    pageSize: number,
-  ): Promise<any> {
-    const skip = (page - 1) * pageSize;
-
-    const where: any = {};
-    if (search) {
-      where.OR = [
-        { location: { contains: search, mode: 'insensitive' } },
-        { notes: { contains: search, mode: 'insensitive' } },
-        { status: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-    return await this.orderRepo.getException(skip, pageSize, where);
+  async getException(query: ListQueryDto) {
+    return await this.orderRepo.getException(query);
   }
   async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
     const order = await this.orderRepo.getOrderById(orderId);
@@ -357,13 +336,9 @@ export class OrderUseCasesImpl implements OrderUseCases {
     };
   }
 
-  async getOrdersGroupedByScope(data: any): Promise<any> {
-    const { page, pageSize } = data;
-    const skip = (page - 1) * pageSize;
-    const [orders, total] = await this.orderRepo.getOrdersGroupedByScope(
-      skip,
-      pageSize,
-    );
+  async getOrdersGroupedByScope(query: ListQueryDto) {
+
+    const result= await this.orderRepo.getOrdersGroupedByScope(query);
     // Initialize structure
     const grouped: Record<ShippingScope, Record<ServiceType, any[]>> = {
       TOWN: { STANDARD: [], EXPRESS: [], SAME_DAY: [], OVERNIGHT: [] },
@@ -372,55 +347,24 @@ export class OrderUseCasesImpl implements OrderUseCases {
     };
 
     // Group orders
-    for (const order of orders) {
+    for (const order of result.orders) {
       if (order.shippingScope && order.serviceType) {
         grouped[order.shippingScope][order.serviceType].push(order);
       }
     }
-    const totalPages = Math.ceil(total / pageSize);
+
     return {
       grouped,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
+      pagination: result.pagination,
     };
   }
 
-  async getOrderStatusLog(data: any): Promise<{
-    // ordersLog: OrderTracking[];
-    ordersLog: { id: string; logs: OrderTracking[] }[];
-    pagination: IPagination;
-  }> {
-    const { page, pageSize, updatedBy, orderId, search } = data;
-    const skip = (page - 1) * pageSize;
-
-    const where: any = {};
-
-    if (updatedBy) {
-      where.updatedBy = updatedBy;
-    }
-    if (orderId) {
-      where.orderId = orderId;
-    }
-    if (search) {
-      where.OR = [
-        { location: { contains: search, mode: 'insensitive' } },
-        { notes: { contains: search, mode: 'insensitive' } },
-        { status: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-    const [ordersLogFlat, total] = await this.orderRepo.getOrderStatusLog(
-      skip,
-      pageSize,
-      where,
-    );
+  async getOrderStatusLog(query: ListQueryDto) {
+    const result = await this.orderRepo.getOrderStatusLog(query);
 
     // Group by orderId
     const ordersLogGrouped = Object.entries(
-      ordersLogFlat.reduce(
+      result.orders.reduce(
         (acc, log) => {
           if (!acc[log.orderId]) acc[log.orderId] = [];
           acc[log.orderId].push(log);
@@ -432,31 +376,18 @@ export class OrderUseCasesImpl implements OrderUseCases {
       id: orderId,
       logs,
     }));
-
     // const ordersLogFlatSorted = ordersLogFlat.sort((a, b) =>
     //   a.orderId.localeCompare(b.orderId),
     // );
-    const totalPages = Math.ceil(total / pageSize);
     return {
-      ordersLog: ordersLogGrouped,
+      orders: ordersLogGrouped,
       // ordersLog: ordersLogFlatSorted,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
+      pagination: result.pagination,
     };
   }
 
-  async getPendingApproval(
-    filters: string,
-    page: number,
-    pageSize: number,
-  ): Promise<any> {
-    const skip = (page - 1) * pageSize;
-
-    return await this.orderRepo.getPendingApprovals(skip, pageSize);
+  async getPendingApproval(query: ListQueryDto) {
+    return await this.orderRepo.getPendingApprovals(query);
   }
 
   async cancelOrder(data: CancelOrderDto): Promise<any> {

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export interface UserDto {
   name: string;
@@ -90,4 +90,46 @@ export class UpdateCorporateInfoDto {
   @IsOptional() website?: string;
   @IsOptional() address?: string;
   @IsOptional() notes?: string;
+}
+
+
+export class CustomerCategoryDto {
+  
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+
+  @IsNotEmpty()
+  @IsString()
+  description: string;
+}
+
+export class UpdateCustomerCategoryDto {
+
+  @IsOptional()
+  name?: string;
+
+  @IsOptional() 
+  description?: string;
+}
+
+export class AssignCustomerToCategory{
+
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  customerIds: string[];
+
+  @IsNotEmpty()
+  @IsString()
+  customerCategoryId: string;
+}
+
+export class UnAssignCustomerToCategory{
+
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  customerIds: string[];
+
 }

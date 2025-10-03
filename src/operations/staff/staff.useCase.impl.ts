@@ -8,8 +8,9 @@ import {
 } from './staff.entity';
 import { Prisma, User } from '@prisma/client';
 import { StaffRepository } from './staff.repository';
-import { IPagination } from 'src/common/types';
+import { IPagination } from '../../common/types';
 import * as bcrypt from 'bcrypt';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Injectable()
 export class StaffUseCasesImpl implements StaffUsecase {
@@ -40,15 +41,14 @@ export class StaffUseCasesImpl implements StaffUsecase {
     return this.staffRepo.createStaff(data);
   }
 
-  async findStaffByRole(data: any): Promise<{
-    users: Partial<User>[];
-    pagination: IPagination;
-  }> {
-    const { page = 1, pageSize = 10, role } = data;
+  async findStaffByRole(query: ListQueryDto, role: string){
+    // const { page = 1, pageSize = 10, role } = data;
 
-    const skip = (page - 1) * pageSize;
+    // const skip = (page - 1) * pageSize;
 
-    console.log('role name:', role);
+    console.log('role name :', role);
+    console.log('role name query :', query);
+
 
     // Check role existence
     const roles = await this.staffRepo.findRoleByName(role);
@@ -58,69 +58,23 @@ export class StaffUseCasesImpl implements StaffUsecase {
     }
     const roleId = roles.id;
 
-    const [users, total] = await this.staffRepo.findStaffByRole(
-      skip,
+    return await this.staffRepo.findStaffByRole(
       roleId,
-      pageSize,
+      query
     );
 
-    return {
-      users,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages: Math.ceil(total / pageSize),
-      },
-    };
+    // return {
+    //   users,
+    //   pagination: {
+    //     total,
+    //     page,
+    //     pageSize,
+    //     totalPages: Math.ceil(total / pageSize),
+    //   },
+    // };
   }
-  async findAllStaff(
-    data: any,
-  ): Promise<{ users: Partial<User>[]; pagination: IPagination }> {
-    const { page = 1, pageSize = 10, search, branchId, roleId } = data;
-
-    const skip = (page - 1) * pageSize;
-
-    // Dynamic filters
-    const where: any = {
-      isStaff: true, //  filter only staff
-    };
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    // Add optional filters
-    if (branchId) {
-      where.branchId = branchId; // direct column if staff has branchId field
-    }
-
-    if (roleId) {
-      where.roles = {
-        some: { id: roleId }, // if staff <-> role is many-to-many
-      };
-    }
-
-    const [users, total] = await this.staffRepo.findAllStaff(
-      skip,
-      where,
-      pageSize,
-    );
-
-    const totalPages = Math.ceil(total / pageSize);
-
-    return {
-      users,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
+  async findAllStaff(query: ListQueryDto) {
+    return await this.staffRepo.findAllStaff(query);
   }
 
   async changeUserRole(data: ChangeRoleDto): Promise<User> {
@@ -162,42 +116,26 @@ export class StaffUseCasesImpl implements StaffUsecase {
   }
 
   async findStaffByBranch(
-    data: any,
-  ): Promise<{ staffs: Partial<User>[]; pagination: IPagination }> {
-    const { page = 1, pageSize = 10, branchId, search } = data;
+    query: ListQueryDto, branchId: string
+  ){
+    // const { page = 1, pageSize = 10, branchId, search } = data;
 
-    const skip = (page - 1) * pageSize;
+    // const skip = (page - 1) * pageSize;
 
     const where: any = {
       isStaff: true,
       branchId,
     };
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
-      ];
-    }
+    // if (search) {
+    //   where.OR = [
+    //     { name: { contains: search, mode: 'insensitive' } },
+    //     { email: { contains: search, mode: 'insensitive' } },
+    //     { phone: { contains: search, mode: 'insensitive' } },
+    //   ];
+    // }
 
-    const [staffs, total] = await this.staffRepo.findStaffByBranch(
-      skip,
-      where,
-      pageSize,
-    );
-
-    const totalPages = Math.ceil(total / pageSize);
-
-    return {
-      staffs,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
+    return await this.staffRepo.findStaffByBranch(query, branchId);
   }
 
   async assignStaffToBranch(

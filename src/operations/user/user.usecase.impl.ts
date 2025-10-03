@@ -3,9 +3,12 @@ import { UserRepository } from './user.repository';
 import {
   AddressDto,
   AddressUpdateDto,
+  AssignCustomerToCategory,
   ChangeRoleDto,
+  CustomerCategoryDto,
   PreferencesDto,
   UpdateCorporateInfoDto,
+  UpdateCustomerCategoryDto,
   UserDto,
 } from './user.entity';
 import { User } from '@prisma/client';
@@ -77,5 +80,58 @@ export class UserUseCasesImp implements UserUsecase {
       throw new RpcException('CUSTOMER role is not found!');
     }
     return this.userRepo.getAllCustomer(query, role.id);
+  }
+
+  async findCategoryByName(name: string) {
+    throw new Error('Method not implemented.');
+  }
+  async deleteCategory(id: string) {
+    const category = await this.userRepo.findCategory(id);
+    if (!category) {
+      throw new RpcException('Category not found');
+    }
+    return await this.userRepo.deleteCategory(id);
+  }
+  async updateCategory(id: string, data: UpdateCustomerCategoryDto) {
+    const category = await this.userRepo.findCategory(id);
+    if (!category) {
+      throw new RpcException('Category not found');
+    }
+    return await this.userRepo.updateCategory(id, data);
+  }
+  async listCategories(query: ListQueryDto) {
+    const result= await this.userRepo.listCategories(query);
+    return result;
+  }
+  async findCategory(id: string) {
+    const category = await this.userRepo.findCategory(id);
+    if (!category) {
+      throw new RpcException('Category not found');
+    }
+    return category;
+  }
+  async createCategory(data: CustomerCategoryDto) {
+    return await this.userRepo.createCategory(data);
+  }
+
+  async assignCustomersToCategory(customerIds: string[],
+    customerCategoryId: string) {
+    // const { customerIds, customerCategoryId } = dto;
+console.log('customerIds: ', customerIds);
+console.log('customerCategoryId: ', customerCategoryId);
+
+    // validate category
+    const category = await this.userRepo.findCategory(customerCategoryId);
+console.log('category: ', category);
+
+    if (!category) {
+      throw new RpcException(`CustomerCategory ${customerCategoryId} not found`);
+    }
+
+    return this.userRepo.assignCustomersToCategory(customerIds, customerCategoryId);
+  }
+
+  async removeCustomersFromCategory(customerIds: string[]) {
+    return this.userRepo.removeCustomersFromCategory(customerIds);
   }
 }

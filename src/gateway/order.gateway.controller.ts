@@ -9,7 +9,7 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { query, Request } from 'express';
 
 import { ClientProxy } from '@nestjs/microservices';
 import { PATTERNS } from '../contracts';
@@ -21,6 +21,7 @@ import {
   ValidateOrderDto,
 } from '../fulfillment/order/order.entity';
 import { OrderStatus, ServiceType } from '@prisma/client';
+import { ListQueryDto } from '../common/query/query.dto';
 
 @Controller('order')
 export class OrderGatewayController {
@@ -82,99 +83,72 @@ export class OrderGatewayController {
   }
 
   @Get('/exception')
-  async getException(
-    @Query('search') search?: string,
-    @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,
-  ) {
+  async getException(@Req() req, @Query() query: ListQueryDto) {
+    const authHeader = req.headers['authorization'] || null;
+
     return this.orderClient.send(PATTERNS.ORDER_FIND_EXCEPTIONS, {
-      page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10,
-      search: search || null,
+      headers: { authorization: authHeader },
+      query,
     });
   }
 
   @Patch('/exception/:id')
-  async updateException(@Body() data: UpdateOrderDto, @Param('id') orderId: string) {
-    return this.orderClient.send(PATTERNS.ORDER_REMOVE_EXCEPTION, { orderId, data });
+  async updateException(
+    @Body() data: UpdateOrderDto,
+    @Param('id') orderId: string,
+  ) {
+    return this.orderClient.send(PATTERNS.ORDER_REMOVE_EXCEPTION, {
+      orderId,
+      data,
+    });
   }
 
   // ✅ NEW unified GET endpoint with filters
   @Get()
-  async getAllOrders(
-    @Req() req: Request,
-    @Query()
-    filters: {
-      fragile?: boolean;
-      unusual?: boolean;
-      pending?: boolean;
-      pendingApproval?: boolean;
-      pendingPickup?: boolean;
-      branchId?: string;
-      customerId?: string;
-      status?: OrderStatus;
-      driverId?: string;
-      serviceType?: ServiceType;
-      payment?: string;
-      fulfillmentType?: string;
-      page?: number;
-      pageSize?: number;
-    },
-  ) {
+  async getAllOrders(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.orderClient.send(PATTERNS.ORDER_FIND_ALL, {
-      filters,
       headers: { authorization: authHeader },
-      page: filters.page ? Number(filters.page) : 1,
-      pageSize: filters.pageSize ? Number(filters.pageSize) : 10,
+      query,
     });
   }
 
   @Get('/approval/pending')
-  async getPendingApprovalOrders(
-    @Query('search') search?: string,
-    @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,
-  ) {
+  async getPendingApprovalOrders(@Req() req, @Query() query: ListQueryDto) {
+    const authHeader = req.headers['authorization'] || null;
     return this.orderClient.send(PATTERNS.ORDER_FIND_PENDING_APPROVAL, {
-      search: search,
-      page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10,
+      headers: { authorization: authHeader },
+      query,
     });
   }
 
   @Get('/status/log')
   async getOrderStatusLog(
-    @Query('orderId') orderId?: string,
-    @Query('staffId') staffId?: string,
-    @Query('search') search?: string,
-    @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,
+    // @Query('orderId') orderId?: string,
+    // @Query('staffId') staffId?: string,
+    // @Query('search') search?: string,
+    // @Query('page') page?: number,
+    // @Query('pageSize') pageSize?: number,
+    @Req() req,
+    @Query() query: ListQueryDto,
   ) {
+    const authHeader = req.headers['authorization'] || null;
     return this.orderClient.send(PATTERNS.ORDER_FIND_STATUS_LOG, {
-      orderId: orderId,
-      updatedBy: staffId,
-      search: search,
-      page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10,
+      headers: { authorization: authHeader },
+      query,
     });
   }
 
   @Get('/categorical')
-  async getCategoricalOrders(
-    @Req() req: Request,
-    @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,
-  ) {
+  async getCategoricalOrders(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
 
     console.log('authHeader: ', authHeader);
 
     return this.orderClient.send(PATTERNS.ORDER_FIND_CATEGORICAL, {
       headers: { authorization: authHeader },
-      page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10,
+      query,
     });
   }
 

@@ -1,12 +1,13 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { PATTERNS } from 'src/contracts';
+import { PATTERNS } from '../../contracts';
 import { AddException, CancelOrderDto, CreateOrderDto, UpdateOrderDto, ValidateOrderDto } from './order.entity';
-import { Public } from 'src/common/decorator/public.decorator';
+import { Public } from '../../common/decorator/public.decorator';
 import { OrderUseCasesImpl } from './order.usecase.impl';
 import { FulfillmentType, OrderStatus, ServiceType } from '@prisma/client'; // assuming you use Prisma enums
-import { IResponse } from 'src/common/types';
+import { IResponse } from '../../common/types';
 import { log } from 'util';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Controller()
 export class OrderMessageController {
@@ -111,15 +112,13 @@ export class OrderMessageController {
 
   @Public()
   @MessagePattern(PATTERNS.ORDER_FIND_PENDING_APPROVAL)
-  async getPendingApproval(@Payload() payload: any) {
-    const { filters, page, pageSize } = payload;
+  async getPendingApproval(@Payload() payload: {query: ListQueryDto}) {
 
-    const result = await this.orderUseCases.getPendingApproval(filters,
-      page,
-      pageSize);
+    const result = await this.orderUseCases.getPendingApproval(payload.query);
     return IResponse.success(
       `Order pending for approval fetched successfully.`,
-      result,
+      result.approvals,
+      result.pagination
     );
   }
 
@@ -133,14 +132,12 @@ export class OrderMessageController {
 
   @Public()
   @MessagePattern(PATTERNS.ORDER_FIND_EXCEPTIONS)
-  async getException(@Payload() payload: any) {
-    const { search, page, pageSize } = payload;
-    const result = await this.orderUseCases.getException(search,
-      page,
-      pageSize);
+  async getException(@Payload() payload: {query: ListQueryDto }) {
+    const result = await this.orderUseCases.getException(payload.query);
     return IResponse.success(
       `Order Exception fetched successfully.`,
-      result,
+      result.orders,
+      result.pagination
     );
   }
 
@@ -158,30 +155,25 @@ export class OrderMessageController {
   //COMPLETED
   @Public()
   @MessagePattern(PATTERNS.ORDER_FIND_CATEGORICAL)
-  async getOrdersGroupedByScope(@Payload() payload: any) {
-    const result = await this.orderUseCases.getOrdersGroupedByScope(payload);
+  async getOrdersGroupedByScope(@Payload() payload: { query: ListQueryDto }) {
+    const result = await this.orderUseCases.getOrdersGroupedByScope(payload.query);
     return IResponse.success('Categorization Orders fetched successfully ', result);
   }
 
   //COMPLETED
   @Public()
   @MessagePattern(PATTERNS.ORDER_FIND_ALL)
-  async getAllOrders(@Payload() payload: any) {
-    // payload contains: filters, headers, page, pageSize
-    const { filters, page, pageSize } = payload;
-    const result = await this.orderUseCases.getAllOrders({
-      filters,
-      page,
-      pageSize,
-    });
-    return IResponse.success('Orders fetched successfully', result);
+  async getAllOrders(@Payload() payload: { query: ListQueryDto }) {
+
+    const result = await this.orderUseCases.getAllOrders(payload.query);
+    return IResponse.success('Orders fetched successfully', result.orders, result.pagination);
   }
   
   @Public()
   @MessagePattern(PATTERNS.ORDER_FIND_STATUS_LOG)
-  async getOrdersStatusLog(data: any){
-    const result= await this.orderUseCases.getOrderStatusLog(data);
-    return IResponse.success('Orders Log with status fetched successfully', result);
+  async getOrdersStatusLog(@Payload() payload: { query: ListQueryDto }){
+    const result= await this.orderUseCases.getOrderStatusLog(payload.query);
+    return IResponse.success('Orders Log with status fetched successfully', result.orders, result.pagination);
   }
 
   @Public()

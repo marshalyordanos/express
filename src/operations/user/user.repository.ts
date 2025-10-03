@@ -2,8 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AddressDto,
+  CustomerCategoryDto,
   PreferencesDto,
   UpdateCorporateInfoDto,
+  UpdateCustomerCategoryDto,
   UserUpdateDto,
 } from './user.entity';
 import { CorporateInfo, User } from '@prisma/client';
@@ -233,5 +235,78 @@ export class UserRepository {
 
   async findRoleByName(name: string) {
     return this.prisma.role.findUnique({ where: { name: name } });
+  }
+
+  //==================================================================Customer Category====================================
+  async listCategories(payload: ListQueryDto) {
+       const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['name', 'description'],
+    });
+    const query = feature.getQuery();
+    const results = await Promise.all([
+      this.prisma.customerCategory.findMany({
+        ...query,
+        where: query.where || {},
+        include: { discountRules: true, pricingRules: true, tariffs: true, users: true },
+      }),
+      this.prisma.customerCategory.count({ where: query.where || {} }),
+    ])
+
+    const models = results[0] || [];
+    const total = results[1] || 0;
+
+    return {
+      models,
+      pagination: feature.getPagination(total),
+    }
+  }
+  async deleteCategory(id: string) {
+    return this.prisma.customerCategory.delete({ where: { id } });
+  }
+  async findCategory(id: string) {
+    return this.prisma.customerCategory.findUnique({ where: { id } });
+  }
+  async updateCategory(id: string, data: Partial<UpdateCustomerCategoryDto>) {
+    return this.prisma.customerCategory.update({ where: { id }, data });
+  }
+  async createCategory(data: CustomerCategoryDto) {
+    return this.prisma.customerCategory.create({ data });
+  }
+
+   async assignCustomersToCategory(
+    customerIds: string[],
+    customerCategoryId: string,
+  ) {
+    console.log('customerIds repo: ', customerIds);
+    console.log('customerCategoryId repo: ', customerCategoryId);
+    
+    return this.prisma.$transaction(async (tx) => {
+      const updates = customerIds.map((customerId) =>
+        tx.user.update({
+          where: { id: customerId },
+          data: { customerCategoryId },
+        }),
+      );
+
+      return Promise.all(updates);
+    });
+  }
+
+  async removeCustomersFromCategory(customerIds: string[]) {
+    return this.prisma.$transaction(async (tx) => {
+      const updates = customerIds.map((customerId) =>
+        tx.user.update({
+          where: { id: customerId },
+          data: { customerCategoryId: null },
+        }),
+      );
+
+      return Promise.all(updates);
+    });
   }
 }

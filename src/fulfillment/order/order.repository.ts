@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateOrderDto,
   UpdateOrderDto,
@@ -11,7 +11,9 @@ import {
   ServiceType,
   FulfillmentType,
 } from '@prisma/client'; // assuming you use Prisma enums
-import { AddressDto } from 'src/operations/user/user.entity';
+import { ListQueryDto } from '../../common/query/query.dto';
+import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
+// import { AddressDto } from 'src/operations/user/user.entity';
 
 @Injectable()
 export class OrderRepository {
@@ -79,22 +81,42 @@ export class OrderRepository {
     });
   }
 
-  async getException(skip: number, pageSize: number, where: any) {
-    return await this.prisma.orderException.findMany({
-      skip,
-      take: pageSize,
-      where,
-      include: {
-        order: {
-          include: {
-            customer: true,
-            branch: true,
-            driver: true,
-            payment: true,
+  async getException(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['location', 'notes', 'status'],
+    });
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
+      this.prisma.orderException.findMany({
+        ...query,
+        where: query.where || {},
+        include: {
+          order: {
+            include: {
+              customer: true,
+              branch: true,
+              driver: true,
+              payment: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.orderException.count({ where: query.where || {} }),
+    ]);
+
+    const orders = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      orders,
+      pagination: feature.getPagination(total),
+    };
   }
 
   async solveException(orderId: string, data: UpdateOrderDto) {
@@ -153,6 +175,7 @@ export class OrderRepository {
         shipmentType: data.shipmentType,
         shippingScope: data.shippingScope,
         pickupAddress: data.pickupAddress,
+        distance: 20,
         pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
         deliveryAddress: data.deliveryAddress,
         deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
@@ -362,64 +385,60 @@ export class OrderRepository {
     return result;
   }
 
-  async getPendingApprovals(skip: number, pageSize: number): Promise<any> {
-    return await Promise.all([
+  async getPendingApprovals(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['trackingCode', 'notes', 'category'],
+    });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const where = {
+      AND: [
+        query.where || {}, // existing filters (search, etc.)
+        { status: 'PENDING' }, // enforce pending status
+      ],
+    };
+    const results = await Promise.all([
       await this.prisma.parcelApproval.findMany({
-        skip,
-        take: pageSize,
-        where: {
-          status: 'PENDING',
-        },
+        ...query,
+        where,
       }),
       await this.prisma.parcelApproval.count({
-        where: {
-          status: 'PENDING',
-        },
+        where,
       }),
     ]);
+
+    const approvals = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      approvals,
+      pagination: feature.getPagination(total),
+    };
   }
 
-  async getAllOrders(
-    filters: {
-      fragile?: boolean;
-      unusual?: boolean;
-      pending?: boolean;
-      pendingApproval?: boolean;
-      pendingPickup?: boolean;
-      branchId?: string;
-      customerId?: string;
-      status?: OrderStatus | string;
-      driverId?: string;
-      serviceType?: ServiceType | string;
-      payment?: string;
-      fulfillmentType?: FulfillmentType | string;
-    },
-    data: { page: number; pageSize: number },
-  ): Promise<any> {
-    const { page, pageSize } = data;
-    const skip = (page - 1) * pageSize;
+  async getAllOrders(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['trackingCode', 'notes', 'category'],
+    });
 
-    // Build where clause dynamically
-    const where: any = {};
-    if (filters.fragile) where.isFragile = true;
-    if (filters.unusual) where.isUnusual = true;
-    if (filters.pending) where.status = 'PICKED_UP';
-    if (filters.pendingApproval) where.status = 'PENDING_APPROVAL';
-    if (filters.pendingPickup) where.status = 'READY_FOR_PICKUP';
-    if (filters.branchId) where.branchId = filters.branchId;
-    if (filters.customerId) where.customerId = filters.customerId;
-    if (filters.status) where.status = filters.status;
-    if (filters.driverId) where.driverId = filters.driverId;
-    if (filters.serviceType) where.serviceType = filters.serviceType;
-    if (filters.payment) where.paymentId = filters.payment;
-    if (filters.fulfillmentType)
-      where.fulfillmentType = filters.fulfillmentType;
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
 
-    const [orders, total] = await Promise.all([
+    const results = await Promise.all([
       this.prisma.order.findMany({
-        skip,
-        take: pageSize,
-        where,
+        ...query,
+        where: query.where || {},
         include: {
           customer: true,
           branch: true,
@@ -430,19 +449,14 @@ export class OrderRepository {
           orderTracking: true,
         },
       }),
-      this.prisma.order.count({ where }),
+      this.prisma.order.count({ where: query.where || {} }),
     ]);
 
-    const totalPages = Math.ceil(total / pageSize);
-
+    const orders = results[0] || [];
+    const total = results[1] || 0;
     return {
       orders,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
+      pagination: feature.getPagination(total),
     };
   }
   async getOrderById(id: string): Promise<any> {
@@ -551,12 +565,36 @@ export class OrderRepository {
     return result;
   }
 
-  async getOrdersGroupedByScope(skip: number, pageSize: number) {
-    const orders = await Promise.all([
+  async getOrdersGroupedByScope(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: [],
+    });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    // ✅ Merge conditions
+    const where = {
+      AND: [
+        query.where || {}, // existing search & filters
+        { status: 'APPROVED' }, // enforce approved status
+        {
+          OR: [
+            { batchId: null }, // not yet batched
+            // { status: 'COMPLETED' }, // or already completed
+          ],
+        },
+      ],
+    };
+    const results = await Promise.all([
       await this.prisma.order.findMany({
-        skip,
-        take: pageSize,
-        where: { batchId: null, status: 'APPROVED' },
+        ...query,
+        where,
         select: {
           id: true,
           trackingCode: true,
@@ -577,23 +615,43 @@ export class OrderRepository {
         },
       }),
       await this.prisma.order.count({
-        where: { batchId: null, status: 'APPROVED' },
+        where,
       }),
     ]);
-    return orders;
+    const orders = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      orders,
+      pagination: feature.getPagination(total),
+    };
   }
 
-  async getOrderStatusLog(skip: number, pageSize: number, where: any) {
-    return await Promise.all([
+  async getOrderStatusLog(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['location', 'notes', 'status'],
+    });
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
       this.prisma.orderTracking.findMany({
-        skip,
-        take: pageSize,
-        where,
+        ...query,
+        where: query.where || {},
       }),
-      this.prisma.orderTracking.count({
-        where,
-      }),
+      this.prisma.orderTracking.count({ where: query.where || {} }),
     ]);
+
+    const orders = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      orders,
+      pagination: feature.getPagination(total),
+    };
   }
 
   async addException(

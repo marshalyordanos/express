@@ -7,8 +7,9 @@ import {
   BranchResponseDto,
 } from './branch.entity';
 import { BranchUseCases } from './branch.useCase';
-import { IPagination } from 'src/common/types';
+import { IPagination } from '../../common/types';
 import { RpcException } from '@nestjs/microservices';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Injectable()
 export class BranchUseCaseImpl implements BranchUseCases {
@@ -62,43 +63,8 @@ export class BranchUseCaseImpl implements BranchUseCases {
     return this.branchRepository.createBranch(data);
   }
 
-  async findAllBranch(
-    page: number,
-    pageSize: number,
-    search?: string,
-  ): Promise<{
-    branches: BranchResponseDto[];
-    pagination: IPagination;
-  }> {
-
-     const skip = (page - 1) * pageSize;
-
-    const where: any = {};
-
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { location: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    const [branches, total] = await this.branchRepository.findAllBranch(
-      skip,
-      pageSize,
-      where,
-    )
-
-    const totalPages = Math.ceil(total / pageSize);
-
-    return {
-      branches,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
-    };
+  async findAllBranch(query: ListQueryDto) {
+    return await this.branchRepository.findAllBranch(query);
   }
   async findBranchById(id: string): Promise<Branch> {
     return this.branchRepository.findBranchById(id);

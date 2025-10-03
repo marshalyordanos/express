@@ -1,3 +1,4 @@
+import { ListQueryDto } from "../../common/query/query.dto";
 import { AddException, CancelOrderDto, CreateOrderDto, UpdateOrderDto, ValidateOrderDto } from "./order.entity";
 import { OrderStatus,ServiceType } from '@prisma/client'; // assuming you use Prisma enums
 
@@ -6,7 +7,7 @@ import { OrderStatus,ServiceType } from '@prisma/client'; // assuming you use Pr
 export interface OrderUseCases {
     createOrder(data: CreateOrderDto): Promise<any>;
     acceptDropOff(trackingCode: string): Promise<any>;
-    getAllOrders(data: any): Promise<any>;
+    getAllOrders(query: ListQueryDto): Promise<any>;
     getOrderById(id: string): Promise<any>;
     updateOrder(id: string, data: any): Promise<any>;
     deleteOrder(id: string): Promise<any>;
@@ -19,10 +20,10 @@ export interface OrderUseCases {
     markUnusualOrder(orderId: string, data: any): Promise<any>;
     approveOrder(orderId: string,reason: string): Promise<any>;
     getOrdersGroupedByScope(data: any): Promise<any>;
-    getOrderStatusLog(data: any): Promise<any>;
+    getOrderStatusLog(query: ListQueryDto): Promise<any>;
     cancelOrder(data: CancelOrderDto): Promise<any>;
     addException(data: AddException): Promise<any>;
-    getPendingApproval(filters: string, page: number, pageSize: number): Promise<any>;
+    getPendingApproval(query: ListQueryDto): Promise<any>;
     updateOrder(orderId: string, data: UpdateOrderDto): Promise<any>;
-    getException(search: any, page: number, pageSize: number): Promise<any>
+    getException(query: ListQueryDto ): Promise<any>
 }

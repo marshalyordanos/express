@@ -165,7 +165,7 @@ export class UpdateOrderDto {
   // @IsOptional()
   // driverId?: string;
 
-  @IsEnum(ServiceType)
+  @IsEnum(OrderStatus)
   @IsOptional()
   status: OrderStatus;
 

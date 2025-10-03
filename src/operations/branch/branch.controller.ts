@@ -14,6 +14,7 @@ import { BranchUseCaseImpl } from './branch.useCase.impl';
 import { PermissionGuard } from '../../common/permission.guard';
 import { PermissionActions } from '../../contracts/permission-actions.enum';
 import { CheckPermission } from '../../common/decorator/check-permission.decorator';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Controller()
 export class BranchMessageController {
@@ -109,16 +110,14 @@ export class BranchMessageController {
   @CheckPermission('Branch', PermissionActions.READ)
   @Public()
   @MessagePattern(PATTERNS.BRANCH_FIND_ALL)
-  async findAllBranches(@Payload() data: any) {
-    console.log('data: ', data);
+  async findAllBranches(@Payload() payload: {query: ListQueryDto}) {
+    console.log('data: ', payload);
 
     try {
-      const { page = 1, pageSize = 10, search } = data;
+      // const { page = 1, pageSize = 10, search } = data;
 
       const branches = await this.usecases.findAllBranch(
-        page,
-        pageSize,
-        search,
+        payload.query
       );
       console.log('branches: ', branches);
 

@@ -3,6 +3,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RoleCreateDto, RoleUpdateDto } from './role.entity';
 import { Role } from '@prisma/client';
 import { IPagination } from '../../common/types';
+import { ListQueryDto } from '../../common/query/query.dto';
+import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 
 @Injectable()
 export class RoleRepository {
@@ -19,22 +21,43 @@ export class RoleRepository {
     return this.prisma.role.findUnique({ where: { id } });
   }
 
-  async findAllRoles(skip: number, pageSize: number, where: any) {
-    return await Promise.all([
-      this.prisma.role.findMany({
-        skip,
-        take: pageSize,
-        where,
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      }),
-      this.prisma.role.count({ where }),
-    ]);
+  async findAllRoles(payload: ListQueryDto) {
+
+        const feature = new PrismaQueryFeature({
+          search: payload.search,
+          filter: payload.filter,
+          sort: payload.sort,
+          page: payload.page,
+          pageSize: payload.pageSize,
+          searchableFields: ['name', 'description',],
+        });
+    
+        const query = feature.getQuery();
+        console.log('quest1: ', query);
+    
+        const results = await Promise.all([
+          this.prisma.role.findMany({
+            ...query,
+    
+            where: query.where || {},
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          }),
+          this.prisma.role.count({ where: query.where || {} }),
+        ])
+
+        const roles = results[0] || [];
+        const total = results[1] || 0;
+    
+        return {
+          roles,
+          pagination: feature.getPagination(total),
+        }
   }
 
   async deleteByName(name: string) {

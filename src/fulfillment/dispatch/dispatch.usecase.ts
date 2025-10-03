@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AssignDriverForPickup, AssignOfficerForBatch, BatchDispatchDto, BatchHandoverDto, ConfirmBatchHandoverDto } from './dispatch.entity';
 import { DispatchStatus, ShippingScope, ServiceType } from '@prisma/client';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 export interface DispatchUseCases {
   assignDriverForPickup(data: AssignDriverForPickup): Promise<any>;///
@@ -11,16 +12,7 @@ export interface DispatchUseCases {
   removeDriverFromOrder(orderId: string): Promise<any>;///
   changeDriverForOrder(data: AssignDriverForPickup): Promise<any>;///
   createBatchDispatch(dto: BatchDispatchDto): Promise<any>;///
-  getBatches(filters: {
-    status?: DispatchStatus;
-    scope?: ShippingScope;
-    serviceType?: ServiceType;
-    fragile?: boolean;
-    unusual?: boolean;
-    search?: string;
-    page?: number;
-    pageSize?: number;
-  }): Promise<any>;////
+  getBatches(query: ListQueryDto): Promise<any>;////
 
   confirmDispatch(data: AssignOfficerForBatch): Promise<any>;///
   collectBatchByCargoOfficer(data: AssignOfficerForBatch): Promise<any>;///

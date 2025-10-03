@@ -6,7 +6,9 @@ import {
   BranchUpdateDto,
 } from './branch.entity';
 import { Branch } from '@prisma/client';
-import { IPagination } from 'src/common/types';
+import { IPagination } from '../../common/types';
+import { ListQueryDto } from '../../common/query/query.dto';
+import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 
 @Injectable()
 export class BranchRepository {
@@ -70,12 +72,24 @@ export class BranchRepository {
   async updateBranch(id: string, data: Partial<BranchUpdateDto>) {
     return this.prisma.branch.update({ where: { id }, data });
   }
-  async findAllBranch(skip: number, pageSize: number, where: any) {
-    return await Promise.all([
+  async findAllBranch(payload: ListQueryDto) {
+
+        const feature = new PrismaQueryFeature({
+          search: payload.search,
+          filter: payload.filter,
+          sort: payload.sort,
+          page: payload.page,
+          pageSize: payload.pageSize,
+          searchableFields: ['name', 'description', 'location'],
+        });
+
+            const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
       this.prisma.branch.findMany({
-        skip,
-        take: pageSize,
-        where,
+        ...query,
+        where: query.where || {},
         select: {
           id: true,
           name: true,
@@ -88,8 +102,18 @@ export class BranchRepository {
           staff: true,
         },
       }),
-      this.prisma.branch.count({ where }),
+      this.prisma.branch.count({
+        where: query.where || {},
+      }),
     ]);
+
+    const branches = results[0] || [];
+    const total = results[1] || 0;
+
+    return {
+      branches,
+      pagination: feature.getPagination(total),
+    };
   }
 
   createBranch(data: BranchCreateDto): Promise<Branch> {

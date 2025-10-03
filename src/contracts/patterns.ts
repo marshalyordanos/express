@@ -22,6 +22,14 @@ export const PATTERNS = {
   PREFERENCES_UPDATE: 'preferences.update',
   CORPORATEINFO_UPDATE: 'corporate.update',
 
+  CUSTOMER_CATEGORY_CREATE: 'customer.category.create',
+  CUSTOMER_CATEGORY_FIND_ALL: 'customer.category.findAll',
+  CUSTOMER_CATEGORY_FIND_BY_ID: 'customer.category.findById',
+  CUSTOMER_CATEGORY_UPDATE: 'customer.category.update',
+  CUSTOMER_CATEGORY_DELETE: 'customer.category.delete',
+  CUSTOMER_CATEGORY_ASSIGN_USER: 'customer.category.assignUser',
+  CUSTOMER_CATEGORY_UNASSIGN_USER: 'customer.category.unassignUser',
+
   STAFF_CREATE: 'staff.register',
   STAFF_DELETE: 'staff.delete',
   STAFF_FIND_ALL: 'staff.findAll',
@@ -140,4 +148,61 @@ export const PATTERNS = {
   DISPATCH_CONFIRM_ARRIVAL_AND_HANDOVER: 'dispatch.confirmArrivalAndHandover',
   DISPATCH_ACCEPT_LAST_MILE_DELIVERY: 'dispatch.acceptLastMileDelivery',
   DISPATCH_COMPLETE_DELIVERY: 'dispatch.completeDelivery',
+
+  //Pricing and Tariff Management Module
+
+  //Tariff
+  PRICE_TARIFF_CREATE: 'price.tariff.create',
+  PRICE_TARIFF_FIND_ALL: 'price.tariff.findAll',
+  PRICE_TARIFF_FIND_BY_ID: 'price.tariff.findById',
+  PRICE_TARIFF_UPDATE: 'price.tariff.update',
+  PRICE_TARIFF_DELETE: 'price.tariff.delete',
+
+  //Profit Margin
+  PRICE_PROFIT_MARGIN_CREATE: 'price.profitMargin.create',
+  PRICE_PROFIT_MARGIN_FIND_ALL: 'price.profitMargin.findAll',
+  PRICE_PROFIT_MARGIN_FIND_BY_ID: 'price.profitMargin.findById',
+  PRICE_PROFIT_MARGIN_UPDATE: 'price.profitMargin.update',
+  PRICE_PROFIT_MARGIN_DELETE: 'price.profitMargin.delete',
+
+  //Airport Fee
+  PRICE_AIRPORT_FEE_CREATE: 'price.airportFee.create',
+  PRICE_AIRPORT_FEE_FIND_ALL: 'price.airportFee.findAll',
+  PRICE_AIRPORT_FEE_FIND_BY_ID: 'price.airportFee.findById',
+  PRICE_AIRPORT_FEE_UPDATE: 'price.airportFee.update',
+  PRICE_AIRPORT_FEE_DELETE: 'price.airportFee.delete',
+  
+  //Mescellanous Fees
+  PRICE_MISC_FEE_CREATE: 'price.miscFee.create',
+  PRICE_MISC_FEE_FIND_ALL: 'price.miscFee.findAll',
+  PRICE_MISC_FEE_FIND_BY_ID: 'price.miscFee.findById',
+  PRICE_MISC_FEE_UPDATE: 'price.miscFee.update',
+  PRICE_MISC_FEE_DELETE: 'price.miscFee.delete',
+
+  //Surcharge
+  PRICE_SURCHARGE_CREATE: 'price.surcharge.create',
+  PRICE_SURCHARGE_FIND_ALL: 'price.surcharge.findAll',
+  PRICE_SURCHARGE_FIND_BY_ID: 'price.surcharge.findById',
+  PRICE_SURCHARGE_UPDATE: 'price.surcharge.update',
+  PRICE_SURCHARGE_DELETE: 'price.surcharge.delete',
+
+  //Discount
+  PRICE_DISCOUNT_CREATE: 'price.discount.create',
+  PRICE_DISCOUNT_FIND_ALL: 'price.discount.findAll',
+  PRICE_DISCOUNT_FIND_BY_ID: 'price.discount.findById',
+  PRICE_DISCOUNT_UPDATE: 'price.discount.update',
+  PRICE_DISCOUNT_DELETE: 'price.discount.delete',
+
+  //Customer Category
+  PRICE_CUSTOMER_CATEGORY_CREATE: 'price.customerCategory.create',
+  PRICE_CUSTOMER_CATEGORY_FIND_ALL: 'price.customerCategory.findAll',
+  PRICE_CUSTOMER_CATEGORY_FIND_BY_ID: 'price.customerCategory.findById',
+  PRICE_CUSTOMER_CATEGORY_UPDATE: 'price.customerCategory.update',
+  PRICE_CUSTOMER_CATEGORY_DELETE: 'price.customerCategory.delete',
+
+  //Price Calculation and Log
+  PRICE_CALCULATE: 'price.calculate',
+  PRICE_CALCULATION_LOG_FIND_ALL: 'price.calculationLog.findAll',
+  PRICE_CALCULATION_LOG_FIND_BY_ID: 'price.calculationLog.findById',
+
 } as const;

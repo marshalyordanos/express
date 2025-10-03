@@ -16,6 +16,7 @@ import {
 import { ClientProxy } from '@nestjs/microservices';
 import { PATTERNS } from '../contracts';
 import { RoleCreateDto, RoleUpdateDto } from '../operations/role/role.entity';
+import { ListQueryDto } from '../common/query/query.dto';
 
 @Controller('roles')
 export class RoleGatewayController {
@@ -41,18 +42,13 @@ export class RoleGatewayController {
   //completed
   @Get()
   async getAllRoles(
-    @Req() req: Request,
-    @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,
-    @Query('search') search?: string,
+    @Req() req, @Query() query: ListQueryDto
   ) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.roleClient.send(PATTERNS.ROLE_FIND_ALL, {
       headers: { authorization: authHeader },
-      page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10,
-      search: search || null,
+      query
     });
   }
 

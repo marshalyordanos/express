@@ -19,13 +19,14 @@ import {
   ServiceType,
   Order,
 } from '@prisma/client';
-import { IResponse } from 'src/common/types';
+import { IResponse } from '../../common/types';
 import {
   generateOrderQRCode,
   decodeAndValidateQRCode,
   OrderQRCodeData,
 } from '../utils/qr-code.helper';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Injectable()
 export class DispatchUseCasesImpl implements DispatchUseCases {
@@ -533,34 +534,8 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     );
   }
 
-  async getBatches(requestFilters: any) {
-    const filters = requestFilters.filters || {};
-    console.log('filters: ', filters);
-    const page = filters.page ?? 1;
-    const pageSize = filters.pageSize ?? 10;
-
-    const result = await this.dispatchRepo.getBatches({
-      status: filters.status,
-      scope: filters.scope,
-      serviceType: filters.serviceType,
-      fragile: filters.fragile,
-      unusual: filters.unusual,
-      search: filters.search,
-      page,
-      pageSize,
-    });
-
-    return {
-      success: true,
-      message: 'Batch dispatches fetched successfully',
-      data: result.data,
-      pagination: {
-        page,
-        pageSize,
-        total: result.total,
-        totalPages: Math.ceil(result.total / pageSize),
-      },
-    };
+  async getBatches(query: ListQueryDto) {
+    return await this.dispatchRepo.getBatches(query);
   }
 
   async prepareQRCodes(input: {

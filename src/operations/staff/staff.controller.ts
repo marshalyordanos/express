@@ -7,6 +7,7 @@ import { PATTERNS } from '../../contracts';
 import { ChangeRoleDto, UpdateStaffDto } from './staff.entity';
 import { StaffUseCasesImpl } from './staff.useCase.impl';
 import { RegisterStaffDto } from './staff.entity';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Controller()
 export class StaffMessageController {
@@ -30,18 +31,30 @@ export class StaffMessageController {
   //Get all staffs by role
   @Public()
   @MessagePattern(PATTERNS.STAFF_FIND_BY_ROLE)
-  async findStaffByRole(@Payload() payload: any) {
+  async findStaffByRole(
+    @Payload()
+    payload: {
+      query: ListQueryDto;
+      role: string;
+      headers: { authorization: string };
+    },
+  ) {
+    console.log('INSIDE CONTROLLER FOR QUERY : ', payload.query);
     console.log('INSIDE CONTROLLER FOR ROLE : ', payload.role);
+    console.log('INSIDE CONTROLLER FOR AUTH : ', payload.headers);
 
     try {
-      const user = payload.user;
-      const { role } = payload;
+      // const user = payload.user;
+      // const { role } = payload;
 
-      const result = await this.usecases.findStaffByRole(payload);
+      const result = await this.usecases.findStaffByRole(
+        payload.query,
+        payload.role,
+      );
 
       return IResponse.success(
-        'Staff fetched successfully for role: ' + role,
-        result.users,
+        'Staff fetched successfully for role',
+        result.Staffs,
         result.pagination,
       );
     } catch (error) {
@@ -53,15 +66,15 @@ export class StaffMessageController {
   //Get all staffs
   @Public()
   @MessagePattern(PATTERNS.STAFF_FIND_ALL)
-  async findStaff(@Payload() data: any) {
+  async findStaff(@Payload() payload: { query: ListQueryDto }) {
     try {
       // const { page = 1, pageSize = 10, search, branchId } = data;
 
-      const result = await this.usecases.findAllStaff(data);
+      const result = await this.usecases.findAllStaff(payload.query);
 
       return IResponse.success(
         'Users fetched successfully',
-        result.users,
+        result.Staffs,
         result.pagination,
       );
     } catch (error) {
@@ -122,13 +135,24 @@ export class StaffMessageController {
 
   @Public()
   @MessagePattern(PATTERNS.STAFF_FIND_BY_BRANCH)
-  async findStaffByBranch(@Payload() payload: any) {
+  async findStaffByBranch(
+    @Payload()
+    payload: {
+      query: ListQueryDto;
+      branchId: string;
+      headers: { authorization: string };
+    },
+  ) {
     try {
-      const result = await this.usecases.findStaffByBranch(payload);
+      console.log('INSIDE CONTROLLER FOR QUERY : ', payload.query);
+      console.log('INSIDE CONTROLLER FOR BRANCH : ', payload.branchId);
+      console.log('INSIDE CONTROLLER FOR AUTH : ', payload.headers);
+
+      const result = await this.usecases.findStaffByBranch(payload.query, payload.branchId);
 
       return IResponse.success(
         'Users fetched successfully',
-        result.staffs,
+        result.Staffs,
         result.pagination,
       );
     } catch (error) {

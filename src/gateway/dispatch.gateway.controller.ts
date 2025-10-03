@@ -21,6 +21,7 @@ import {
   LastMileDeliveryDto,
 } from '../fulfillment/dispatch/dispatch.entity';
 import { DispatchStatus, ShippingScope, ServiceType } from '@prisma/client';
+import { ListQueryDto } from '../common/query/query.dto';
 
 @Controller('dispatch')
 export class DispatchGatewayController {
@@ -134,26 +135,14 @@ export class DispatchGatewayController {
   //Controller used for getting all batch dispatches with filters and pagination
   @Get()
   async getAllDispatches(
-    @Req() req: Request,
-    @Query()
-    filters: {
-      status?: DispatchStatus;
-      scope?: ShippingScope;
-      serviceType?: ServiceType;
-      fragile?: boolean;
-      unusual?: boolean;
-      search?: string; // for general search (batchCode, origin, destination, driverId, vehicleId)
-      page?: number;
-      pageSize?: number;
-    },
+    @Req() req, 
+    @Query() query: ListQueryDto
   ) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.dispatchClient.send(PATTERNS.DISPATCH_FIND_ALL, {
-      filters,
       headers: { authorization: authHeader },
-      page: filters.page ? Number(filters.page) : 1,
-      pageSize: filters.pageSize ? Number(filters.pageSize) : 10,
+      query
     });
   }
 

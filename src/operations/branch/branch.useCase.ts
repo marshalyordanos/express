@@ -5,17 +5,11 @@ import {
   BranchResponseDto,
 } from './branch.entity';
 import { Branch } from '@prisma/client';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 export interface BranchUseCases {
   createBranch(data: BranchCreateDto): Promise<Branch>;
-   findAllBranch(
-    page: number,
-    pageSize: number,
-    search?: string,
-  ): Promise<{
-    branches: BranchResponseDto[];
-    pagination: IPagination;
-  }>;
+   findAllBranch(query: ListQueryDto): Promise<any>;
   findBranchById(id: string): Promise<Branch>;
   updateBranch(id: string, data: Partial<BranchUpdateDto>): Promise<Branch>;
   deleteBranch(id: string): Promise<Branch>;

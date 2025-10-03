@@ -18,7 +18,8 @@ import {
   RegisterStaffDto,
   UpdateStaffDto,
 } from '../operations/staff/staff.entity';
-import { Request } from 'express';
+import { query, Request } from 'express';
+import { ListQueryDto } from '../common/query/query.dto';
 
 @Controller('staff')
 export class StaffGatewayController {
@@ -55,12 +56,13 @@ export class StaffGatewayController {
   //Get all staff for roles like Internal driver,customer service, dispatch officer, branch manager
   @Get()
   async findStaff(
-    @Req() req: Request,
-    @Query('search') search?: string,
-    @Query('branchId') branchId?: string,
-    @Query('roleId') roleId?: string,
-    @Query('page') page = 1,
-    @Query('pageSize') pageSize = 10,
+    @Req() req,
+    // @Query('search') search?: string,
+    // @Query('branchId') branchId?: string,
+    // @Query('roleId') roleId?: string,
+    // @Query('page') page = 1,
+    // @Query('pageSize') pageSize = 10,
+    @Query() query: ListQueryDto
 
   ) {
     console.log('Getting all staff');
@@ -71,11 +73,7 @@ export class StaffGatewayController {
     const result = await firstValueFrom(
       this.staffClient.send(PATTERNS.STAFF_FIND_ALL, {
         headers: { authorization: authHeader },
-        page: Number(page),
-        pageSize: Number(pageSize),
-        search,
-        branchId,
-        roleId
+       query
       }),
     );
 
@@ -86,19 +84,19 @@ export class StaffGatewayController {
   //Get staff by their roles and it is manadatory to pass role
   @Get('role/staff')
   async findStaffByRole(
-    @Req() req: Request,
+    @Req() req,
     @Query('role') role: string,
-    @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,
+    // @Query('page') page?: number,
+    // @Query('pageSize') pageSize?: number,
+    @Query() query: ListQueryDto
   ) {
-    console.log('lOGGING FOR ROLE : ', role);
+    
     const authHeader = req.headers['authorization'] || null;
 
     return this.staffClient.send(PATTERNS.STAFF_FIND_BY_ROLE, {
       headers: { authorization: authHeader },
-      page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10,
-      role: role,
+      query,
+      role
     });
   }
   //delete staff with roles like Internal driver,customer service, dispatch officer, branch manager
@@ -123,20 +121,19 @@ export class StaffGatewayController {
 
   @Get('/branch/:branchId')
   async findStaffByBranch(
+    @Req() req,
     @Param('branchId') branchId: string,
-    @Req() req: Request,
-    @Query('search') search?: string,
-    @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,
+    // @Query('search') search?: string,
+    // @Query('page') page?: number,
+    // @Query('pageSize') pageSize?: number,
+    @Query() query: ListQueryDto
   ) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.staffClient.send(PATTERNS.STAFF_FIND_BY_BRANCH, {
       headers: { authorization: authHeader },
       branchId,
-      page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10,
-      search: search,
+      query
     });
   }
 

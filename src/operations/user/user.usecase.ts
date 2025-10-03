@@ -3,7 +3,9 @@ import {
   AddressDto,
   AddressUpdateDto,
   ChangeRoleDto,
+  CustomerCategoryDto,
   PreferencesDto,
+  UpdateCustomerCategoryDto,
   UserDto,
 } from './user.entity';
 import { User } from '@prisma/client';
@@ -20,4 +22,18 @@ export interface UserUsecase {
   deleteAddress(id: string): Promise<any>;
 
   updatePreferences(userId: string, data: PreferencesDto): Promise<any>;
+
+  
+  findCategoryByName(name: string): Promise<any>;
+  deleteCategory(id: string): Promise<any>;
+  updateCategory(id: string, data: UpdateCustomerCategoryDto): Promise<any>;
+  listCategories(query: ListQueryDto): Promise<any>;
+  findCategory(id: string): Promise<any>;
+  createCategory(data: CustomerCategoryDto): Promise<any>;
+  assignCustomersToCategory(
+    customerIds: string[],
+    customerCategoryId: string,
+  ): Promise<any>;
+  removeCustomersFromCategory(customerIds: string[]): Promise<any>;
+  // getCustomerOrder(query: ListQueryDto, customerId: string): Promise<IPagination>;
 }

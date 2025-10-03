@@ -8,6 +8,7 @@ import {
   Inject,
   Delete,
   Query,
+  Req,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PATTERNS } from '../contracts';
@@ -15,6 +16,8 @@ import {
   BranchCreateDto,
   BranchUpdateDto,
 } from '../operations/branch/branch.entity';
+import { query } from 'express';
+import { ListQueryDto } from '../common/query/query.dto';
 
 @Controller('branch')
 export class BranchGatewayController {
@@ -34,14 +37,12 @@ export class BranchGatewayController {
 
   @Get()
   async findAllBranches(
-    @Query('page') page?: number,
-    @Query('pageSize') pageSize?: number,
-    @Query('search') search?: string,
+    @Req() req, @Query() query: ListQueryDto
   ) {
+    const authHeader = req.headers['authorization'] || null;
     return this.branchClient.send(PATTERNS.BRANCH_FIND_ALL, {
-      page: page ? Number(page) : 1,
-      pageSize: pageSize ? Number(pageSize) : 10,
-      search: search || null,
+      headers: { authorization: authHeader },
+      query
     });
   }
 

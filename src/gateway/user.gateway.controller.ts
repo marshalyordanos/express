@@ -18,9 +18,13 @@ import { PATTERNS } from '../contracts';
 import {
   AddressDto,
   AddressUpdateDto,
+  AssignCustomerToCategory,
   ChangeRoleDto,
+  CustomerCategoryDto,
   PreferencesDto,
+  UnAssignCustomerToCategory,
   UpdateCorporateInfoDto,
+  UpdateCustomerCategoryDto,
   UserDto,
 } from '../operations/user/user.entity';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
@@ -146,5 +150,62 @@ export class UserGatewayController {
   @Delete(':id')
   async deleteUser(@Param('id') id: string) {
     return this.usersClient.send(PATTERNS.USER_DELETE, { id });
+  }
+
+  //=============================================Customer Category========================
+
+  @Get('/category')
+  async getCustomerCategory(@Req() req, @Query() query: ListQueryDto) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_FIND_ALL, {
+      headers: { authorization: authHeader },
+      query,
+    });
+  }
+
+  @Get('/category/:id')
+  async getCustomerCategoryById(@Param('id') id: string) {
+    return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_FIND_BY_ID, { id });
+  }
+
+  @Post('/category')
+  async createCustomerCategory(@Body() dto: CustomerCategoryDto) {
+    return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_CREATE, {
+      data: dto,
+    });
+  }
+
+  @Patch('/category/:id')
+  async updateCustomerCategory(
+    @Param('id') id: string,
+    @Body() dto: UpdateCustomerCategoryDto,
+  ) {
+    return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_UPDATE, {
+      id,
+      data: dto,
+    });
+  }
+
+  @Delete('/category/:id')
+  async deleteCustomerCategory(@Param('id') id: string) {
+    return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_DELETE, { id });
+  }
+
+  @Post('/assign/category')
+  async assignCustomerCategoryToUser(@Body() dto: AssignCustomerToCategory) {
+    console.log('dto: ', dto);
+    
+    return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_ASSIGN_USER, {
+      data: dto,
+    });
+  }
+
+  @Post('/remove/category')
+  async unAssignCustomerCategoryToUser(
+    @Body() dto: UnAssignCustomerToCategory,
+  ) {
+    return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_UNASSIGN_USER, {
+      data: dto,
+    });
   }
 }

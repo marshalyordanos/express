@@ -1,10 +1,11 @@
 import { Body, Controller } from "@nestjs/common";
 import { MessagePattern, Payload } from "@nestjs/microservices";
-import { Public } from "src/common/decorator/public.decorator";
-import { PATTERNS } from "src/contracts";
+import { Public } from "../../common/decorator/public.decorator";
+import { PATTERNS } from "../../contracts";
 import { DispatchUseCasesImpl } from "./dispatch.usecase.impl";
 import { AssignDriverForPickup, AssignOfficerForBatch, BatchDispatchDto, BatchHandoverDto, CompleteDeliveryDto, ConfirmBatchHandoverDto, LastMileDeliveryDto } from "./dispatch.entity";
-import { IResponse } from "src/common/types";
+import { IResponse } from "../../common/types";
+import { ListQueryDto } from "../../common/query/query.dto";
 
 
 @Controller()
@@ -27,9 +28,9 @@ export class DispatchMessageController {
 
     @Public()
     @MessagePattern(PATTERNS.DISPATCH_FIND_ALL)
-    async findDispatches(@Payload() body: any ): Promise<any> {
-        console.log('body: ', body);
-        return this.usecases.getBatches(body);
+    async findDispatches(@Payload() payload: { query: ListQueryDto } ): Promise<any> {
+        console.log('body: ', payload.query);
+        return this.usecases.getBatches(payload.query);
     }
 
     @Public()

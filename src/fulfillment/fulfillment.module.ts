@@ -8,6 +8,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { DispatchMessageController } from './dispatch/dispatch.controller';
 import { DispatchRepository } from './dispatch/dispatch.repository';
 import { DispatchUseCasesImpl } from './dispatch/dispatch.usecase.impl';
+import { PricingRepository } from './pricing/pricing.repository';
+import { PricingMessageController } from './pricing/pricing.controller';
+import { PricingUseCasesImpl } from './pricing/pricing.usecase.impl';
 
 @Module({
   imports: [
@@ -17,14 +20,16 @@ import { DispatchUseCasesImpl } from './dispatch/dispatch.usecase.impl';
       signOptions: { expiresIn: '15m' },
     }),
   ],
-  controllers: [OrderMessageController, DispatchMessageController],
+  controllers: [OrderMessageController, DispatchMessageController, PricingMessageController],
   providers: [
     OrderRepository,
     OrderUseCasesImpl,
     PrismaService,
     DispatchRepository,
     DispatchUseCasesImpl,
+    PricingRepository,
+    PricingUseCasesImpl
   ],
-  exports: [OrderUseCasesImpl, PrismaService, DispatchUseCasesImpl],
+  exports: [OrderUseCasesImpl, PrismaService, DispatchUseCasesImpl, PricingUseCasesImpl],
 })
 export class FulfillmentModule {}
