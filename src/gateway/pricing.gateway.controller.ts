@@ -38,9 +38,13 @@ export class PricingGatewayController {
   ) {}
   //==========================================================================TARIFF==================================================================================
   @Post('tariff')
-  async createTariff(@Body() data: TariffDto) {
+  async createTariff(@Body() data: TariffDto, @Req() req) {
     console.log('Tariff data : ', data);
-    return this.pricingClient.send(PATTERNS.PRICE_TARIFF_CREATE, data);
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_TARIFF_CREATE, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get('tariff')
@@ -48,38 +52,62 @@ export class PricingGatewayController {
     const authHeader = req.headers['authorization'] || null;
     return this.pricingClient.send(PATTERNS.PRICE_TARIFF_FIND_ALL, {
       headers: { authorization: authHeader },
-      query
+      query,
     });
   }
 
   @Patch('tariff/:id')
-  async updateTariff(@Param('id') id: string, @Body() data: UpdateTariffDto) {
-    return this.pricingClient.send(PATTERNS.PRICE_TARIFF_UPDATE, { id, data });
+  async updateTariff(
+    @Param('id') id: string,
+    @Body() data: UpdateTariffDto,
+    @Req() req,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_TARIFF_UPDATE, {
+      id,
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get('tariff/:id')
-  async getTariffById(@Param('id') id: string) {
-    return this.pricingClient.send(PATTERNS.PRICE_TARIFF_FIND_BY_ID, id);
+  async getTariffById(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_TARIFF_FIND_BY_ID, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Delete('tariff/:id')
-  async deleteTariff(@Param('id') id: string) {
-    return this.pricingClient.send(PATTERNS.PRICE_TARIFF_DELETE, id);
+  async deleteTariff(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_TARIFF_DELETE, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
   //====================================================================================================================PROFIT MARGIN===============================================================================
   @Post('profit-margin')
-  async createProfitMargin(@Body() data: ProfitMarginDto) {
-    return this.pricingClient.send(PATTERNS.PRICE_PROFIT_MARGIN_CREATE, data);
+  async createProfitMargin(@Body() data: ProfitMarginDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_PROFIT_MARGIN_CREATE, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Patch('profit-margin/:id')
   async updateProfitMargin(
     @Param('id') id: string,
     @Body() data: UpdateProfitMarginDto,
+    @Req() req,
   ) {
+    const authHeader = req.headers['authorization'] || null;
     return this.pricingClient.send(PATTERNS.PRICE_PROFIT_MARGIN_UPDATE, {
       id,
       data,
+      headers: { authorization: authHeader },
     });
   }
 
@@ -88,30 +116,42 @@ export class PricingGatewayController {
     const authHeader = req.headers['authorization'] || null;
     return this.pricingClient.send(PATTERNS.PRICE_PROFIT_MARGIN_FIND_ALL, {
       headers: { authorization: authHeader },
-      query
+      query,
     });
   }
 
   @Get('profit-margin/:id')
-  async getProfitMarginById(@Param('id') id: string) {
-    return this.pricingClient.send(PATTERNS.PRICE_PROFIT_MARGIN_FIND_BY_ID, id);
+  async getProfitMarginById(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_PROFIT_MARGIN_FIND_BY_ID, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Delete('profit-margin/:id')
-  async deleteProfitMargin(@Param('id') id: string) {
-    return this.pricingClient.send(PATTERNS.PRICE_PROFIT_MARGIN_DELETE, id);
+  async deleteProfitMargin(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_PROFIT_MARGIN_DELETE, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
   //============================================================================================================================AIRPORT FEES===============================================================================
   @Post('airport-fee')
-  async createAirportFee(@Body() data: AirportFeeDto) {
-    return this.pricingClient.send(PATTERNS.PRICE_AIRPORT_FEE_CREATE, data);
+  async createAirportFee(@Body() data: AirportFeeDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_AIRPORT_FEE_CREATE, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get('airport-fee')
-  async getAirportFee( @Req() req, @Query() query: ListQueryDto) {
+  async getAirportFee(@Req() req, @Query() query: ListQueryDto) {
     return this.pricingClient.send(PATTERNS.PRICE_AIRPORT_FEE_FIND_ALL, {
       headers: { authorization: req.headers['authorization'] || null },
-      query
+      query,
     });
   }
 
@@ -119,10 +159,13 @@ export class PricingGatewayController {
   async updateAirportFee(
     @Param('id') id: string,
     @Body() data: UpdateAirportFeeDto,
+    @Req() req,
   ) {
+    const authHeader = req.headers['authorization'] || null;
     return this.pricingClient.send(PATTERNS.PRICE_AIRPORT_FEE_UPDATE, {
       id,
       data,
+      headers: { authorization: authHeader },
       /*************  ✨ Windsurf Command ⭐  *************/
       /**
        * Deletes a miscellaneous fee with the given id
@@ -134,18 +177,30 @@ export class PricingGatewayController {
   }
 
   @Get('airport-fee/:id')
-  async getAirportFeeById(@Param('id') id: string) {
-    return this.pricingClient.send(PATTERNS.PRICE_AIRPORT_FEE_FIND_BY_ID, id);
+  async getAirportFeeById(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_AIRPORT_FEE_FIND_BY_ID, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Delete('airport-fee/:id')
-  async deleteAirportFee(@Param('id') id: string) {
-    return this.pricingClient.send(PATTERNS.PRICE_AIRPORT_FEE_DELETE, id);
+  async deleteAirportFee(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_AIRPORT_FEE_DELETE, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
   //=================================================================================================================MISCELLANEOUS FEES===============================================================================
   @Post('misc-fee')
-  async createMiscFee(@Body() data: MiscellaneousFeeDto) {
-    return this.pricingClient.send(PATTERNS.PRICE_MISC_FEE_CREATE, data);
+  async createMiscFee(@Body() data: MiscellaneousFeeDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_MISC_FEE_CREATE, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get('misc-fee')
@@ -153,7 +208,7 @@ export class PricingGatewayController {
     const authHeader = req.headers['authorization'] || null;
     return this.pricingClient.send(PATTERNS.PRICE_MISC_FEE_FIND_ALL, {
       headers: { authorization: authHeader },
-      query
+      query,
     });
   }
 
@@ -161,26 +216,41 @@ export class PricingGatewayController {
   async updateMiscFee(
     @Param('id') id: string,
     @Body() data: UpdateMiscellaneousFeeDto,
+    @Req() req,
   ) {
+    const authHeader = req.headers['authorization'] || null;
     return this.pricingClient.send(PATTERNS.PRICE_MISC_FEE_UPDATE, {
       id,
       data,
+      headers: { authorization: authHeader },
     });
   }
 
   @Get('misc-fee/:id')
-  async getMiscFeeById(@Param('id') id: string) {
-    return this.pricingClient.send(PATTERNS.PRICE_MISC_FEE_FIND_BY_ID, id);
+  async getMiscFeeById(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_MISC_FEE_FIND_BY_ID, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Delete('misc-fee/:id')
-  async deleteMiscFee(@Param('id') id: string) {
-    return this.pricingClient.send(PATTERNS.PRICE_MISC_FEE_DELETE, id);
+  async deleteMiscFee(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_MISC_FEE_DELETE, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
   //==========================================================================================================SURCHARGE==================================================================================
   @Post('surcharge')
-  async createSurcharge(@Body() data: SurchargeDto) {
-    return this.pricingClient.send(PATTERNS.PRICE_SURCHARGE_CREATE, data);
+  async createSurcharge(@Body() data: SurchargeDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_SURCHARGE_CREATE, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get('surcharge')
@@ -188,7 +258,7 @@ export class PricingGatewayController {
     const authHeader = req.headers['authorization'] || null;
     return this.pricingClient.send(PATTERNS.PRICE_SURCHARGE_FIND_ALL, {
       headers: { authorization: authHeader },
-      query
+      query,
     });
   }
 
@@ -196,26 +266,41 @@ export class PricingGatewayController {
   async updateSurcharge(
     @Param('id') id: string,
     @Body() data: UpdateSurchargeDto,
+    @Req() req,
   ) {
+    const authHeader = req.headers['authorization'] || null;
     return this.pricingClient.send(PATTERNS.PRICE_SURCHARGE_UPDATE, {
       id,
       data,
+      headers: { authorization: authHeader },
     });
   }
 
   @Get('surcharge/:id')
-  async getSurchargeById(@Param('id') id: string) {
-    return this.pricingClient.send(PATTERNS.PRICE_SURCHARGE_FIND_BY_ID, id);
+  async getSurchargeById(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_SURCHARGE_FIND_BY_ID, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Delete('surcharge/:id')
-  async deleteSurcharge(@Param('id') id: string) {
-    return this.pricingClient.send(PATTERNS.PRICE_SURCHARGE_DELETE, id);
+  async deleteSurcharge(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_SURCHARGE_DELETE, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
   //==========================================================================================================DISCOUNT==================================================================================
   @Post('discount')
-  async createDiscount(@Body() data: DiscountDto) {
-    return this.pricingClient.send(PATTERNS.PRICE_DISCOUNT_CREATE, data);
+  async createDiscount(@Body() data: DiscountDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_DISCOUNT_CREATE, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get('discount')
@@ -223,7 +308,7 @@ export class PricingGatewayController {
     const authHeader = req.headers['authorization'] || null;
     return this.pricingClient.send(PATTERNS.PRICE_DISCOUNT_FIND_ALL, {
       headers: { authorization: authHeader },
-      query
+      query,
     });
   }
 
@@ -231,65 +316,82 @@ export class PricingGatewayController {
   async updateDiscount(
     @Param('id') id: string,
     @Body() data: UpdateDiscountDto,
+    @Req() req,
   ) {
+    const authHeader = req.headers['authorization'] || null;
     return this.pricingClient.send(PATTERNS.PRICE_DISCOUNT_UPDATE, {
       id,
       data,
+      headers: { authorization: authHeader },
     });
   }
 
   @Get('discount/:id')
-  async getDiscountById(@Param('id') id: string) {
-    return this.pricingClient.send(PATTERNS.PRICE_DISCOUNT_FIND_BY_ID, id);
+  async getDiscountById(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_DISCOUNT_FIND_BY_ID, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Delete('discount/:id')
-  async deleteDiscount(@Param('id') id: string) {
-    return this.pricingClient.send(PATTERNS.PRICE_DISCOUNT_DELETE, id);
+  async deleteDiscount(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_DISCOUNT_DELETE, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
   //====================================================================================================================CUSTOMER CATEGORY===============================================================================
   @Post('customer-category')
-  async createCustomerCategory(@Body() data: CustomerCategoryDto) {
-    return this.pricingClient.send(
-      PATTERNS.PRICE_CUSTOMER_CATEGORY_CREATE,
+  async createCustomerCategory(@Body() data: CustomerCategoryDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_CUSTOMER_CATEGORY_CREATE, {
       data,
-    );
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get('customer-category')
   async getCustomerCategory(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
-    return this.pricingClient.send(
-      PATTERNS.PRICE_CUSTOMER_CATEGORY_FIND_ALL,
-      {
-        headers: { authorization: authHeader },
-        query
-      },
-    );
+    return this.pricingClient.send(PATTERNS.PRICE_CUSTOMER_CATEGORY_FIND_ALL, {
+      headers: { authorization: authHeader },
+      query,
+    });
   }
 
   @Patch('customer-category/:id')
   async updateCustomerCategory(
     @Param('id') id: string,
     @Body() data: UpdateCustomerCategoryDto,
+    @Req() req,
   ) {
+    const authHeader = req.headers['authorization'] || null;
     return this.pricingClient.send(PATTERNS.PRICE_CUSTOMER_CATEGORY_UPDATE, {
       id,
       data,
+      headers: { authorization: authHeader },
     });
   }
 
   @Get('customer-category/:id')
-  async getCustomerCategoryById(@Param('id') id: string) {
+  async getCustomerCategoryById(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
     return this.pricingClient.send(
       PATTERNS.PRICE_CUSTOMER_CATEGORY_FIND_BY_ID,
-      id,
+      { id, headers: { authorization: authHeader } },
     );
   }
 
   @Delete('customer-category/:id')
-  async deleteCustomerCategory(@Param('id') id: string) {
-    return this.pricingClient.send(PATTERNS.PRICE_CUSTOMER_CATEGORY_DELETE, id);
+  async deleteCustomerCategory(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_CUSTOMER_CATEGORY_DELETE, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
   //============================================================================================================PRICE CALCULATION AND LOG===============================================================================
   @Get('price-calculation-log')
@@ -297,20 +399,25 @@ export class PricingGatewayController {
     const authHeader = req.headers['authorization'] || null;
     return this.pricingClient.send(PATTERNS.PRICE_CALCULATION_LOG_FIND_ALL, {
       headers: { authorization: authHeader },
-      query
+      query,
     });
   }
 
   @Get('price-calculation-log/:id')
-  async getPriceCalculationLogById(@Param('id') id: string) {
-    return this.pricingClient.send(
-      PATTERNS.PRICE_CALCULATION_LOG_FIND_BY_ID,
+  async getPriceCalculationLogById(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_CALCULATION_LOG_FIND_BY_ID, {
       id,
-    );
+      headers: { authorization: authHeader },
+    });
   }
 
   @Post('calculate')
-  async calculatePrice(@Body() data: PriceCalculationLogDto) {
-    return this.pricingClient.send(PATTERNS.PRICE_CALCULATE, data);
+  async calculatePrice(@Body() data: PriceCalculationLogDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.pricingClient.send(PATTERNS.PRICE_CALCULATE, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 }

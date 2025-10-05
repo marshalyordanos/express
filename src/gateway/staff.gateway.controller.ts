@@ -29,18 +29,23 @@ export class StaffGatewayController {
 
   //endpoint for changing user role in case it is needed and needs role name and user id
   @Patch('role/change')
-  async changeUserRole(@Body() dto: ChangeRoleDto) {
+  async changeUserRole(@Body() dto: ChangeRoleDto, @Req() req) {
     console.log('dto: ', dto);
+    const authHeader = req.headers['authorization'] || null;
 
     return this.staffClient.send(PATTERNS.USER_CHANGE_ROLE, {
-      role: dto.role,
-      userId: dto.userId,
+      data: dto,
+      headers: { authorization: authHeader },
     });
   }
   //Get staff or user using their email
   @Get('email/:email')
-  async findUserByEmail(@Param('email') email: string) {
-    return this.staffClient.send(PATTERNS.USER_FIND_BY_EMAIL, { email });
+  async findUserByEmail(@Param('email') email: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.staffClient.send(PATTERNS.USER_FIND_BY_EMAIL, {
+      email,
+      headers: { authorization: authHeader },
+    });
   }
 
   //Create staff with roles like Internal driver,customer service, dispatch officer, branch manager
@@ -62,22 +67,17 @@ export class StaffGatewayController {
     // @Query('roleId') roleId?: string,
     // @Query('page') page = 1,
     // @Query('pageSize') pageSize = 10,
-    @Query() query: ListQueryDto
-
+    @Query() query: ListQueryDto,
   ) {
-    console.log('Getting all staff');
-
     const authHeader = req.headers['authorization'] || null;
 
     // Wait for microservice response
     const result = await firstValueFrom(
       this.staffClient.send(PATTERNS.STAFF_FIND_ALL, {
         headers: { authorization: authHeader },
-       query
+        query,
       }),
     );
-
-    console.log('Staff result:', result);
     return result;
   }
 
@@ -88,35 +88,51 @@ export class StaffGatewayController {
     @Query('role') role: string,
     // @Query('page') page?: number,
     // @Query('pageSize') pageSize?: number,
-    @Query() query: ListQueryDto
+    @Query() query: ListQueryDto,
   ) {
-    
     const authHeader = req.headers['authorization'] || null;
 
     return this.staffClient.send(PATTERNS.STAFF_FIND_BY_ROLE, {
       headers: { authorization: authHeader },
       query,
-      role
+      role,
     });
   }
   //delete staff with roles like Internal driver,customer service, dispatch officer, branch manager
   @Delete(':id')
-  async deleteStaff(@Param('id') id: string) {
+  async deleteStaff(@Param('id') id: string, @Req() req) {
     console.log('Deleting....');
+    const authHeader = req.headers['authorization'] || null;
 
-    return this.staffClient.send(PATTERNS.STAFF_DELETE, { id });
+    return this.staffClient.send(PATTERNS.STAFF_DELETE, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Patch(':id')
-  async updateStaff(@Param('id') id: string, @Body() dto: UpdateStaffDto) {
+  async updateStaff(
+    @Param('id') id: string,
+    @Body() dto: UpdateStaffDto,
+    @Req() req,
+  ) {
     console.log('this is dto : ', dto);
+    const authHeader = req.headers['authorization'] || null;
 
-    return this.staffClient.send(PATTERNS.STAFF_UPDATE, { id, data: dto });
+    return this.staffClient.send(PATTERNS.STAFF_UPDATE, {
+      id,
+      data: dto,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get(':id')
-  async findStaffById(@Param('id') id: string) {
-    return this.staffClient.send(PATTERNS.STAFF_FIND_BY_ID, { id });
+  async findStaffById(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.staffClient.send(PATTERNS.STAFF_FIND_BY_ID, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get('/branch/:branchId')
@@ -126,20 +142,26 @@ export class StaffGatewayController {
     // @Query('search') search?: string,
     // @Query('page') page?: number,
     // @Query('pageSize') pageSize?: number,
-    @Query() query: ListQueryDto
+    @Query() query: ListQueryDto,
   ) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.staffClient.send(PATTERNS.STAFF_FIND_BY_BRANCH, {
       headers: { authorization: authHeader },
       branchId,
-      query
+      query,
     });
   }
 
   @Post('assign-branch')
-  async assignBranch(@Body() dto: { staffIds: string[]; branchId: string }) {
-    
-    return this.staffClient.send(PATTERNS.STAFF_ASSIGN_BRANCH, dto);
+  async assignBranch(
+    @Body() dto: { staffIds: string[]; branchId: string },
+    @Req() req,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.staffClient.send(PATTERNS.STAFF_ASSIGN_BRANCH, {
+      data: dto,
+      headers: { authorization: authHeader },
+    });
   }
 }

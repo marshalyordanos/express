@@ -22,17 +22,20 @@ export class BranchMessageController {
 
   @UseGuards(PermissionGuard)
   @CheckPermission('Branch', PermissionActions.CREATE)
-  @Public()
+  // @Public()
   @MessagePattern(PATTERNS.BRANCH_CREATE)
-  async createBranch(@Payload() data: BranchCreateDto) {
+  async createBranch(@Payload() payload:{data: BranchCreateDto}) {
     try {
-      const result = await this.usecases.createBranch(data);
+      const result = await this.usecases.createBranch(payload.data);
       return new IResponse(true, 'Branch is created Succuessfuly', result);
     } catch (error) {
       handleCatch(error);
     }
   }
-  @Public()
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Branch', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.BRANCH_FIND_BY_ID)
   async findBranchById(@Payload() data: { id: string }) {
     try {
@@ -42,7 +45,10 @@ export class BranchMessageController {
       handleCatch(error);
     }
   }
-  @Public()
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Branch', PermissionActions.UPDATE)
+  // @Public()
   @MessagePattern(PATTERNS.BRANCH_UPDATE)
   async updateBranch(
     @Payload() payload: { id: string; data: Partial<BranchUpdateDto> },
@@ -55,7 +61,10 @@ export class BranchMessageController {
     }
   }
 
-  @Public()
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Branch', PermissionActions.DELETE)
+  // @Public()
   @MessagePattern(PATTERNS.BRANCH_DELETE)
   async deleteBranch(@Payload() data: { id: string }) {
     try {
@@ -66,7 +75,10 @@ export class BranchMessageController {
     }
   }
 
-  @Public()
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Branch', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.BRANCH_ASSIGN_MANAGER)
   async assignManager(
     @Payload() payload: { branchId: string; managerId: string },
@@ -88,7 +100,11 @@ export class BranchMessageController {
       handleCatch(error);
     }
   }
-  @Public()
+
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Branch', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.BRANCH_REVOKE_MANAGER)
   async revokeManager(
     @Payload() payload: { branchId: string; managerId: string },
@@ -108,7 +124,7 @@ export class BranchMessageController {
 
   @UseGuards(PermissionGuard)
   @CheckPermission('Branch', PermissionActions.READ)
-  @Public()
+  // @Public()
   @MessagePattern(PATTERNS.BRANCH_FIND_ALL)
   async findAllBranches(@Payload() payload: {query: ListQueryDto}) {
     console.log('data: ', payload);

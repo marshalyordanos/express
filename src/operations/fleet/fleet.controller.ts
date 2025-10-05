@@ -21,7 +21,9 @@ export class FleetMessageController {
   constructor(private readonly usecases: FleetUseCasesImp) {}
 
   // Create a new vehicle
-  @Public()
+  // @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.FLEET_CREATE_VEHICLE)
   async createVehicle(@Payload() payload: { data: CreateVehicleDto }) {
     try {
@@ -60,6 +62,8 @@ export class FleetMessageController {
   }
 
   // Get a vehicle by ID
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.FLEET_GET_VEHICLE_BY_ID)
   async getVehicleById(@Payload() payload: { id: string }) {
     try {
@@ -71,7 +75,9 @@ export class FleetMessageController {
   }
 
   // Update vehicle details
-  @Public()
+  // @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.FLEET_UPDATE_VEHICLE)
   async updateVehicle(
     @Payload() payload: { id: string; data: UpdateVehicleDto },
@@ -85,7 +91,9 @@ export class FleetMessageController {
   }
 
   // Delete a vehicle
-  @Public()
+  // @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.DELETE)
   @MessagePattern(PATTERNS.FLEET_DELETE_VEHICLE)
   async deleteVehicle(@Payload() payload: { id: string }) {
     try {
@@ -97,7 +105,9 @@ export class FleetMessageController {
   }
 
   // Assign vehicle to a driver
-  @Public()
+  // @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.FLEET_ASSIGN_VEHICLE)
   async assignVehicle(@Payload() payload: { data: AssignVehicleDto }) {
     try {
@@ -110,7 +120,9 @@ export class FleetMessageController {
   }
 
   // Unassign vehicle from a driver
-  @Public()
+  // @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.FLEET_UNASSIGN_VEHICLE)
   async unassignVehicle(@Payload() payload: { vehicleId: string }) {
     try {
@@ -122,6 +134,8 @@ export class FleetMessageController {
   }
 
   // Get all vehicles assigned to a driver
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.READ)
   @MessagePattern(PATTERNS.FLEET_GET_DRIVER_VEHICLES)
   async getVehiclesByDriver(@Payload() payload: { driverId: string }) {
     try {
@@ -132,6 +146,8 @@ export class FleetMessageController {
   }
 
   // Log vehicle maintenance
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.FLEET_LOG_MAINTENANCE)
   async logVehicleMaintenance(
     @Payload() payload: { data: VehicleMaintenanceDto },
@@ -145,6 +161,8 @@ export class FleetMessageController {
   }
 
   // Get vehicle maintenance history
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.READ)
   @MessagePattern(PATTERNS.FLEET_GET_MAINTENANCE_HISTORY)
   async getMaintenanceHistory(
     @Payload()
@@ -169,6 +187,8 @@ export class FleetMessageController {
   }
 
   // Get fleet summary / analytics
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.READ)
   @MessagePattern(PATTERNS.FLEET_GET_SUMMARY)
   async getFleetSummary() {
     try {
@@ -180,6 +200,8 @@ export class FleetMessageController {
   }
 
   // Get available vehicles
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.READ)
   @MessagePattern(PATTERNS.FLEET_GET_AVAILABLE_VEHICLES)
   async getAvailableVehicles() {
     try {
@@ -190,6 +212,8 @@ export class FleetMessageController {
   }
 
   // Get full vehicle history
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.READ)
   @MessagePattern(PATTERNS.FLEET_GET_VEHICLE_HISTORY)
   async getVehicleHistory(@Payload() payload: { vehicleId: string }) {
     try {
@@ -200,6 +224,8 @@ export class FleetMessageController {
   }
 
   // Retire a vehicle
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.READ)
   @MessagePattern(PATTERNS.FLEET_RETIRE_VEHICLE)
   async retireVehicle(@Payload() payload: { vehicleId: string }) {
     try {
@@ -210,6 +236,8 @@ export class FleetMessageController {
   }
 
   // Get fleet alerts
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.READ)
   @MessagePattern(PATTERNS.FLEET_GET_ALERTS)
   async getFleetAlerts() {
     try {
@@ -220,6 +248,8 @@ export class FleetMessageController {
   }
 
   // Get driver vehicle history
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Fleet', PermissionActions.READ)
   @MessagePattern(PATTERNS.FLEET_GET_DRIVER_HISTORY)
   async getDriverVehicleHistory(@Payload() payload: { driverId: string }) {
     try {

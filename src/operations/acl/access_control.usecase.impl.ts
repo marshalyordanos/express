@@ -32,7 +32,9 @@ export class AccessControlUsecaseImpl implements AccessControlUsecase {
     return this.repo.createRole(data);
   }
 
-  async updateRole(id: string, data: Partial<RoleDto>): Promise<Role> {
+  async updateRole(id: string, data: Partial<RoleDto>):  Promise<Role> {
+    const role= await this.repo.findRoleById(id);
+    if(!role) throw new RpcException('Role not found');
     return this.repo.updateRole(id, data);
   }
 

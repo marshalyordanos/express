@@ -73,6 +73,8 @@ export class AccessControlMessageController {
   @MessagePattern(PATTERNS.ROLE_UPDATE)
   async updateRole(@Payload() payload: { id: string; data: Partial<RoleDto> }) {
     try {
+      console.log("payload: ", payload);
+      
       const result = await this.usecases.updateRole(payload.id, payload.data);
       return IResponse.success('Role updated successfully', result);
     } catch (error) {

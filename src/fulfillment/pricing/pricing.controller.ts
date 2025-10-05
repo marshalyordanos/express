@@ -7,336 +7,447 @@ import {
   CustomerCategoryDto,
   DiscountDto,
   MiscellaneousFeeDto,
+  PriceCalculationLogDto,
   ProfitMarginDto,
   SurchargeDto,
   TariffDto,
+  UpdateAirportFeeDto,
+  UpdateCustomerCategoryDto,
+  UpdateDiscountDto,
+  UpdateMiscellaneousFeeDto,
+  UpdateProfitMarginDto,
+  UpdateSurchargeDto,
+  UpdateTariffDto,
 } from './pricing.entity';
-import { Injectable } from '@nestjs/common';
+import { Injectable, UseGuards } from '@nestjs/common';
 import { IResponse } from '../../common/types';
+import { CheckPermission } from '../../common/decorator/check-permission.decorator';
+import { PermissionGuard } from '../../common/permission.guard';
+import { PermissionActions } from '../../contracts/permission-actions.enum';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Injectable()
 export class PricingMessageController {
   constructor(private readonly usecases: PricingUseCasesImpl) {}
   //=============================================================================TARIFF====================================================================
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_TARIFF_CREATE)
-  async createTariff(@Payload() payload: TariffDto) {
+  async createTariff(@Payload() payload: { data: TariffDto }) {
     console.log('Tariff datajjj : ', payload);
-    const result = await this.usecases.createTariff(payload);
+    const result = await this.usecases.createTariff(payload.data);
     return IResponse.success('Tariff created successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.UPDATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_TARIFF_UPDATE)
-  async updateTariff(@Payload() payload: any) {
+  async updateTariff(
+    @Payload() payload: { id: string; data: UpdateTariffDto },
+  ) {
     console.log('Tariff data : ', payload);
     const result = await this.usecases.updateTariff(payload.id, payload.data);
     return IResponse.success('Tariff updated successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_TARIFF_FIND_ALL)
-  async getTariff() {
-    const result = await this.usecases.findAllTariff();
+  async getTariff(@Payload() payload: { query: ListQueryDto }) {
+    const result = await this.usecases.findAllTariff(payload.query);
     return IResponse.success('All Tariff fetched successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_TARIFF_FIND_BY_ID)
-  async getTariffById(@Payload() id: string) {
-    const result = await this.usecases.findTariffById(id);
+  async getTariffById(@Payload() payload: { id: string }) {
+    const result = await this.usecases.findTariffById(payload.id);
     return IResponse.success(
-      `Tariff with id: ${id} fetched successfully`,
+      `Tariff with id: ${payload.id} fetched successfully`,
       result,
     );
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.DELETE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_TARIFF_DELETE)
-  async deleteTariff(@Payload() id: string) {
-    const result = await this.usecases.deleteTariff(id);
+  async deleteTariff(@Payload() payload: { id: string }) {
+    const result = await this.usecases.deleteTariff(payload.id);
     return IResponse.success(
-      `Tariff with id: ${id} deleted successfully`,
+      `Tariff with id: ${payload.id} deleted successfully`,
       result,
     );
   }
   //===================================================================================================PROFIT MARGIN====================================================================
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_PROFIT_MARGIN_CREATE)
-  async createProfitMargin(@Payload() data: ProfitMarginDto) {
-    const result = await this.usecases.createProfitMargin(data);
+  async createProfitMargin(@Payload() payload: { data: ProfitMarginDto }) {
+    const result = await this.usecases.createProfitMargin(payload.data);
     return IResponse.success('Profit margin created successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_PROFIT_MARGIN_FIND_ALL)
-  async getProfitMargin() {
-    const result = await this.usecases.findAllProfitMargins();
+  async getProfitMargin(@Payload() payload: { query: ListQueryDto }) {
+    const result = await this.usecases.findAllProfitMargins(payload.query);
     return IResponse.success('All Profit margin fetched successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.UPDATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_PROFIT_MARGIN_UPDATE)
-  async updateProfitMargin(@Payload() data: any) {
-    const result = await this.usecases.updateProfitMargin(data.id, data.data);
+  async updateProfitMargin(
+    @Payload() payload: { id: string; data: UpdateProfitMarginDto },
+  ) {
+    const result = await this.usecases.updateProfitMargin(
+      payload.id,
+      payload.data,
+    );
     return IResponse.success('Profit margin updated successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_PROFIT_MARGIN_FIND_BY_ID)
-  async getProfitMarginById(@Payload() id: string) {
-    const result = await this.usecases.findProfitMarginById(id);
+  async getProfitMarginById(@Payload() payload: { id: string }) {
+    const result = await this.usecases.findProfitMarginById(payload.id);
     return IResponse.success(
-      `Profit margin with id: ${id} fetched successfully`,
+      `Profit margin with id: ${payload.id} fetched successfully`,
       result,
     );
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.DELETE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_PROFIT_MARGIN_DELETE)
-  async deleteProfitMargin(@Payload() id: string) {
-    const result = await this.usecases.deleteProfitMargin(id);
+  async deleteProfitMargin(@Payload() payload: { id: string }) {
+    const result = await this.usecases.deleteProfitMargin(payload.id);
     return IResponse.success(
-      `Profit margin with id: ${id} deleted successfully`,
+      `Profit margin with id: ${payload.id} deleted successfully`,
       result,
     );
   }
   //===================================================================================================AIRPORT FEE====================================================================
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_AIRPORT_FEE_CREATE)
-  async createAirportFee(@Payload() data: AirportFeeDto) {
-    const result = await this.usecases.createAirportFee(data);
+  async createAirportFee(@Payload() payload: { data: AirportFeeDto }) {
+    const result = await this.usecases.createAirportFee(payload.data);
     return IResponse.success('Airport fee created successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_AIRPORT_FEE_FIND_ALL)
-  async getAirportFee() {
-    const result = await this.usecases.findAllAirportFees();
+  async getAirportFee(@Payload() payload: { query: ListQueryDto }) {
+    const result = await this.usecases.findAllAirportFees(payload.query);
     return IResponse.success('All Airport fee fetched successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.UPDATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_AIRPORT_FEE_UPDATE)
-  async updateAirportFee(@Payload() data: any) {
-    const result = await this.usecases.updateAirportFee(data.id, data.data);
+  async updateAirportFee(
+    @Payload() payload: { id: string; data: UpdateAirportFeeDto },
+  ) {
+    const result = await this.usecases.updateAirportFee(
+      payload.id,
+      payload.data,
+    );
     return IResponse.success('Airport fee updated successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_AIRPORT_FEE_FIND_BY_ID)
-  async getAirportFeeById(@Payload() id: string) {
-    const result = await this.usecases.findAirportFeeById(id);
+  async getAirportFeeById(@Payload() payload: { id: string }) {
+    const result = await this.usecases.findAirportFeeById(payload.id);
     return IResponse.success(
-      `Airport fee with id: ${id} fetched successfully`,
+      `Airport fee with id: ${payload.id} fetched successfully`,
       result,
     );
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.DELETE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_AIRPORT_FEE_DELETE)
-  async deleteAirportFee(@Payload() id: string) {
-    const result = await this.usecases.deleteAirportFee(id);
+  async deleteAirportFee(@Payload() payload: { id: string }) {
+    const result = await this.usecases.deleteAirportFee(payload.id);
     return IResponse.success(
-      `Airport fee with id: ${id} deleted successfully`,
+      `Airport fee with id: ${payload.id} deleted successfully`,
       result,
     );
   }
   //=============================================================================================MISCELLANEOUS FEE====================================================================
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_MISC_FEE_CREATE)
-  async createMiscFee(@Payload() data: MiscellaneousFeeDto) {
-    const result = await this.usecases.createMiscFee(data);
+  async createMiscFee(@Payload() payload: { data: MiscellaneousFeeDto }) {
+    const result = await this.usecases.createMiscFee(payload.data);
     return IResponse.success('Miscellaneous fee created successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_MISC_FEE_FIND_ALL)
-  async getMiscFee() {
-    const result = await this.usecases.findAllMiscFees();
+  async getMiscFee(@Payload() payload: { query: ListQueryDto }) {
+    const result = await this.usecases.findAllMiscFees(payload.query);
     return IResponse.success(
       'All Miscellaneous fee fetched successfully',
       result,
     );
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.UPDATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_MISC_FEE_UPDATE)
-  async updateMiscFee(@Payload() data: any) {
-    const result = await this.usecases.updateMiscFee(data.id, data.data);
+  async updateMiscFee(
+    @Payload() payload: { id: string; data: UpdateMiscellaneousFeeDto },
+  ) {
+    const result = await this.usecases.updateMiscFee(payload.id, payload.data);
     return IResponse.success('Miscellaneous fee updated successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_MISC_FEE_FIND_BY_ID)
-  async getMiscFeeById(@Payload() id: string) {
-    const result = await this.usecases.findMiscFeeById(id);
+  async getMiscFeeById(@Payload() payload: { id: string }) {
+    const result = await this.usecases.findMiscFeeById(payload.id);
     return IResponse.success(
-      `Miscellaneous fee with id: ${id} fetched successfully`,
+      `Miscellaneous fee with id: ${payload.id} fetched successfully`,
       result,
     );
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.DELETE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_MISC_FEE_DELETE)
-  async deleteMiscFee(@Payload() id: string) {
-    const result = await this.usecases.deleteMiscFee(id);
+  async deleteMiscFee(@Payload() payload: { id: string }) {
+    const result = await this.usecases.deleteMiscFee(payload.id);
     return IResponse.success(
-      `Miscellaneous fee with id: ${id} deleted successfully`,
+      `Miscellaneous fee with id: ${payload.id} deleted successfully`,
       result,
     );
   }
   //==============================================================================SURCHARGE====================================================================
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_SURCHARGE_CREATE)
-  async createSurcharge(@Payload() data: SurchargeDto) {
-    console.log('Surcharge data : ', data);
-    const result = await this.usecases.createSurcharge(data);
+  async createSurcharge(@Payload() payload: { data: SurchargeDto }) {
+    console.log('Surcharge data : ', payload.data);
+    const result = await this.usecases.createSurcharge(payload.data);
     return IResponse.success('Surcharge created successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_SURCHARGE_FIND_ALL)
-  async getSurcharge() {
-    const result = await this.usecases.findAllSurcharge();
+  async getSurcharge(@Payload() payload: { query: ListQueryDto }) {
+    const result = await this.usecases.findAllSurcharge(payload.query);
     return IResponse.success('All Surcharge fetched successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.UPDATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_SURCHARGE_UPDATE)
-  async updateSurcharge(@Payload() data: any) {
-    console.log('Surcharge data : ', data);
-    const result = await this.usecases.updateSurcharge(data.id, data.data);
+  async updateSurcharge(
+    @Payload() payload: { id: string; data: UpdateSurchargeDto },
+  ) {
+    console.log('Surcharge data : ', payload);
+    const result = await this.usecases.updateSurcharge(
+      payload.id,
+      payload.data,
+    );
     return IResponse.success('Surcharge updated successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.DELETE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_SURCHARGE_DELETE)
-  async deleteSurcharge(@Payload() id: string) {
-    const result = await this.usecases.deleteSurcharge(id);
+  async deleteSurcharge(@Payload() payload: { id: string }) {
+    const result = await this.usecases.deleteSurcharge(payload.id);
     return IResponse.success(
-      `Surcharge with id: ${id} deleted successfully`,
+      `Surcharge with id: ${payload.id} deleted successfully`,
       result,
     );
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_SURCHARGE_FIND_BY_ID)
-  async getSurchargeById(@Payload() id: string) {
-    const result = await this.usecases.findSurchargeById(id);
+  async getSurchargeById(@Payload() payload: { id: string }) {
+    const result = await this.usecases.findSurchargeById(payload.id);
     return IResponse.success(
-      `Surcharge with id: ${id} fetched successfully`,
+      `Surcharge with id: ${payload.id} fetched successfully`,
       result,
     );
   }
   //==============================================================================DISCOUNT====================================================================
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_DISCOUNT_CREATE)
-  async createDiscount(@Payload() data: DiscountDto) {
-    console.log('Discount data : ', data);
+  async createDiscount(@Payload() payload: { data: DiscountDto }) {
+    console.log('Discount data : ', payload.data);
 
-    const result = await this.usecases.createDiscount(data);
+    const result = await this.usecases.createDiscount(payload.data);
     return IResponse.success('Discount created successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_DISCOUNT_FIND_ALL)
-  async getDiscount() {
-    const result = await this.usecases.findAllDiscount();
+  async getDiscount(@Payload() payload: { query: ListQueryDto }) {
+    const result = await this.usecases.findAllDiscount(payload.query);
     return IResponse.success('All Discount fetched successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.UPDATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_DISCOUNT_UPDATE)
-  async updateDiscount(@Payload() data: any) {
-    console.log('Discount data : ', data);
-    const result = await this.usecases.updateDiscount(data.id, data.data);
+  async updateDiscount(
+    @Payload() payload: { id: string; data: UpdateDiscountDto },
+  ) {
+    console.log('Discount data : ', payload);
+    const result = await this.usecases.updateDiscount(payload.id, payload.data);
     return IResponse.success('Discount updated successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.DELETE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_DISCOUNT_DELETE)
-  async deleteDiscount(@Payload() id: string) {
-    const result = await this.usecases.deleteDiscount(id);
+  async deleteDiscount(@Payload() payload: { id: string }) {
+    const result = await this.usecases.deleteDiscount(payload.id);
     return IResponse.success(
-      `Discount with id: ${id} deleted successfully`,
+      `Discount with id: ${payload.id} deleted successfully`,
       result,
     );
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_DISCOUNT_FIND_BY_ID)
-  async getDiscountById(@Payload() id: string) {
-    const result = await this.usecases.findDiscountById(id);
+  async getDiscountById(@Payload() payload: { id: string }) {
+    const result = await this.usecases.findDiscountById(payload.id);
     return IResponse.success(
-      `Discount with id: ${id} fetched successfully`,
+      `Discount with id: ${payload.id} fetched successfully`,
       result,
     );
   }
   //==============================================================================CUSTOMER CATEGORY====================================================================
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_CUSTOMER_CATEGORY_CREATE)
-  async createCustomerCategory(@Payload() data: CustomerCategoryDto) {
-    const result = await this.usecases.createCustomerCategory(data);
+  async createCustomerCategory(
+    @Payload() payload: { data: CustomerCategoryDto },
+  ) {
+    const result = await this.usecases.createCustomerCategory(payload.data);
     return IResponse.success('Customer category created successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_CUSTOMER_CATEGORY_FIND_ALL)
-  async getCustomerCategory() {
-    const result = await this.usecases.findAllCustomerCategory();
+  async getCustomerCategory(@Payload() payload: { query: ListQueryDto }) {
+    const result = await this.usecases.findAllCustomerCategory(payload.query);
     return IResponse.success(
       'All Customer category fetched successfully',
       result,
     );
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.UPDATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_CUSTOMER_CATEGORY_UPDATE)
-  async updateCustomerCategory(@Payload() data: any) {
+  async updateCustomerCategory(
+    @Payload() payload: {id: string; data: UpdateCustomerCategoryDto },
+  ) {
     const result = await this.usecases.updateCustomerCategory(
-      data.id,
-      data.data,
+      payload.id,
+      payload.data,
     );
     return IResponse.success('Customer category updated successfully', result);
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.DELETE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_CUSTOMER_CATEGORY_DELETE)
-  async deleteCustomerCategory(@Payload() id: string) {
-    const result = await this.usecases.deleteCustomerCategory(id);
+  async deleteCustomerCategory(@Payload() payload:{id: string}) {
+    const result = await this.usecases.deleteCustomerCategory(payload.id);
     return IResponse.success(
-      `Customer category with id: ${id} deleted successfully`,
+      `Customer category with id: ${payload.id} deleted successfully`,
       result,
     );
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_CUSTOMER_CATEGORY_FIND_BY_ID)
-  async getCustomerCategoryById(@Payload() id: string) {
-    const result = await this.usecases.findCustomerCategoryById(id);
+  async getCustomerCategoryById(@Payload() payload:{id: string}) {
+    const result = await this.usecases.findCustomerCategoryById(payload.id);
     return IResponse.success(
-      `Customer category with id: ${id} fetched successfully`,
+      `Customer category with id: ${payload.id} fetched successfully`,
       result,
     );
   }
   //==============================================================================PRICE CALCULATION LOG====================================================================
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_CALCULATION_LOG_FIND_ALL)
-  async getPriceCalculationLog() {
-    const result = await this.usecases.findAllPriceCalculationLog();
+  async getPriceCalculationLog(@Payload() payload: { query: ListQueryDto }) {
+    const result = await this.usecases.findAllPriceCalculationLog(payload.query);
     return IResponse.success(
       'All Price calculation log fetched successfully',
       result,
     );
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Price', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.PRICE_CALCULATE)
-  async calculatePrice(@Payload() data: any) {
-    console.log('data calculate price : ', data);
+  async calculatePrice(@Payload() payload:{data: PriceCalculationLogDto}) {
+    console.log('data calculate price : ', payload.data);
 
-    const { orderId, customerId } = data;
+    const { orderId, customerId } = payload.data;
     const result = await this.usecases.calculatePrice(orderId, customerId);
     return IResponse.success('Price calculated successfully', result);
   }

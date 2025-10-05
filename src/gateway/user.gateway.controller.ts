@@ -110,8 +110,12 @@ export class UserGatewayController {
 
   // user
   @Get('addresses/:id')
-  async findUser(@Param('id') id: string) {
-    return this.usersClient.send(PATTERNS.USER_FIND_BY_ID, { id });
+  async findUser(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.usersClient.send(PATTERNS.USER_FIND_BY_ID, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get('customers/order')
@@ -143,13 +147,22 @@ export class UserGatewayController {
   }
 
   @Patch(':id')
-  async updateUser(@Param('id') id: string, @Body() dto: UserDto) {
-    return this.usersClient.send(PATTERNS.USER_UPDATE, { id, data: dto });
+  async updateUser(@Param('id') id: string, @Body() dto: UserDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.usersClient.send(PATTERNS.USER_UPDATE, {
+      id,
+      data: dto,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Delete(':id')
-  async deleteUser(@Param('id') id: string) {
-    return this.usersClient.send(PATTERNS.USER_DELETE, { id });
+  async deleteUser(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.usersClient.send(PATTERNS.USER_DELETE, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   //=============================================Customer Category========================
@@ -164,14 +177,20 @@ export class UserGatewayController {
   }
 
   @Get('/category/:id')
-  async getCustomerCategoryById(@Param('id') id: string) {
-    return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_FIND_BY_ID, { id });
+  async getCustomerCategoryById(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_FIND_BY_ID, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Post('/category')
-  async createCustomerCategory(@Body() dto: CustomerCategoryDto) {
+  async createCustomerCategory(@Body() dto: CustomerCategoryDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
     return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_CREATE, {
       data: dto,
+      headers: { authorization: authHeader },
     });
   }
 
@@ -179,33 +198,48 @@ export class UserGatewayController {
   async updateCustomerCategory(
     @Param('id') id: string,
     @Body() dto: UpdateCustomerCategoryDto,
+    @Req() req,
   ) {
+    const authHeader = req.headers['authorization'] || null;
     return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_UPDATE, {
       id,
       data: dto,
+      headers: { authorization: authHeader },
     });
   }
 
   @Delete('/category/:id')
-  async deleteCustomerCategory(@Param('id') id: string) {
-    return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_DELETE, { id });
+  async deleteCustomerCategory(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_DELETE, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Post('/assign/category')
-  async assignCustomerCategoryToUser(@Body() dto: AssignCustomerToCategory) {
+  async assignCustomerCategoryToUser(
+    @Body() dto: AssignCustomerToCategory,
+    @Req() req,
+  ) {
     console.log('dto: ', dto);
-    
+
+    const authHeader = req.headers['authorization'] || null;
     return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_ASSIGN_USER, {
       data: dto,
+      headers: { authorization: authHeader },
     });
   }
 
   @Post('/remove/category')
   async unAssignCustomerCategoryToUser(
     @Body() dto: UnAssignCustomerToCategory,
+    @Req() req,
   ) {
+    const authHeader = req.headers['authorization'] || null;
     return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_UNASSIGN_USER, {
       data: dto,
+      headers: { authorization: authHeader },
     });
   }
 }

@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common';
+import { BadRequestException, Controller, UseGuards } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { IResponse } from '../../common/types';
 import { handleCatch } from '../../common/handleCatch';
@@ -7,34 +7,53 @@ import { RoleUseCaseImpl } from './role.useCase.impl';
 import { PATTERNS } from '../../contracts';
 import { RoleCreateDto, RoleUpdateDto } from './role.entity';
 import { ListQueryDto } from '../../common/query/query.dto';
+import { CheckPermission } from '../../common/decorator/check-permission.decorator';
+import { PermissionGuard } from '../../common/permission.guard';
+import { PermissionActions } from '../../contracts/permission-actions.enum';
+import { RoleDto } from '../acl/access_control.entity';
 
 @Controller()
 export class RoleMessageController {
   constructor(private readonly usecases: RoleUseCaseImpl) {}
-  @Public()
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Role', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.ROLE_CREATE)
-  async createRole(@Payload() data: RoleCreateDto) {
+  async createRole(@Payload() payload: { data: RoleCreateDto }) {
     try {
       console.log(
         '-----------------------------------------------------------------',
       );
-      return this.usecases.createRole(data);
+      return this.usecases.createRole(payload.data);
     } catch (error) {
       handleCatch(error);
     }
   }
 
-  @Public()
-  @MessagePattern(PATTERNS.ROLE_FIND_BY_ID_OR_NAME)
-  async findRole(@Payload() payload: { id?: string; name?: string }) {
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Role', PermissionActions.READ)
+  // @Public()
+  @MessagePattern(PATTERNS.ROLE_FIND_BY_ID)
+  async findRole(@Payload() payload: { id: string }) {
+    console.log('payload: ', payload.id);
+
     try {
-      return this.usecases.findRole(payload);
+      return this.usecases.findRole(payload.id);
     } catch (error) {}
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Role', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.ROLE_FIND_ALL)
-  async getAllRoles(@Payload() payload: { query: ListQueryDto , headers: { authorization: string } }) {
+  async getAllRoles(
+    @Payload()
+    payload: {
+      query: ListQueryDto;
+      headers: { authorization: string };
+    },
+  ) {
     try {
       const user = payload.headers;
       console.log('Current user:', user);
@@ -54,27 +73,32 @@ export class RoleMessageController {
     }
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Role', PermissionActions.DELETE)
+  // @Public()
   @MessagePattern(PATTERNS.ROLE_DELETE)
-  async deleteRole(@Payload() payload: { id?: string; name?: string }) {
+  async deleteRole(@Payload() payload: { id: string }) {
+    console.log('payload: ', payload);
     try {
-      return this.usecases.deleteRole(payload);
+      // const { id, name } = payload.data;
+      return this.usecases.deleteRole(payload.id);
     } catch (error) {
       handleCatch(error);
     }
   }
 
-  @Public()
-  @MessagePattern(PATTERNS.ROLE_UPDATE)
-  async updateRole(@Payload() payload: { id: string; data: RoleUpdateDto }) {
-    console.log(
-      'Updating role with id: ' + payload.id + ' and data: ' + payload.data,
-    );
-
-    try {
-      return this.usecases.updateRole(payload.id, payload.data);
-    } catch (error) {
-      handleCatch(error);
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Role', PermissionActions.UPDATE)
+  // @Public()
+    @MessagePattern(PATTERNS.ROLE_UPDATE)
+    async updateRole(@Payload() payload: { id: string; data: RoleUpdateDto}) {
+      try {
+        console.log('payload: ', payload);
+        
+        const result = await this.usecases.updateRole(payload.id, payload.data);
+        return IResponse.success('Role updated successfully');
+      } catch (error) {
+        handleCatch(error);
+      }
     }
-  }
 }

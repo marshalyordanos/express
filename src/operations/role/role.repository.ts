@@ -69,6 +69,8 @@ export class RoleRepository {
   }
 
   async updateRole(id: string, data: RoleUpdateDto): Promise<Role> {
+    console.log("id and data", id, data);
+    
     return this.prisma.role.update({ where: { id }, data });
   }
 }

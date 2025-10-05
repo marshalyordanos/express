@@ -19,6 +19,7 @@ import {
 } from './pricing.entity';
 import { Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Injectable()
 export class PricingUseCasesImpl implements PricingUseCases {
@@ -29,8 +30,8 @@ export class PricingUseCasesImpl implements PricingUseCases {
    * - Business checks live here (no throws in repo).
    */
   async createTariff(data: TariffDto) {
-    console.log("Tariff data  service : ", data);
-    
+    console.log('Tariff data  service : ', data);
+
     if (data.customerCategoryId) {
       const category = await this.pricingRepo.findCustomerCategoryById(
         data.customerCategoryId,
@@ -148,8 +149,8 @@ export class PricingUseCasesImpl implements PricingUseCases {
     return created;
   }
 
-  async findAllTariff(): Promise<any> {
-    return await this.pricingRepo.findAllTariff();
+  async findAllTariff(query: ListQueryDto): Promise<any> {
+    return await this.pricingRepo.findAllTariff(query);
   }
   async findTariffById(id: string): Promise<any> {
     if (!id) throw new RpcException('Tariff ID is required');
@@ -218,8 +219,8 @@ export class PricingUseCasesImpl implements PricingUseCases {
     return this.pricingRepo.createProfitMargin(data);
   }
 
-  async findAllProfitMargins() {
-    return this.pricingRepo.findAll();
+  async findAllProfitMargins(query: ListQueryDto) {
+    return this.pricingRepo.findAll(query);
   }
 
   async findProfitMarginById(id: string) {
@@ -253,7 +254,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
   async createAirportFee(data: AirportFeeDto) {
     // 1. Check Tariff exists
     console.log('data.tariffId: ', data.tariffId);
-    
+
     const tariff = await this.pricingRepo.findTariffById(data.tariffId);
     if (!tariff)
       throw new RpcException(`Tariff with id ${data.tariffId} does not exist`);
@@ -285,8 +286,8 @@ export class PricingUseCasesImpl implements PricingUseCases {
     return this.pricingRepo.createAirportFee(data);
   }
 
-  async findAllAirportFees() {
-    return this.pricingRepo.findAllAirportFees();
+  async findAllAirportFees(query: ListQueryDto) {
+    return this.pricingRepo.findAllAirportFees(query);
   }
 
   async findAirportFeeById(id: string) {
@@ -346,8 +347,8 @@ export class PricingUseCasesImpl implements PricingUseCases {
   }
 
   // ✅ Get all
-  async findAllMiscFees() {
-    return this.pricingRepo.findAllMiscFees();
+  async findAllMiscFees(query: ListQueryDto) {
+    return this.pricingRepo.findAllMiscFees(query);
   }
 
   // ✅ Get by ID
@@ -489,8 +490,8 @@ export class PricingUseCasesImpl implements PricingUseCases {
   }
 
   // ── GET ALL ──
-  async findAllSurcharge() {
-    return await this.pricingRepo.findAllSurcharge();
+  async findAllSurcharge(query: ListQueryDto) {
+    return await this.pricingRepo.findAllSurcharge(query);
   }
 
   // ── GET BY ID ──
@@ -630,8 +631,8 @@ export class PricingUseCasesImpl implements PricingUseCases {
   }
 
   // ── GET ALL ──
-  async findAllDiscount() {
-    return await this.pricingRepo.findAllDiscount();
+  async findAllDiscount(query: ListQueryDto) {
+    return await this.pricingRepo.findAllDiscount(query);
   }
 
   // ── GET BY ID ──
@@ -667,8 +668,8 @@ export class PricingUseCasesImpl implements PricingUseCases {
     return await this.pricingRepo.createCustomerCategory(data);
   }
 
-  async findAllCustomerCategory() {
-    return await this.pricingRepo.findAllCustomerCategory();
+  async findAllCustomerCategory(query: ListQueryDto) {
+    return await this.pricingRepo.findAllCustomerCategory(query);
   }
 
   async findCustomerCategoryById(id: string) {
@@ -716,8 +717,8 @@ export class PricingUseCasesImpl implements PricingUseCases {
   async createPriceCalculationLog(data: any): Promise<any> {
     return await this.pricingRepo.createPriceCalculationLog(data);
   }
-  async findAllPriceCalculationLog(): Promise<any> {
-    return await this.pricingRepo.findAllPriceCalculationLog();
+  async findAllPriceCalculationLog(query: ListQueryDto): Promise<any> {
+    return await this.pricingRepo.findAllPriceCalculationLog(query);
   }
   async findPriceCalculationLogById(id: string): Promise<any> {
     return await this.pricingRepo.findPriceCalculationLogById(id);

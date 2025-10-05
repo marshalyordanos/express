@@ -14,39 +14,24 @@ export class RoleUseCaseImpl implements RoleUseCases {
   async createRole(data: RoleCreateDto): Promise<Role> {
     return this.roleRepo.createRole(data);
   }
-  async findRole(payload: { id?: string; name?: string }): Promise<Role> {
-    if (payload.id) {
-      return this.roleRepo.findRolById(payload.id);
-    } else if (payload.name) {
-      return this.roleRepo.findRoleByName(payload.name);
-    } else {
-      return null;
-    }
+  async findRole(id: string): Promise<Role> {
+
+      return this.roleRepo.findRolById(id);
+
   }
   async findAllRoles(query: ListQueryDto) {
     return await this.roleRepo.findAllRoles(query);
   }
 
-  async deleteRole(payload: { id?: string; name?: string }): Promise<string> {
-    console.log('payload: ', payload);
+  async deleteRole(id: string): Promise<string> {
+    console.log('payload: ', id);
 
-    if (payload.id) {
-      const role = await this.roleRepo.findRolById(payload.id);
-      if (!role) throw new RpcException(`Role ${payload.id} not found`);
+      const role = await this.roleRepo.findRolById(id);
+      if (!role) throw new RpcException(`Role ${id} not found`);
 
-      await this.roleRepo.deleteById(payload.id);
-      return `Role deleted successfully with id: ${payload.id}`;
-    }
-
-    if (payload.name) {
-      const role = await this.roleRepo.findRoleByName(payload.name);
-      if (!role) throw new RpcException(`Role ${payload.name} not found`);
-
-      await this.roleRepo.deleteByName(payload.name);
-      return `Role deleted successfully with name: ${payload.name}`;
-    }
-
-    throw new RpcException('Invalid payload: Must provide either id or name');
+      await this.roleRepo.deleteById(id);
+      return `Role deleted successfully with id: ${id}`;
+    
   }
 
   async updateRole(id: string, data: RoleUpdateDto): Promise<Role> {

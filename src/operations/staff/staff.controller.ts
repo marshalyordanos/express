@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common';
+import { Controller, UseGuards } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { Public } from '../../common/decorator/public.decorator';
 import * as handleCatch from '../../common/handleCatch';
@@ -8,6 +8,9 @@ import { ChangeRoleDto, UpdateStaffDto } from './staff.entity';
 import { StaffUseCasesImpl } from './staff.useCase.impl';
 import { RegisterStaffDto } from './staff.entity';
 import { ListQueryDto } from '../../common/query/query.dto';
+import { CheckPermission } from '../../common/decorator/check-permission.decorator';
+import { PermissionGuard } from '../../common/permission.guard';
+import { PermissionActions } from '../../contracts/permission-actions.enum';
 
 @Controller()
 export class StaffMessageController {
@@ -15,9 +18,11 @@ export class StaffMessageController {
 
   //COmpleted as Marshal wants
   //Create staff
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Staff', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.STAFF_CREATE)
-  async createStaff(@Payload() payload: { user: any; data: RegisterStaffDto }) {
+  async createStaff(@Payload() payload: { headers: any; data: RegisterStaffDto }) {
     try {
       const result = await this.usecases.createStaff(payload.data);
 
@@ -29,7 +34,9 @@ export class StaffMessageController {
 
   //Completed but additional
   //Get all staffs by role
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Staff', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.STAFF_FIND_BY_ROLE)
   async findStaffByRole(
     @Payload()
@@ -64,10 +71,16 @@ export class StaffMessageController {
 
   //COmpleted as marshal wanted
   //Get all staffs
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Staff', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.STAFF_FIND_ALL)
   async findStaff(@Payload() payload: { query: ListQueryDto }) {
+      console.log("payload 1: ", payload);
+
     try {
+      console.log("payload: ", payload);
+      
       // const { page = 1, pageSize = 10, search, branchId } = data;
 
       const result = await this.usecases.findAllStaff(payload.query);
@@ -83,13 +96,15 @@ export class StaffMessageController {
   }
 
   //Completed as marshal wanted
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Staff', PermissionActions.UPDATE)
+  // @Public()
   @MessagePattern(PATTERNS.USER_CHANGE_ROLE)
-  async changeUserRole(@Payload() payload: ChangeRoleDto) {
+  async changeUserRole(@Payload() payload: {data: ChangeRoleDto}) {
     try {
       console.log('payload: ', payload);
 
-      const result = await this.usecases.changeUserRole(payload);
+      const result = await this.usecases.changeUserRole(payload.data);
 
       return IResponse.success('Role changed successfully', result);
     } catch (error) {
@@ -98,7 +113,9 @@ export class StaffMessageController {
   }
 
   //Delete staff members
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Staff', PermissionActions.DELETE)
+  // @Public()
   @MessagePattern(PATTERNS.STAFF_DELETE)
   async deleteStaff(@Payload() payload: { id: string }) {
     try {
@@ -110,7 +127,9 @@ export class StaffMessageController {
     }
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Staff', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.STAFF_FIND_BY_ID)
   async findStaffById(@Payload() payload: { id: string }) {
     try {
@@ -122,7 +141,9 @@ export class StaffMessageController {
     }
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Staff', PermissionActions.UPDATE)
+  // @Public()
   @MessagePattern(PATTERNS.STAFF_UPDATE)
   async updateStaff(@Payload() payload: { id: string; data: UpdateStaffDto }) {
     try {
@@ -133,7 +154,9 @@ export class StaffMessageController {
     }
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Staff', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.STAFF_FIND_BY_BRANCH)
   async findStaffByBranch(
     @Payload()
@@ -148,7 +171,10 @@ export class StaffMessageController {
       console.log('INSIDE CONTROLLER FOR BRANCH : ', payload.branchId);
       console.log('INSIDE CONTROLLER FOR AUTH : ', payload.headers);
 
-      const result = await this.usecases.findStaffByBranch(payload.query, payload.branchId);
+      const result = await this.usecases.findStaffByBranch(
+        payload.query,
+        payload.branchId,
+      );
 
       return IResponse.success(
         'Users fetched successfully',
@@ -160,11 +186,13 @@ export class StaffMessageController {
     }
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Staff', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.STAFF_ASSIGN_BRANCH)
-  async assignStaffToBranch(@Payload() payload: any) {
+  async assignStaffToBranch(@Payload() payload: {data: any}) {
     try {
-      const { staffIds, branchId } = payload;
+      const { staffIds, branchId } = payload.data;
       console.log('payload: ', payload);
       console.log('staffIds: ', staffIds);
       const result = await this.usecases.assignStaffToBranch(

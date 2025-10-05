@@ -1,115 +1,212 @@
-import { Body, Controller } from "@nestjs/common";
-import { MessagePattern, Payload } from "@nestjs/microservices";
-import { Public } from "../../common/decorator/public.decorator";
-import { PATTERNS } from "../../contracts";
-import { DispatchUseCasesImpl } from "./dispatch.usecase.impl";
-import { AssignDriverForPickup, AssignOfficerForBatch, BatchDispatchDto, BatchHandoverDto, CompleteDeliveryDto, ConfirmBatchHandoverDto, LastMileDeliveryDto } from "./dispatch.entity";
-import { IResponse } from "../../common/types";
-import { ListQueryDto } from "../../common/query/query.dto";
-
+import { Body, Controller, UseGuards } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { Public } from '../../common/decorator/public.decorator';
+import { PATTERNS } from '../../contracts';
+import { DispatchUseCasesImpl } from './dispatch.usecase.impl';
+import {
+  AssignDriverForPickup,
+  AssignOfficerForBatch,
+  BatchDispatchDto,
+  BatchHandoverDto,
+  CompleteDeliveryDto,
+  ConfirmBatchHandoverDto,
+  LastMileDeliveryDto,
+  OrderScanTokenDto,
+} from './dispatch.entity';
+import { IResponse } from '../../common/types';
+import { ListQueryDto } from '../../common/query/query.dto';
+import { CheckPermission } from '../../common/decorator/check-permission.decorator';
+import { PermissionGuard } from '../../common/permission.guard';
+import { PermissionActions } from '../../contracts/permission-actions.enum';
 
 @Controller()
 export class DispatchMessageController {
-    constructor(private readonly usecases: DispatchUseCasesImpl) {}
+  constructor(private readonly usecases: DispatchUseCasesImpl) {}
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_ASSIGN_DRIVER_FOR_PICKUP)
-    async assignDriverForPickup(data: AssignDriverForPickup): Promise<any> {
-        return this.usecases.assignDriverForPickup(data);
-    }
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.CREATE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_ASSIGN_DRIVER_FOR_PICKUP)
+  async assignDriverForPickup(
+    @Payload() payoad: { data: AssignDriverForPickup },
+  ): Promise<any> {
+    console.log('assignDriverForPickup payload :', payoad.data);
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_APPROVE_CATEGORIZATION)
-    async createBatchDispatch(data: BatchDispatchDto): Promise<any> {
-        const result = await this.usecases.createBatchDispatch(data);
+    return this.usecases.assignDriverForPickup(payoad.data);
+  }
 
-        return IResponse.success('Batch Dispatch created successfully', result);
-    }
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.CREATE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_APPROVE_CATEGORIZATION)
+  async createBatchDispatch(
+    @Payload() payload: { data: BatchDispatchDto },
+  ): Promise<any> {
+    const result = await this.usecases.createBatchDispatch(payload.data);
+    console.log('createBatchDispatch payload :', payload.data);
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_FIND_ALL)
-    async findDispatches(@Payload() payload: { query: ListQueryDto } ): Promise<any> {
-        console.log('body: ', payload.query);
-        return this.usecases.getBatches(payload.query);
-    }
+    return IResponse.success('Batch Dispatch created successfully', result);
+  }
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_ADD_ORDERS_TO_BATCH)
-    async addOrdersToBatch(data: any): Promise<any> {
-        const { batchId, newOrderIds, body } = data;
-        console.log('data: ', data);
-        return this.usecases.addOrdersToBatch(batchId, newOrderIds, body);
-    }
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.READ)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_FIND_ALL)
+  async findDispatches(
+    @Payload() payload: { query: ListQueryDto },
+  ): Promise<any> {
+    console.log('body: ', payload.query);
+    return this.usecases.getBatches(payload.query);
+  }
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_ASSIGN_OFFICER_TO_BATCH)
-    async assignOfficerToBatch(data: AssignOfficerForBatch): Promise<any> {
-        return this.usecases.confirmDispatch(data);
-    }
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.CREATE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_ADD_ORDERS_TO_BATCH)
+  async addOrdersToBatch(
+    @Payload() payload: { data: any; batchId: string; newOrderIds: string[] },
+  ): Promise<any> {
+    console.log('addOrdersToBatch payload: ', payload);
+    const { batchId, newOrderIds, data } = payload;
+    return this.usecases.addOrdersToBatch(batchId, newOrderIds, data);
+  }
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_COLLECT_BATCH_BY_CARGO_OFFICER)
-    async collectBatchByCargoOfficer(data: any): Promise<any> {
-        return this.usecases.collectBatchByCargoOfficer(data);
-    }
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.CREATE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_ASSIGN_OFFICER_TO_BATCH)
+  async assignOfficerToBatch(
+    @Payload() payload: { data: AssignOfficerForBatch },
+  ): Promise<any> {
+    console.log('assignOfficerToBatch data :', payload.data);
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_HAND_OVER_BATCHES_TO_AIRPORT)
-    async handoverBatchesToAirport(data: BatchHandoverDto): Promise<any> {
-        return this.usecases.deliverBatchToAirport(data);
-    }
+    return this.usecases.confirmDispatch(payload.data);
+  }
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_COLLECT_FROM_AIRPORT)
-    async collectFromAirport(data: any): Promise<any> {
-        return this.usecases.scanOrder(data.officerId, data.scannedToken);
-    }
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.UPDATE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_COLLECT_BATCH_BY_CARGO_OFFICER)
+  async collectBatchByCargoOfficer(
+    @Payload() payload: { data: AssignOfficerForBatch },
+  ): Promise<any> {
+    console.log('collectBatchByCargoOfficer payload :', payload.data);
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_COMPARE_SCANNED_ORDERS)
-    async comapreOrders(officerId: string): Promise<any> {
-        return this.usecases.compareOrders(officerId);
-    }
+    return this.usecases.collectBatchByCargoOfficer(payload.data);
+  }
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_CONFIRM_ARRIVAL_AND_HANDOVER)
-    async arriveAndInbound(data: ConfirmBatchHandoverDto): Promise<any> {
-        return this.usecases.confirmHandover(data);
-    }
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.UPDATE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_HAND_OVER_BATCHES_TO_AIRPORT)
+  async handoverBatchesToAirport(
+    @Payload() payload: { data: BatchHandoverDto },
+  ): Promise<any> {
+    console.log('handoverBatchesToAirport payload :', payload.data);
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_ASSIGN_DRIVER_FOR_DELIVERY)
-    async assignDriverForDelivery(data: AssignDriverForPickup): Promise<any> {
-        return this.usecases.assignDriverToOrder(data);
-    }
+    return this.usecases.deliverBatchToAirport(payload.data);
+  }
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_ACCEPT_LAST_MILE_DELIVERY)
-    async lastMileDelivery(data: LastMileDeliveryDto): Promise<any> {
-        return this.usecases.lastMileDelivery(data.orderId, data.driverId, data.notes);
-    }
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.UPDATE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_COLLECT_FROM_AIRPORT)
+  async collectFromAirport(@Payload() payload: { data: OrderScanTokenDto }): Promise<any> {
+    console.log('collectFromAirport payload :', payload.data);
+    return this.usecases.scanOrder(
+      payload.data.scannedBy,
+      payload.data.token,
+    );
+  }
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_COMPLETE_DELIVERY)
-    async completeDelivery(data: CompleteDeliveryDto): Promise<any> {
-        return this.usecases.completeDelivery(data.orderId, data.driverId, data.notes);
-    }
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.UPDATE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_COMPARE_SCANNED_ORDERS)
+  async comapreOrders(@Payload() payload: { officerId: string }): Promise<any> {
+    console.log('comapreOrders payload :', payload);
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_REMOVE_DRIVER_FROM_ORDER)
-    async removeDriverFromOrder(orderId: string): Promise<any> {
-        const result= await this.usecases.removeDriverFromOrder(orderId);
-        return IResponse.success('Driver removed successfully', result);
-    }
+    return this.usecases.compareOrders(payload.officerId);
+  }
 
-    @Public()
-    @MessagePattern(PATTERNS.DISPATCH_CHANGE_DRIVER_FOR_ORDER)
-    async changeDriverForOrder(data: AssignDriverForPickup): Promise<any> {
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.CREATE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_CONFIRM_ARRIVAL_AND_HANDOVER)
+  async arriveAndInbound(
+    @Payload() payload: { data: ConfirmBatchHandoverDto },
+  ): Promise<any> {
+    console.log('arriveAndInbound payload :', payload.data);
 
-        const result = await this.usecases.changeDriverForOrder(data);
+    return this.usecases.confirmHandover(payload.data);
+  }
 
-        return IResponse.success('Driver changed successfully', result);
-    }
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.CREATE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_ASSIGN_DRIVER_FOR_DELIVERY)
+  async assignDriverForDelivery(
+    @Payload() payload: { data: AssignDriverForPickup },
+  ): Promise<any> {
+    console.log('assignDriverForDelivery payload :', payload.data);
 
+    return this.usecases.assignDriverToOrder(payload.data);
+  }
 
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.CREATE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_ACCEPT_LAST_MILE_DELIVERY)
+  async lastMileDelivery(
+    @Payload() payload: { data: LastMileDeliveryDto },
+  ): Promise<any> {
+    console.log('lastMileDelivery payload :', payload.data);
+
+    return this.usecases.lastMileDelivery(
+      payload.data.orderId,
+      payload.data.driverId,
+      payload.data.notes,
+    );
+  }
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.CREATE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_COMPLETE_DELIVERY)
+  async completeDelivery(
+    @Payload() payload: { data: CompleteDeliveryDto },
+  ): Promise<any> {
+    console.log('completeDelivery payload :', payload.data);
+    return this.usecases.completeDelivery(
+      payload.data.orderId,
+      payload.data.driverId,
+      payload.data.notes,
+    );
+  }
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.DELETE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_REMOVE_DRIVER_FROM_ORDER)
+  async removeDriverFromOrder(
+    @Payload() payload: { orderId: string },
+  ): Promise<any> {
+    console.log('removeDriverFromOrder payload :', payload);
+
+    const result = await this.usecases.removeDriverFromOrder(payload.orderId);
+    return IResponse.success('Driver removed successfully', result);
+  }
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.UPDATE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_CHANGE_DRIVER_FOR_ORDER)
+  async changeDriverForOrder(
+    @Payload() payload: { data: AssignDriverForPickup },
+  ): Promise<any> {
+    console.log('changeDriverForOrder payload :', payload.data);
+    const result = await this.usecases.changeDriverForOrder(payload.data);
+
+    return IResponse.success('Driver changed successfully', result);
+  }
 }

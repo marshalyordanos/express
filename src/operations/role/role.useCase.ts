@@ -5,8 +5,8 @@ import { Role } from '@prisma/client';
 
 export interface RoleUseCases {
   createRole(data: RoleCreateDto): Promise<Role>;
-  findRole(payload: { id?: string; name?: string }): Promise<Role>;
+  findRole(id: string): Promise<Role>;
   findAllRoles(payload: ListQueryDto): Promise<{ roles: Partial<Role>[]; pagination: IPagination }>;
-  deleteRole(payload: { id?: string; name?: string }): Promise<string>;
+  deleteRole(id: string): Promise<string>;
   updateRole(id: string, data: RoleUpdateDto): Promise<Role>;
 }

@@ -3,13 +3,20 @@ import { ValidationPipe } from '@nestjs/common';
 import { GatewayModule } from './gateway.module';
 import { AllExceptions } from '../common/error';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { PermissionBootstrapper } from './Permission.Bootstrapper';
+import { Logger } from 'nestjs-pino';
 
 async function bootstrap() {
-  const app = await NestFactory.create(GatewayModule);
+  const app = await NestFactory.create(GatewayModule,{
+    bufferLogs: true
+  });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   app.useGlobalFilters(new AllExceptions());
 
+  const bootstrapper = app.get(PermissionBootstrapper);
+  await bootstrapper.run();
+  app.useLogger(app.get(Logger));
   // --- Swagger Setup ---
   const config = new DocumentBuilder()
     .setTitle('Gateway API')

@@ -31,55 +31,98 @@ export class OrderGatewayController {
 
   //Create order for customer
   @Post()
-  async createOrder(@Body() data: CreateOrderDto) {
-    return this.orderClient.send(PATTERNS.ORDER_CREATE, data);
+  async createOrder(@Body() data: CreateOrderDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_CREATE, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Post('/create-validate')
-  async orderCreateValidate(@Body() data: ValidateOrderDto) {
-    return this.orderClient.send(PATTERNS.ORDER_CREATE_AND_VALIDATE, data);
+  async orderCreateValidate(@Body() data: ValidateOrderDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_CREATE_AND_VALIDATE, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Post('/accept')
-  async acceptDropOffOrder(@Body() data: any) {
-    return this.orderClient.send(PATTERNS.ORDER_ACCEPT_DROP_OFF, data);
+  async acceptDropOffOrder(@Body() data: any, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_ACCEPT_DROP_OFF, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Post('/confirm')
-  async confirmPickup(@Body() data: any) {
-    return this.orderClient.send(PATTERNS.ORDER_CONFIRM_PICKUP, data);
+  async confirmPickup(@Body() data: any, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_CONFIRM_PICKUP, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Patch('/validate/:id')
-  async validateOrder(@Body() data: ValidateOrderDto, @Param('id') id: string) {
+  async validateOrder(
+    @Body() data: ValidateOrderDto,
+    @Param('id') id: string,
+    @Req() req,
+  ) {
     console.log('data: ', data);
+    const authHeader = req.headers['authorization'] || null;
 
-    return this.orderClient.send(PATTERNS.ORDER_VALIDATE, { id, data });
+    return this.orderClient.send(PATTERNS.ORDER_VALIDATE, {
+      id,
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Patch('/unusual/:orderId')
-  async unusualOrder(@Body() data: any, @Param('orderId') orderId: string) {
+  async unusualOrder(
+    @Body() data: any,
+    @Param('orderId') orderId: string,
+    @Req() req,
+  ) {
     console.log('data: ', data);
+    const authHeader = req.headers['authorization'] || null;
 
     return this.orderClient.send(PATTERNS.ORDER_MARK_UNUSUAL, {
       orderId,
       data,
+      headers: { authorization: authHeader },
     });
   }
 
   @Post('/approve')
-  async approveOrder(@Body() data: any) {
-    return this.orderClient.send(PATTERNS.ORDER_APPROVE, data);
+  async approveOrder(@Body() data: any, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_APPROVE, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Patch('/cancel')
-  async cancelOrder(@Body() data: CancelOrderDto) {
-    return this.orderClient.send(PATTERNS.ORDER_CANCEL, data);
+  async cancelOrder(@Body() data: CancelOrderDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_CANCEL, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Post('/exception')
-  async exceptionOrder(@Body() data: AddException) {
-    return this.orderClient.send(PATTERNS.ORDER_ADD_EXCEPTION, data);
+  async exceptionOrder(@Body() data: AddException, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_ADD_EXCEPTION, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get('/exception')
@@ -96,10 +139,13 @@ export class OrderGatewayController {
   async updateException(
     @Body() data: UpdateOrderDto,
     @Param('id') orderId: string,
+    @Req() req,
   ) {
+    const authHeader = req.headers['authorization'] || null;
     return this.orderClient.send(PATTERNS.ORDER_REMOVE_EXCEPTION, {
       orderId,
       data,
+      headers: { authorization: authHeader },
     });
   }
 
@@ -153,16 +199,33 @@ export class OrderGatewayController {
   }
 
   @Get('/track/:code')
-  async trackOrder(@Param('code') code: string) {
-    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_TRACK_CODE, code);
+  async trackOrder(@Param('code') code: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_TRACK_CODE, {
+      code,
+      headers: { authorization: authHeader },
+    });
   }
   @Patch(':id')
-  async updateOrder(@Param('id') id: string, @Body() data: UpdateOrderDto) {
-    return this.orderClient.send(PATTERNS.ORDER_UPDATE, { id, data });
+  async updateOrder(
+    @Param('id') id: string,
+    @Body() data: UpdateOrderDto,
+    @Req() req,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_UPDATE, {
+      id,
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get(':id')
-  async getOrder(@Param('id') id: string) {
-    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_ID, id);
+  async getOrder(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_FIND_BY_ID, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 }

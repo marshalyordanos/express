@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common';
+import { Controller, UseGuards } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PATTERNS } from '../../contracts';
 import { UserUseCasesImp } from './user.usecase.impl';
@@ -15,12 +15,17 @@ import { Public } from '../../common/decorator/public.decorator';
 import { IResponse } from '../../common/types';
 import { handleCatch } from '../../common/handleCatch';
 import { ListQueryDto } from '../../common/query/query.dto';
+import { CheckPermission } from '../../common/decorator/check-permission.decorator';
+import { PermissionGuard } from '../../common/permission.guard';
+import { PermissionActions } from '../../contracts/permission-actions.enum';
 
 @Controller()
 export class UserMessageController {
   constructor(private readonly usecases: UserUseCasesImp) {}
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.USER_FIND_BY_ID)
   async findById(@Payload() payload: { id: string }) {
     try {
@@ -31,6 +36,8 @@ export class UserMessageController {
     }
   }
 
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.READ)
   // @Public()
   @MessagePattern(PATTERNS.USER_FIND_ALL)
   async findAll(@Payload() payload: { query: ListQueryDto }) {
@@ -51,6 +58,8 @@ export class UserMessageController {
     }
   }
 
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.USER_UPDATE)
   async update(@Payload() payload: { id: string; data: Partial<UserDto> }) {
     try {
@@ -61,6 +70,8 @@ export class UserMessageController {
     }
   }
 
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.DELETE)
   @MessagePattern(PATTERNS.USER_DELETE)
   async deleteUser(@Payload() payload: { id: string }) {
     try {
@@ -72,7 +83,9 @@ export class UserMessageController {
   }
 
   //Get user by email
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.USER_FIND_BY_EMAIL)
   async findByEmail(@Payload() payload: { email: string }) {
     try {
@@ -84,6 +97,8 @@ export class UserMessageController {
     }
   }
 
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.ADDRESS_CREATE)
   async addAddress(@Payload() payload: { data: AddressDto }) {
     try {
@@ -94,6 +109,8 @@ export class UserMessageController {
     }
   }
 
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.READ)
   @MessagePattern(PATTERNS.ADDRESS_LIST)
   async listAddresses(@Payload() data: any) {
     try {
@@ -106,6 +123,8 @@ export class UserMessageController {
     }
   }
 
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.ADDRESS_UPDATE)
   async updateAddress(@Payload() payload: { id: string; data: any }) {
     try {
@@ -119,6 +138,8 @@ export class UserMessageController {
     }
   }
 
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.DELETE)
   @MessagePattern(PATTERNS.ADDRESS_DELETE)
   async deleteAddress(@Payload() payload: { id: string }) {
     try {
@@ -128,6 +149,9 @@ export class UserMessageController {
       handleCatch(error);
     }
   }
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.PREFERENCES_UPDATE)
   async updatePreferences(
     @Payload() payload: { userId: string; data: PreferencesDto },
@@ -144,6 +168,8 @@ export class UserMessageController {
     }
   }
 
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.CORPORATEINFO_UPDATE)
   async updateCorporateInfo(
     @Payload() payload: { userId: string; data: UpdateCorporateInfoDto },
@@ -162,6 +188,9 @@ export class UserMessageController {
       handleCatch(error);
     }
   }
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.READ)
   @MessagePattern(PATTERNS.USER_ALL_CUSTOMERS)
   async findAllCustomers(@Payload() payload: { query: ListQueryDto }) {
     try {
@@ -177,6 +206,8 @@ export class UserMessageController {
     }
   }
 
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.READ)
   @MessagePattern(PATTERNS.CUSTOMER_ORDERS)
   async getCustomerOrder(
     @Payload() payload: { user: any; query: ListQueryDto },
@@ -201,7 +232,9 @@ export class UserMessageController {
 
   //===============================================================================Customer Category==============================================================================================
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_CREATE)
   async createCategory(@Payload() payload: { data: CustomerCategoryDto }) {
     try {
@@ -212,13 +245,15 @@ export class UserMessageController {
     }
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_FIND_ALL)
   async listCategories(@Payload() payload: { query: ListQueryDto }) {
     try {
-      console.log("Category payload: ", payload);
-      console.log("Category payload query: ", payload.query);
-      
+      console.log('Category payload: ', payload);
+      console.log('Category payload query: ', payload.query);
+
       const categories = await this.usecases.listCategories(payload.query);
       return IResponse.success('Categories fetched successfully', categories);
     } catch (error) {
@@ -226,7 +261,9 @@ export class UserMessageController {
     }
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_FIND_BY_ID)
   async findCategory(@Payload() payload: { id: string }) {
     try {
@@ -237,7 +274,9 @@ export class UserMessageController {
     }
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.UPDATE)
+  // @Public()
   @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_UPDATE)
   async updateCategory(
     @Payload() payload: { id: string; data: UpdateCustomerCategoryDto },
@@ -253,7 +292,9 @@ export class UserMessageController {
     }
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.DELETE)
+  // @Public()
   @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_DELETE)
   async deleteCategory(@Payload() payload: { id: string }) {
     try {
@@ -264,7 +305,9 @@ export class UserMessageController {
     }
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.READ)
+  // @Public()
   @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_ASSIGN_USER)
   async findCategoryByName(@Payload() payload: { name: string }) {
     try {
@@ -275,18 +318,23 @@ export class UserMessageController {
     }
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_ASSIGN_USER)
   async assignCategoryToUser(
-    @Payload() payload: { data: { customerIds: string[]; customerCategoryId: string }},
+    @Payload()
+    payload: {
+      data: { customerIds: string[]; customerCategoryId: string };
+    },
   ) {
     try {
-      console.log("payload as payload :", payload);
-      
-       const { customerIds, customerCategoryId } = payload.data;
+      console.log('payload as payload :', payload);
+
+      const { customerIds, customerCategoryId } = payload.data;
       console.log('payload: ', customerIds);
       console.log('payload: ', customerCategoryId);
-      
+
       const category = await this.usecases.assignCustomersToCategory(
         customerIds,
         customerCategoryId,
@@ -297,14 +345,16 @@ export class UserMessageController {
     }
   }
 
-  @Public()
+  @UseGuards(PermissionGuard)
+  @CheckPermission('User', PermissionActions.CREATE)
+  // @Public()
   @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_UNASSIGN_USER)
   async unassignCategoryToUser(
     @Payload() payload: { customerIds: string[]; customerCategoryId: string },
   ) {
     try {
       const category = await this.usecases.removeCustomersFromCategory(
-        payload.customerIds
+        payload.customerIds,
       );
       return IResponse.success('Category unassigned successfully', category);
     } catch (error) {

@@ -26,52 +26,75 @@ export class RoleGatewayController {
 
   //completed
   @Post()
-  async createRole(@Body() data: RoleCreateDto) {
-    return this.roleClient.send(PATTERNS.ROLE_CREATE, data);
+  async createRole(@Body() data: RoleCreateDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.roleClient.send(PATTERNS.ROLE_CREATE, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   //completed
   @Patch(':id')
-  async updateRole(@Param('id') id: string, @Body() data: RoleUpdateDto) {
+  async updateRole(
+    @Param('id') id: string,
+    @Body() dto: RoleUpdateDto,
+    @Req() req,
+  ) {
+    console.log('data: ', dto);
+    console.log('id: ', id);
+    
+    const authHeader = req.headers['authorization'] || null;
     return this.roleClient.send(PATTERNS.ROLE_UPDATE, {
       id,
-      data: { ...data },
+      data: dto,
+      headers: { authorization: authHeader },
     });
   }
 
   //completed
   @Get()
-  async getAllRoles(
-    @Req() req, @Query() query: ListQueryDto
-  ) {
+  async getAllRoles(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.roleClient.send(PATTERNS.ROLE_FIND_ALL, {
       headers: { authorization: authHeader },
-      query
+      query,
     });
   }
 
   //completed
-  @Get(':identifier')
-  async getRole(@Param('identifier') identifier: string) {
+  @Get(':id')
+  async getRole(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
     // Check if the identifier is an ID or name
-    const isName = /^[A-Z]+$/.test(identifier);
-    const isId = /^[a-z0-9]{24,25}$/.test(identifier);
-    const payload = isId ? { id: identifier } : { name: identifier };
+    // const isName = /^[A-Z]+$/.test(identifier);
+    // const isId = /^[a-z0-9]{24,25}$/.test(identifier);
+    // const payload = isId ? { id: identifier } : { name: identifier };
 
-    return this.roleClient.send(PATTERNS.ROLE_FIND_BY_ID_OR_NAME, payload);
+    console.log('payload: ', id);
+    
+    return this.roleClient.send(PATTERNS.ROLE_FIND_BY_ID, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   //completed
-  @Delete(':identifier')
-  async deleteRole(@Param('identifier') identifier: string) {
+  @Delete(':id')
+  async deleteRole(@Param('id') id: string, @Req() req) {
     // Check if the identifier is an ID or name
-    const isName = /^[A-Z]+$/.test(identifier);
-    const isId = /^[a-z0-9]{24,25}$/.test(identifier);
+    // const isName = /^[A-Z]+$/.test(identifier);
+    // const isId = /^[a-z0-9]{24,25}$/.test(identifier);
+    const authHeader = req.headers['authorization'] || null;
 
     // Create payload based on whether it's an ID or name
-    const payload = isId ? { id: identifier } : { name: identifier };
-    return this.roleClient.send(PATTERNS.ROLE_DELETE, payload);
+    // const data = isId ? { id: identifier } : { name: identifier };
+    // console.log('payload: ', data);
+    
+    return this.roleClient.send(PATTERNS.ROLE_DELETE, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 }

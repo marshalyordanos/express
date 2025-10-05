@@ -10,9 +10,33 @@ import { AccessControlGatewayController } from './access_control.gateway.control
 import { OrderGatewayController } from './order.gateway.controller';
 import { DispatchGatewayController } from './dispatch.gateway.controller';
 import { PricingGatewayController } from './pricing.gateway.controller';
+import { LoggerModule } from 'nestjs-pino';
+import { PermissionBootstrapper } from './Permission.Bootstrapper';
+import { PrismaService } from '../prisma/prisma.service';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [MicroserviceClientsModule],
+  imports: [
+    MicroserviceClientsModule,
+    ConfigModule.forRoot({ isGlobal: true }),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? {
+                target: 'pino-pretty',
+                options: {
+                  colorize: true,
+                  translateTime: 'yyyy-mm-dd HH:MM:ss',
+                  ignore: 'pid,hostname',
+                },
+              }
+            : undefined,
+      },
+    }),
+  ],
+  providers: [PermissionBootstrapper, PrismaService],
   controllers: [
     AuthGatewayController,
     UserGatewayController,

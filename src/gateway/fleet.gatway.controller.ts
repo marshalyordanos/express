@@ -58,9 +58,11 @@ export class FleetGatewayController {
 
   // Get vehicles assigned to a driver
   @Get('driver/:driverId')
-  async getVehiclesByDriver(@Param('driverId') driverId: string) {
+  async getVehiclesByDriver(@Param('driverId') driverId: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
     return this.fleetClient.send(PATTERNS.FLEET_GET_DRIVER_VEHICLES, {
       driverId,
+      headers: { authorization: authHeader },
     });
   }
 
@@ -101,34 +103,53 @@ export class FleetGatewayController {
 
   // Get available vehicles
   @Get('available')
-  async getAvailableVehicles() {
-    return this.fleetClient.send(PATTERNS.FLEET_GET_AVAILABLE_VEHICLES, {});
+  async getAvailableVehicles(@Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.fleetClient.send(PATTERNS.FLEET_GET_AVAILABLE_VEHICLES, {
+      headers: { authorization: authHeader },
+    });
   }
 
   // Retire a vehicle
   @Patch(':id/retire')
-  async retireVehicle(@Param('id') vehicleId: string) {
-    return this.fleetClient.send(PATTERNS.FLEET_RETIRE_VEHICLE, { vehicleId });
+  async retireVehicle(@Param('id') vehicleId: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.fleetClient.send(PATTERNS.FLEET_RETIRE_VEHICLE, {
+      vehicleId,
+      headers: { authorization: authHeader },
+    });
   }
 
   // Get fleet alerts
   @Get('alerts')
-  async getFleetAlerts() {
-    return this.fleetClient.send(PATTERNS.FLEET_GET_ALERTS, {});
+  async getFleetAlerts(@Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.fleetClient.send(PATTERNS.FLEET_GET_ALERTS, {
+      headers: { authorization: authHeader },
+    });
   }
 
   // Get driver vehicle history
   @Get('driver/:driverId/history')
-  async getDriverVehicleHistory(@Param('driverId') driverId: string) {
+  async getDriverVehicleHistory(
+    @Param('driverId') driverId: string,
+    @Req() req,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
     return this.fleetClient.send(PATTERNS.FLEET_GET_DRIVER_HISTORY, {
       driverId,
+      headers: { authorization: authHeader },
     });
   }
 
   // Create a new vehicle
   @Post()
-  async createVehicle(@Body() dto: CreateVehicleDto) {
-    return this.fleetClient.send(PATTERNS.FLEET_CREATE_VEHICLE, { data: dto });
+  async createVehicle(@Body() dto: CreateVehicleDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.fleetClient.send(PATTERNS.FLEET_CREATE_VEHICLE, {
+      data: dto,
+      headers: { authorization: authHeader },
+    });
   }
 
   // Get all vehicles (with pagination)

@@ -64,6 +64,8 @@ export class AccessControlRepository {
   }
 
   async updateRole(id: string, data: Partial<RoleDto>): Promise<Role> {
+    console.log("id and data", id, data);
+    
     return this.prisma.role.update({
       where: { id },
       data: {

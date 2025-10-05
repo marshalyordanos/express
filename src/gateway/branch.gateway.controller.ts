@@ -26,54 +26,80 @@ export class BranchGatewayController {
   ) {}
 
   @Post()
-  async createBranch(@Body() dto: BranchCreateDto) {
-    return this.branchClient.send(PATTERNS.BRANCH_CREATE, dto);
+  async createBranch(@Body() data: BranchCreateDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.branchClient.send(PATTERNS.BRANCH_CREATE, {
+      data,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get(':id')
-  async findBranchById(@Param('id') id: string) {
-    return this.branchClient.send(PATTERNS.BRANCH_FIND_BY_ID, { id });
+  async findBranchById(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.branchClient.send(PATTERNS.BRANCH_FIND_BY_ID, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Get()
-  async findAllBranches(
-    @Req() req, @Query() query: ListQueryDto
-  ) {
+  async findAllBranches(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
     return this.branchClient.send(PATTERNS.BRANCH_FIND_ALL, {
       headers: { authorization: authHeader },
-      query
+      query,
     });
   }
 
   @Patch(':id')
-  async updateBranch(@Param('id') id: string, @Body() dto: BranchUpdateDto) {
+  async updateBranch(
+    @Param('id') id: string,
+    @Body() dto: BranchUpdateDto,
+    @Req() req,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
     return this.branchClient.send(PATTERNS.BRANCH_UPDATE, {
       id,
       data: dto,
+      headers: { authorization: authHeader },
     });
   }
 
   @Delete(':id')
-  async deleteBranch(@Param('id') id: string) {
-    return this.branchClient.send(PATTERNS.BRANCH_DELETE, { id });
+  async deleteBranch(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.branchClient.send(PATTERNS.BRANCH_DELETE, {
+      id,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Post('assign-manager')
-  async assignManager(@Body() data: { branchId: string; managerId: string }) {
-    console.log('Controller received:', data); // Debug log
+  async assignManager(
+    @Body() data: { branchId: string; managerId: string },
+    @Req() req,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+    console.log('Controller received:', data);
     return this.branchClient.send(PATTERNS.BRANCH_ASSIGN_MANAGER, {
       branchId: data.branchId,
       managerId: data.managerId,
+      headers: { authorization: authHeader },
     });
   }
 
   @Post('revoke-manager')
-  async revokeManager(@Body() data: { branchId: string; managerId: string }) {
-    console.log('Controller received:', data); // Debug log
+  async revokeManager(
+    @Body() data: { branchId: string; managerId: string },
+    @Req() req,
+  ) {
+    console.log('Controller received:', data);
+    const authHeader = req.headers['authorization'] || null;
     return this.branchClient.send(PATTERNS.BRANCH_REVOKE_MANAGER, {
       branchId: data.branchId,
       managerId: data.managerId,
+      headers: { authorization: authHeader },
     });
   }
 }

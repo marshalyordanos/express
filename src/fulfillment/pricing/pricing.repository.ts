@@ -15,6 +15,8 @@ import {
   UpdateProfitMarginDto,
   UpdateTariffDto,
 } from './pricing.entity';
+import { ListQueryDto } from '../../common/query/query.dto';
+import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 
 @Injectable()
 export class PricingRepository {
@@ -52,7 +54,11 @@ export class PricingRepository {
   }
 
   // Optional: check duplicate by name + serviceType
-  async findByNameAndServiceType(name: string, serviceType: ServiceType,shippingScope: ShippingScope) {
+  async findByNameAndServiceType(
+    name: string,
+    serviceType: ServiceType,
+    shippingScope: ShippingScope,
+  ) {
     return this.prisma.tariff.findFirst({
       where: { name, serviceType, shippingScope },
     });
@@ -69,11 +75,83 @@ export class PricingRepository {
   // });
   // }
 
-  async findAllTariff() {
-    return this.prisma.tariff.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: { surcharges: true, discounts: true },
+  async findAllTariff(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['name', 'shippingScope', 'serviceType', 'currency'],
     });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
+      this.prisma.tariff.findMany({
+        ...query,
+
+        where: query.where || {},
+        select: {
+          id: true,
+          name: true,
+          shippingScope: true,
+          serviceType: true,
+          currency: true,
+          baseFee: true,
+          perKgRate: true,
+          perKmRate: true,
+          isActive: true,
+          effectiveFrom: true,
+          effectiveTo: true,
+          createdAt: true,
+          updatedAt: true,
+          customerCategory: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          surcharges: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+              value: true,
+              description: true,
+              isActive: true,
+              serviceType: true,
+              shippingScope: true,
+              createdAt: true,
+            },
+          },
+          discounts: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+              value: true,
+              description: true,
+              isActive: true,
+              validFrom: true,
+              validTo: true,
+              serviceType: true,
+              shippingScope: true,
+              createdAt: true,
+            },
+          },
+        },
+      }),
+      this.prisma.tariff.count({ where: query.where || {} }),
+    ]);
+
+    const tariffs = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      tariffs,
+      pagination: feature.getPagination(total),
+    };
   }
 
   async findTariffById(id: string) {
@@ -108,8 +186,49 @@ export class PricingRepository {
     });
   }
 
-  async findAll() {
-    return this.prisma.profitMargin.findMany({ include: { tariff: true } });
+  async findAll(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['trackingCode', 'notes', 'category'],
+    });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
+      this.prisma.profitMargin.findMany({
+        ...query,
+        where: query.where || {},
+        select: {
+          id: true,
+          serviceType: true,
+          shippingScope: true,
+          percentage: true,
+          maxAmount: true,
+          minAmount: true,
+          createdAt: true,
+          updatedAt: true,
+          tariff: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      }),
+      await this.prisma.profitMargin.count({ where: query.where || {} }),
+    ]);
+
+    const profitMargins = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      profitMargins,
+      pagination: feature.getPagination(total),
+    };
   }
 
   async findProfitMarginById(id: string) {
@@ -144,10 +263,36 @@ export class PricingRepository {
     });
   }
 
-  async findAllAirportFees() {
-    return this.prisma.airportFee.findMany({
-      include: { tariff: true }, // to see related tariff info
+  async findAllAirportFees(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['trackingCode', 'notes', 'category'],
     });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
+      await this.prisma.airportFee.findMany({
+        ...query,
+        where: query.where || {},
+        include: {
+          tariff: true,
+        },
+      }),
+      await this.prisma.airportFee.count({ where: query.where || {} }),
+    ]);
+
+    const airportFees = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      airportFees,
+      pagination: feature.getPagination(total),
+    };
   }
 
   async findAirportFeeById(id: string) {
@@ -209,8 +354,36 @@ export class PricingRepository {
     });
   }
 
-  async findAllMiscFees() {
-    return this.prisma.miscFee.findMany({ include: { tariff: true } });
+  async findAllMiscFees(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['trackingCode', 'notes', 'category'],
+    });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
+      await this.prisma.miscFee.findMany({
+        ...query,
+        where: query.where || {},
+        include: {
+          tariff: true,
+        },
+      }),
+      await this.prisma.miscFee.count({ where: query.where || {} }),
+    ]);
+
+    const miscFees = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      miscFees,
+      pagination: feature.getPagination(total),
+    };
   }
 
   async findMiscFeeById(id: string) {
@@ -266,8 +439,36 @@ export class PricingRepository {
     return this.prisma.surcharge.findUnique({ where: { id } });
   }
 
-  async findAllSurcharge() {
-    return this.prisma.surcharge.findMany();
+  async findAllSurcharge(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['trackingCode', 'notes', 'category'],
+    });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
+      await this.prisma.surcharge.findMany({
+        ...query,
+        where: query.where || {},
+        include: {
+          tariff: true,
+        },
+      }),
+      await this.prisma.surcharge.count({ where: query.where || {} }),
+    ]);
+
+    const surcharges = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      surcharges,
+      pagination: feature.getPagination(total),
+    };
   }
 
   async deleteSurcharge(id: string) {
@@ -291,14 +492,37 @@ export class PricingRepository {
   }
 
   // ── FIND ALL DISCOUNTS ──
-  async findAllDiscount() {
-    return this.prisma.discountRule.findMany({
-      include: {
-        tariff: true,
-        customerCategory: true,
-      },
-      orderBy: { createdAt: 'desc' },
+  async findAllDiscount(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['trackingCode', 'notes', 'category'],
     });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
+      await this.prisma.discountRule.findMany({
+        ...query,
+        where: query.where || {},
+        include: {
+          tariff: true,
+          customerCategory: true,
+        },
+      }),
+      await this.prisma.discountRule.count({ where: query.where || {} }),
+    ]);
+
+    const discounts = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      discounts,
+      pagination: feature.getPagination(total),
+    };
   }
 
   // ── FIND DISCOUNT BY ID ──
@@ -364,10 +588,34 @@ export class PricingRepository {
     });
   }
 
-  async findAllCustomerCategory() {
-    return this.prisma.customerCategory.findMany({
-      include: { discountRules: true },
+  async findAllCustomerCategory(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['trackingCode', 'notes', 'category'],
     });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
+      await this.prisma.customerCategory.findMany({
+        ...query,
+        where: query.where || {},
+        include: { discountRules: true },
+      }),
+      await this.prisma.customerCategory.count({ where: query.where || {} }),
+    ]);
+
+    const customerCategories = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      customerCategories,
+      pagination: feature.getPagination(total),
+    };
   }
 
   async findCustomerCategoryById(id: string) {
@@ -420,10 +668,65 @@ export class PricingRepository {
     return this.prisma.priceCalculationLog.create({ data });
   }
 
-  async findAllPriceCalculationLog() {
-    return this.prisma.priceCalculationLog.findMany({
-      include: { order: true },
+  async findAllPriceCalculationLog(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['trackingCode', 'notes', 'category'],
     });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
+      this.prisma.priceCalculationLog.findMany({
+        ...query,
+        where: query.where || {},
+        select: {
+          id: true,
+          weight: true,
+          distance: true,
+          baseRate: true,
+          appliedRate: true,
+          finalPrice: true,
+          currency: true,
+          createdAt: true,
+          order: {
+            select: {
+              id: true,
+              trackingCode: true,
+              notes: true,
+              customer: {
+                select: {
+                  name: true,
+                  email: true,
+                  phone: true,
+                },
+              },
+              shipmentType: true,
+              shippingScope: true,
+              serviceType: true,
+            },
+          },
+          surcharges: true,
+          discounts: true,
+          miscFees: true,
+          airportFee: true,
+          profit: true,
+        },
+      }),
+      this.prisma.priceCalculationLog.count({ where: query.where || {} }),
+    ]);
+
+    const priceCalculationLogs = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      priceCalculationLogs,
+      pagination: feature.getPagination(total),
+    };
   }
 
   async findPriceCalculationLogById(id: string) {
