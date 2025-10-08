@@ -7,7 +7,7 @@ export async function getRoute(
   const baseUrl = 'https://api.openrouteservice.org/v2/directions/driving-car';
   const apiKey =
     process.env.OPENROUTESERVICE_API_KEY ||
-    'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjgwMmU3YTY3MDMwMjRlZjViNWE4MzczYzE3ZGZlNDBkIiwiaCI6Im11cm11cjY0In0='; // ⚠️ move to .env for production
+    'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjgwMmU3YTY3MDMwMjRlZjViNWE4MzczYzE3ZGZlNDBkIiwiaCI6Im11cm11cjY0In0=';
 
   try {
     const response = await axios.post(
