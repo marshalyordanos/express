@@ -3,67 +3,73 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id                String             @id @default(cuid())
-  name              String
-  email             String             @unique
-  password          String
-  phone             String?            @unique
-  branchId          String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  emailVerified     Boolean            @default(false)
-  roleId            String?
-  isStaff           Boolean            @default(false)
-  isSuperAdmin      Boolean            @default(false)
-  logs              AuditLog[]
-  bookmarks         Bookmark[]
-  managedBranch     Branch?            @relation("BranchManager")
-  emialVarifiCation EmailVerification?
-  mfa               Mfa?
-  notifications     Notification[]
-  orders            Order[]            @relation("CustomerOrders")
-  assignedOrders    Order[]            @relation("DriverOrders")
-  validatedOrders   Order[]            @relation("ValidateOrders")
-  passwordReset     PasswordReset[]
-  refreshTokens     RefreshToken[]
-  branch            Branch?            @relation(fields: [branchId], references: [id])
-  role              Role?              @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  vehicles          Vehicle[]
-  customerType      CustomerType?   
+  id                 String             @id @default(cuid())
+  name               String
+  email              String             @unique
+  password           String
+  phone              String?            @unique
+  branchId           String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  emailVerified      Boolean            @default(false)
+  roleId             String?
+  isStaff            Boolean            @default(false)
+  isSuperAdmin       Boolean            @default(false)
+  logs               AuditLog[]
+  bookmarks          Bookmark[]
+  managedBranch      Branch?            @relation("BranchManager")
+  emialVarifiCation  EmailVerification?
+  mfa                Mfa?
+  notifications      Notification[]
+  orders             Order[]            @relation("CustomerOrders")
+  assignedOrders     Order[]            @relation("DriverOrders")
+  validatedOrders    Order[]            @relation("ValidateOrders")
+  passwordReset      PasswordReset[]
+  refreshTokens      RefreshToken[]
+  branch             Branch?            @relation(fields: [branchId], references: [id])
+  role               Role?              @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  //vehicles          Vehicle[]
+  customerType       CustomerType?
   customerCategoryId String?
-  customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id]) 
-  approvals         ParcelApproval[]   @relation("StaffApprovals")
+  customerCategory   CustomerCategory?  @relation(fields: [customerCategoryId], references: [id])
+  approvals          ParcelApproval[]   @relation("StaffApprovals")
 
-  addresses      Address[]
-  preferences    UserPreferences?
-  createdBatches BatchDispatch[] @relation("CreatedBatches")
-  driverBatches  BatchDispatch[] @relation("BatchDispatchDriver")
-  officerBatches  BatchDispatch[] @relation("BatchDispatchOfficer")
-  handOverBatchesOfficer  BatchHandover[] @relation("HandoverBatchesOfficer")
+  addresses              Address[]
+  preferences            UserPreferences?
+  createdBatches         BatchDispatch[]  @relation("CreatedBatches")
+  driverBatches          BatchDispatch[]  @relation("BatchDispatchDriver")
+  officerBatches         BatchDispatch[]  @relation("BatchDispatchOfficer")
+  handOverBatchesOfficer BatchHandover[]  @relation("HandoverBatchesOfficer")
 
   corporateInfo CorporateInfo?
+  driver        Driver?
+
+  @@index([isStaff])
+  @@index([branchId])
+  @@index([roleId])
+  @@index([customerCategoryId])
 }
 
 model CorporateInfo {
-  userId        String   @id
-  companyName   String
-  taxId         String?
+  userId         String  @id
+  companyName    String
+  taxId          String?
   registrationNo String?
-  contactPerson String?
-  contactPhone  String?
-  contactEmail  String?
-  industryType  String?
-  website       String?
-  address       String?
-  notes         String?
+  contactPerson  String?
+  contactPhone   String?
+  contactEmail   String?
+  industryType   String?
+  website        String?
+  address        String?
+  notes          String?
 
-  user          User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
 
 enum CustomerType {
@@ -72,7 +78,7 @@ enum CustomerType {
 }
 
 model Address {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   label       String // e.g. "Home", "Office"
   addressLine String
   city        String
@@ -81,11 +87,18 @@ model Address {
   postalCode  String?
   lat         String?
   long        String?
-  userId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  purpose     AddressPurpose
+  userId      String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pickupOrders   Order[] @relation("PickupAddress")
+  deliveryOrders Order[] @relation("DeliveryAddress")
+
+  @@index([lat, long], name: "idx_address_coords")
+  @@index([userId])
+  @@index([purpose])
 }
 
 model UserPreferences {
@@ -159,8 +172,13 @@ model Vehicle {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   fleetLogs   FleetLog[]
-  driver      User?         @relation(fields: [driverId], references: [id])
+
+  // driver      User?         @relation(fields: [driverId], references: [id])
   batchDispatches BatchDispatch[] @relation("BatchDispatchVehicle")
+  driver          Driver?         @relation("VehicleDriver", fields: [driverId], references: [id], map: "Vehicle_driver_fkey")
+
+  @@index([status])
+  @@index([driverId])
 }
 
 model FleetLog {
@@ -195,9 +213,9 @@ model Order {
   unusualReason String?
 
   // Delivery info
-  pickupAddress     String? // lan+*+long+*+NAME
+  pickupAddressId   String? // lan+*+long+*+NAME
   pickupDate        DateTime?
-  deliveryAddress   String // lan+*+long+*+NAME
+  deliveryAddressId String? // lan+*+long+*+NAME
   deliveryDate      DateTime?
   pickupConfirmed   Boolean   @default(false)
   dropoffConfirmed  Boolean   @default(false)
@@ -205,34 +223,58 @@ model Order {
   actualDropoffDate DateTime?
   notes             String?
   cost              Float?
-  distance      Float? 
+  distance          Float?
   validatedBy       String?
   validatedAt       DateTime?
   validatedNotes    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  batchId String?
+  batchId   String?
 
-    // Tariff & Pricing
-  tariffId      String?
-  tariff        Tariff ?    @relation(fields: [tariffId], references: [id], onDelete: Restrict)
-  finalPrice    Float?     // after all surcharges, fees, discounts, margins
-  currency      String?      @default("ETB")
+  // Tariff & Pricing
+  tariffId          String?
+  tariff            Tariff? @relation(fields: [tariffId], references: [id], onDelete: Restrict)
+  finalPrice        Float? // after all surcharges, fees, discounts, margins
+  currency          String? @default("ETB")
+  optimizationJobId String?
 
   // Relations
   branch          Branch?          @relation(fields: [branchId], references: [id])
   customer        User             @relation("CustomerOrders", fields: [customerId], references: [id])
-  driver          User?            @relation("DriverOrders", fields: [driverId], references: [id])
   validator       User?            @relation("ValidateOrders", fields: [validatedBy], references: [id])
   exceptions      OrderException[]
   payment         Payment?
   approvalRequest ParcelApproval?
   orderTracking   OrderTracking[]
   batch           BatchDispatch?   @relation("BatchOrders", fields: [batchId], references: [id])
-  orderScans OrderScan[]  @relation("OrderToOrderScan")
+  orderScans      OrderScan[]      @relation("OrderToOrderScan")
 
-  priceLogs       PriceCalculationLog[] 
+  pickupAddress   Address? @relation("PickupAddress", fields: [pickupAddressId], references: [id])
+  deliveryAddress Address? @relation("DeliveryAddress", fields: [deliveryAddressId], references: [id])
+
+  optimizationJob OptimizationJob?      @relation("OptimizationJobOrders", fields: [optimizationJobId], references: [id])
+  driver          User?                 @relation("DriverOrders", fields: [driverId], references: [id], map: "Order_driver_fk_user")
+  orderDriver     Driver?               @relation("DriverAssignedOrders", fields: [driverId], references: [id], map: "Order_driver_fk_driver")
+  priceLogs       PriceCalculationLog[]
+
+  @@index([pickupAddressId, deliveryAddressId], name: "idx_order_addresses") // compound index for route optimization
+  @@index([branchId, status], name: "idx_branch_status") // filter orders by branch + status
+  @@index([customerId])
+  @@index([branchId])
+  @@index([driverId])
+  @@index([status])
+  @@index([serviceType])
+  @@index([fulfillmentType])
+  @@index([isFragile])
+  @@index([shipmentType])
+  @@index([shippingScope])
+  @@index([pickupAddressId])
+  @@index([deliveryAddressId])
+  @@index([validatedBy])
+  @@index([batchId])
+  @@index([tariffId])
+  @@index([optimizationJobId])
 }
 
 model ParcelApproval {
@@ -247,6 +289,8 @@ model ParcelApproval {
 
   order Order @relation(fields: [orderId], references: [id])
   staff User? @relation("StaffApprovals", fields: [decisionBy], references: [id])
+
+  @@index([decisionBy])
 }
 
 model OrderTracking {
@@ -261,6 +305,7 @@ model OrderTracking {
   order Order @relation(fields: [orderId], references: [id])
 
   @@index([orderId])
+  @@index([updatedBy])
 }
 
 model OrderException {
@@ -273,58 +318,59 @@ model OrderException {
 }
 
 model BatchDispatch {
-  id          String         @id @default(cuid())
-  batchCode   String         @unique
-  scope       ShippingScope // IN_TOWN, REGIONAL, INTERNATIONAL
-  serviceType ServiceType // SAME_DAY, EXPRESS, etc.
-  category    String? // e.g., Electronics, Documents, Mixed
-  isFragile   Boolean        @default(false)
-  origin      String // e.g., branch code or location
-  destination String // e.g., branch code or airport
-  status      DispatchStatus @default(PENDING)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  createdById String?
-  notes       String?
-  weight      Float?
-  shipmentDate  DateTime?  @db.Date
+  id           String         @id @default(cuid())
+  batchCode    String         @unique
+  scope        ShippingScope // IN_TOWN, REGIONAL, INTERNATIONAL
+  serviceType  ServiceType // SAME_DAY, EXPRESS, etc.
+  category     String? // e.g., Electronics, Documents, Mixed
+  isFragile    Boolean        @default(false)
+  origin       String // e.g., branch code or location
+  destination  String // e.g., branch code or airport
+  status       DispatchStatus @default(PENDING)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  createdById  String?
+  notes        String?
+  weight       Float?
+  shipmentDate DateTime?      @db.Date
 
   // Relations
-  orders    Order[] @relation("BatchOrders")
-  createdBy User?   @relation("CreatedBatches", fields: [createdById], references: [id])
-  driverId      String?
-  driver        User?     @relation("BatchDispatchDriver",fields: [driverId], references: [id])
-  vehicleId     String?
-  vehicle       Vehicle?  @relation("BatchDispatchVehicle",fields: [vehicleId], references: [id])
-  awbNumber     String?   // for international shipments
-  officerId     String?
-  officer       User?     @relation("BatchDispatchOfficer",fields: [officerId], references: [id])
-  handovers   BatchHandover[] @relation("HandoverBatches")
+  orders           Order[]           @relation("BatchOrders")
+  createdBy        User?             @relation("CreatedBatches", fields: [createdById], references: [id])
+  driverId         String?
+  driver           User?             @relation("BatchDispatchDriver", fields: [driverId], references: [id])
+  vehicleId        String?
+  vehicle          Vehicle?          @relation("BatchDispatchVehicle", fields: [vehicleId], references: [id])
+  awbNumber        String? // for international shipments
+  officerId        String?
+  officer          User?             @relation("BatchDispatchOfficer", fields: [officerId], references: [id])
+  handovers        BatchHandover[]   @relation("HandoverBatches")
+  optimizationJobs OptimizationJob[] // one batch can have multiple optimization jobs
 }
 
 model BatchHandover {
-  id          String          @id @default(cuid())
-  handedById  String          // cargo officer
-  handedAt    DateTime        @default(now())
-  method      String?         // e.g., "handed to airport", "receipt scanned"
-  reference   String?         // optional: receipt number or photo URL
-  notes       String?
+  id         String   @id @default(cuid())
+  handedById String // cargo officer
+  handedAt   DateTime @default(now())
+  method     String? // e.g., "handed to airport", "receipt scanned"
+  reference  String? // optional: receipt number or photo URL
+  notes      String?
 
   // Relations
-  batches     BatchDispatch[] @relation("HandoverBatches")
-  officer     User            @relation("HandoverBatchesOfficer", fields: [handedById], references: [id])
+  batches BatchDispatch[] @relation("HandoverBatches")
+  officer User            @relation("HandoverBatchesOfficer", fields: [handedById], references: [id])
 }
 
 model OrderScan {
   id        String   @id @default(cuid())
   orderId   String
-  scannedBy String   // officerId
+  scannedBy String // officerId
   scannedAt DateTime @default(now())
-  batchId   String?  // optional
-  notes     String?  // optional notes
+  batchId   String? // optional
+  notes     String? // optional notes
   valid     Boolean  @default(true)
 
-  order     Order    @relation("OrderToOrderScan", fields: [orderId], references: [id], onDelete: Cascade)
+  order Order @relation("OrderToOrderScan", fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([batchId])
@@ -343,35 +389,35 @@ model Payment {
 }
 
 model Pricing {
-  id          String      @id @default(cuid())
-  baseRate    Float
-  zoneFrom    String
-  zoneTo      String
-  serviceType ServiceType
+  id            String         @id @default(cuid())
+  baseRate      Float
+  zoneFrom      String
+  zoneTo        String
+  serviceType   ServiceType
   shippingScope ShippingScope?
-  
+
   surcharge   Float?
   corporateId String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 /// ─────────────────── Pricing & Tariff Management ────────────────────────────────
 
 model Tariff {
-  id           String      @id @default(cuid())
-  name         String      // e.g., "Express Tariff"
-  serviceType  ServiceType
-  baseFee      Float       @default(0)   // Minimum starting fee
-  perKmRate    Float       @default(0)   // Cost per kilometer
-  perKgRate    Float       @default(0)   // Cost per kilogram
-  currency     String      @default("ETB")
-  isActive     Boolean     @default(true)
-  effectiveFrom DateTime   @default(now())
-  effectiveTo   DateTime?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  shippingScope  ShippingScope?
+  id                 String            @id @default(cuid())
+  name               String // e.g., "Express Tariff"
+  serviceType        ServiceType
+  baseFee            Float             @default(0) // Minimum starting fee
+  perKmRate          Float             @default(0) // Cost per kilometer
+  perKgRate          Float             @default(0) // Cost per kilogram
+  currency           String            @default("ETB")
+  isActive           Boolean           @default(true)
+  effectiveFrom      DateTime          @default(now())
+  effectiveTo        DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  shippingScope      ShippingScope?
   customerCategoryId String?
   customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id])
 
@@ -385,94 +431,94 @@ model Tariff {
 }
 
 model ProfitMargin {
-  id          String      @id @default(cuid())
-  tariffId    String
-  tariff      Tariff      @relation(fields: [tariffId], references: [id], onDelete: Cascade)
-
-  serviceType ServiceType?
-  shippingScope ShippingScope?
-
-  percentage  Float       // e.g. 10% of tariff cost
-  minAmount   Float?      // enforce minimum margin
-  maxAmount   Float?      // optional cap on margin
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-}
-
-model AirportFee {
-  id           String      @id @default(cuid())
-  tariffId     String
-  tariff       Tariff      @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tariffId String
+  tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
 
   serviceType   ServiceType?
   shippingScope ShippingScope?
 
-  airportCode  String      // e.g., "ADD", "DXB"
-  perKgRate    Float?      // Cost per kilogram
-  flatFee      Float?      // Flat airport charge
-  effectiveFrom DateTime   @default(now())
+  percentage Float // e.g. 10% of tariff cost
+  minAmount  Float? // enforce minimum margin
+  maxAmount  Float? // optional cap on margin
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model AirportFee {
+  id       String @id @default(cuid())
+  tariffId String
+  tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+
+  serviceType   ServiceType?
+  shippingScope ShippingScope?
+
+  airportCode   String // e.g., "ADD", "DXB"
+  perKgRate     Float? // Cost per kilogram
+  flatFee       Float? // Flat airport charge
+  effectiveFrom DateTime  @default(now())
   effectiveTo   DateTime?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model MiscFee {
-  id           String      @id @default(cuid())
-  tariffId     String
-  tariff       Tariff      @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tariffId String
+  tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
 
-  serviceType ServiceType?
+  serviceType   ServiceType?
   shippingScope ShippingScope?
 
-  name         String      // e.g. "Fragile Handling"
+  name         String // e.g. "Fragile Handling"
   description  String?
-  feeType     FeeType?   // PERCENTAGE, FLAT, PER_KG
+  feeType      FeeType? // PERCENTAGE, FLAT, PER_KG
   amount       Float
-  currency    String?    // e.g., "ETB", "USD"
-  isPercentage Boolean     @default(false) // true = percentage of base tariff
+  currency     String? // e.g., "ETB", "USD"
+  isPercentage Boolean  @default(false) // true = percentage of base tariff
 
-    // New dynamic conditions
-  condition    Json?       // e.g., { "isFragile": true, "category": "ELECTRONICS" }
+  // New dynamic conditions
+  condition Json? // e.g., { "isFragile": true, "category": "ELECTRONICS" }
 
   effectiveFrom DateTime? @default(now())
   effectiveTo   DateTime?
 
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Surcharge {
-  id          String   @id @default(cuid())
-  tariffId    String
-  tariff      Tariff   @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tariffId String
+  tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
 
-  serviceType ServiceType?
+  serviceType   ServiceType?
   shippingScope ShippingScope?
-  name        String   // e.g., "Fuel Surcharge"
-  type        String   // "percentage" or "fixed"
-  value       Float
-  description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  name          String // e.g., "Fuel Surcharge"
+  type          String // "percentage" or "fixed"
+  value         Float
+  description   String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model DiscountRule {
-  id          String   @id @default(cuid())
-  tariffId    String
-  tariff      Tariff   @relation(fields: [tariffId], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(cuid())
+  tariffId String
+  tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+
   shippingScope ShippingScope?
-  serviceType ServiceType?
-  name        String
-  type        String   // "percentage" or "fixed"
-  value       Float
-  validFrom   DateTime
-  validTo     DateTime?
-  description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  serviceType   ServiceType?
+  name          String
+  type          String // "percentage" or "fixed"
+  value         Float
+  validFrom     DateTime
+  validTo       DateTime?
+  description   String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   customerCategoryId String?
   customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id])
@@ -480,44 +526,44 @@ model DiscountRule {
 
 model CustomerCategory {
   id          String   @id @default(cuid())
-  name        String   // e.g., "Individual", "Corporate", "VIP"
+  name        String // e.g., "Individual", "Corporate", "VIP"
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  users        User[]
-  tariffs      Tariff[]
-  pricingRules PricingRule[]
+  users         User[]
+  tariffs       Tariff[]
+  pricingRules  PricingRule[]
   discountRules DiscountRule[]
 }
 
 model PricingRule {
-  id               String   @id @default(cuid())
-  shippingScope    ShippingScope
+  id                 String            @id @default(cuid())
+  shippingScope      ShippingScope
   customerCategoryId String?
   customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id])
-  adjustmentType    String   // PERCENTAGE, FIXED
-  adjustmentValue   Float
-  validFrom   DateTime
-  validTo     DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  adjustmentType     String // PERCENTAGE, FIXED
+  adjustmentValue    Float
+  validFrom          DateTime
+  validTo            DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 }
 
 model PriceCalculationLog {
-  id          String   @id @default(cuid())
-  orderId     String
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   weight      Float
   distance    Float?
   baseRate    Float
   appliedRate Float
-  surcharges  Json     // applied surcharges
-  discounts   Json     // applied discounts
-  miscFees    Json     // applied misc fees
-  profit      Json     // profit margin applied
-  airportFee  Json?    // applied airport fee if any
+  surcharges  Json // applied surcharges
+  discounts   Json // applied discounts
+  miscFees    Json // applied misc fees
+  profit      Json // profit margin applied
+  airportFee  Json? // applied airport fee if any
   finalPrice  Float
   currency    String   @default("ETB")
   createdAt   DateTime @default(now())
@@ -600,6 +646,162 @@ model Mfa {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+/// ────────────────────────────── Route & Driver Enhancements ──────────────────────────────
+
+model Location {
+  id        String   @id @default(cuid())
+  name      String?
+  address   String?
+  latitude  Float
+  longitude Float
+  city      String?
+  country   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  originRoutes      Route[] @relation("RouteOrigin")
+  destinationRoutes Route[] @relation("RouteDestination")
+
+  @@index([latitude])
+  @@index([longitude])
+  @@index([longitude, latitude])
+}
+
+model Route {
+  id            String   @id @default(cuid())
+  originId      String
+  destinationId String
+  distanceKm    Float?
+  durationMin   Float?
+  routePath     Json?
+  optimized     Boolean  @default(false)
+  trafficAware  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  origin      Location @relation("RouteOrigin", fields: [originId], references: [id])
+  destination Location @relation("RouteDestination", fields: [destinationId], references: [id])
+
+  // Relations
+  optimizationJobs  OptimizationJob[]  @relation("RouteOptimizations")
+  trafficConditions TrafficCondition[]
+
+  @@index([originId])
+  @@index([destinationId])
+  @@index([originId, destinationId])
+}
+
+model OptimizationJob {
+  id             String             @id @default(cuid())
+  jobCode        String             @unique
+  type           OptimizationType
+  status         OptimizationStatus @default(PENDING)
+  totalDistance  Float?
+  totalDuration  Float?
+  createdAt      DateTime           @default(now())
+  completedAt    DateTime?
+  optimizedOrder Json?
+
+  // Relations
+  orders            Order[]            @relation("OptimizationJobOrders")
+  batchId           String?
+  batch             BatchDispatch?     @relation(fields: [batchId], references: [id])
+  routes            Route[]            @relation("RouteOptimizations")
+  driverId          String?
+  driver            Driver?            @relation(fields: [driverId], references: [id])
+  trafficConditions TrafficCondition[]
+}
+
+model Driver {
+  id         String       @id @default(cuid())
+  userId     String       @unique
+  vehicleId  String?
+  status     DriverStatus @default(OFFLINE)
+  type       DriverType   @default(INTERNAL)
+  currentLat Float?
+  currentLon Float?
+  updatedAt  DateTime?
+
+  // Relations
+  user             User?               @relation(fields: [userId], references: [id])
+  vehicles         Vehicle[]           @relation("VehicleDriver")
+  logs             DriverLocationLog[]
+  optimizationJobs OptimizationJob[]
+  assignedOrders   Order[]             @relation("DriverAssignedOrders") // <-- renamed relation
+
+  @@index([userId])
+  @@index([vehicleId])
+  @@index([status])
+  @@index([type])
+}
+
+model DriverLocationLog {
+  id        String   @id @default(cuid())
+  driverId  String
+  latitude  Float
+  longitude Float
+  speed     Float?
+  heading   Float?
+  timestamp DateTime @default(now())
+
+  driver Driver @relation(fields: [driverId], references: [id])
+
+  @@index([driverId])
+  @@index([timestamp])
+}
+
+model TrafficCondition {
+  id                String          @id @default(cuid())
+  routeId           String?
+  optimizationJobId String?
+  roadName          String
+  congestionLevel   CongestionLevel
+  updatedAt         DateTime        @default(now())
+  lastCheckedAt     DateTime?
+
+  // Relations
+  route           Route?           @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  optimizationJob OptimizationJob? @relation(fields: [optimizationJobId], references: [id], onDelete: Cascade)
+}
+
+enum DriverStatus {
+  OFFLINE
+  AVAILABLE
+  ENROUTE
+  BREAK
+}
+
+enum DriverType {
+  INTERNAL
+  EXTERNAL
+}
+
+enum AddressPurpose {
+  USER_HOME
+  USER_WORK
+  ORDER_PICKUP
+  ORDER_DELIVERY
+}
+
+enum CongestionLevel {
+  FREE
+  LIGHT
+  MEDIUM
+  HEAVY
+}
+
+enum OptimizationType {
+  SINGLE_ROUTE
+  MULTI_STOP
+}
+
+enum OptimizationStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
 enum VehicleStatus {
   ACTIVE
   INACTIVE
@@ -607,10 +809,10 @@ enum VehicleStatus {
 }
 
 enum FeeType {
-  PERCENTAGE   // e.g., 5% of base price
-  FLAT         // fixed amount (e.g., 100 ETB per order)
-  PER_KG       // amount applied per kilogram
-  PER_KM       // amount applied per kilometer
+  PERCENTAGE // e.g., 5% of base price
+  FLAT // fixed amount (e.g., 100 ETB per order)
+  PER_KG // amount applied per kilogram
+  PER_KM // amount applied per kilometer
 }
 
 enum OrderStatus {

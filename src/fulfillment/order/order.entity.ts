@@ -181,6 +181,7 @@ export class UpdateOrderDto {
   // @IsOptional()
   // trackingCode: string;
 
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @IsPositive()

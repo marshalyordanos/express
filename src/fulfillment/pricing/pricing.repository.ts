@@ -193,7 +193,7 @@ export class PricingRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['trackingCode', 'notes', 'category'],
+      searchableFields: ['shippingScope', 'serviceType'],
     });
 
     const query = feature.getQuery();
@@ -270,7 +270,7 @@ export class PricingRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['trackingCode', 'notes', 'category'],
+      searchableFields: ['airportCode', 'shippingCope', 'serviceType'],
     });
 
     const query = feature.getQuery();
@@ -361,7 +361,7 @@ export class PricingRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['trackingCode', 'notes', 'category'],
+      searchableFields: ['name', 'feeType','description', 'shippingCope', 'serviceType'],
     });
 
     const query = feature.getQuery();
@@ -446,7 +446,7 @@ export class PricingRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['trackingCode', 'notes', 'category'],
+      searchableFields: ['name', 'type', 'shippingCope', 'serviceType'],
     });
 
     const query = feature.getQuery();
@@ -499,7 +499,7 @@ export class PricingRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['trackingCode', 'notes', 'category'],
+      searchableFields: ['name', 'type', 'shippingCope', 'serviceType'],
     });
 
     const query = feature.getQuery();
@@ -595,7 +595,7 @@ export class PricingRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['trackingCode', 'notes', 'category'],
+      searchableFields: ['name', 'description'],
     });
 
     const query = feature.getQuery();
@@ -675,7 +675,7 @@ export class PricingRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['trackingCode', 'notes', 'category'],
+      searchableFields: [],
     });
 
     const query = feature.getQuery();

@@ -88,7 +88,7 @@ export class OrderRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['location', 'notes', 'status'],
+      searchableFields: ['type','reason'],
     });
     const query = feature.getQuery();
     console.log('quest1: ', query);
@@ -137,6 +137,11 @@ export class OrderRepository {
         },
       });
 
+      await tx.orderException.deleteMany({
+        where: {
+          orderId,
+        },
+      });
       await tx.orderTracking.create({
         data: {
           orderId,
@@ -392,7 +397,7 @@ export class OrderRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['trackingCode', 'notes', 'category'],
+      searchableFields: ['status', 'reason'],
     });
 
     const query = feature.getQuery();

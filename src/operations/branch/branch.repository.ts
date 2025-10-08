@@ -73,18 +73,20 @@ export class BranchRepository {
     return this.prisma.branch.update({ where: { id }, data });
   }
   async findAllBranch(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['name', 'description', 'location'],
+    });
 
-        const feature = new PrismaQueryFeature({
-          search: payload.search,
-          filter: payload.filter,
-          sort: payload.sort,
-          page: payload.page,
-          pageSize: payload.pageSize,
-          searchableFields: ['name', 'description', 'location'],
-        });
+    const query = feature.getQuery();
+    console.log('payload: ', payload);
 
-            const query = feature.getQuery();
-    console.log('quest1: ', query);
+    console.log('query: ', query);
+    console.log('Where clause: ', query.where);
 
     const results = await Promise.all([
       this.prisma.branch.findMany({
