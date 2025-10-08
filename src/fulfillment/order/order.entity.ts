@@ -225,7 +225,7 @@ export class UpdateOrderDto {
   @ValidateIf((o) => o.fulfillmentType === FulfillmentType.PICKUP)
   @IsString()
   @IsNotEmpty()
-  pickupAddress?: string;
+  pickupAddressId?: string;
 
   @ValidateIf((o) => o.fulfillmentType === FulfillmentType.PICKUP)
   @IsDateString()
@@ -236,7 +236,7 @@ export class UpdateOrderDto {
   @IsString()
   @IsNotEmpty()
   @IsOptional()
-  deliveryAddress: string;
+  deliveryAddressId: string;
 
   @IsDateString()
   @IsOptional()
