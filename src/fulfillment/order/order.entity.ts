@@ -102,7 +102,7 @@ export class CreateOrderDto {
   @ValidateIf((o) => o.fulfillmentType === FulfillmentType.PICKUP)
   @IsString()
   @IsNotEmpty()
-  pickupAddress?: string;
+  pickupAddressId?: string;
 
   @ValidateIf((o) => o.fulfillmentType === FulfillmentType.PICKUP)
   @IsDateString()
@@ -112,7 +112,7 @@ export class CreateOrderDto {
   // Delivery info — always required
   @IsString()
   @IsNotEmpty()
-  deliveryAddress: string;
+  deliveryAddressId: string;
 
   @IsDateString()
   @IsOptional()
