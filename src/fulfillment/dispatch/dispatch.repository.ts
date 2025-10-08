@@ -41,7 +41,7 @@ export class DispatchRepository {
             phone: true,
             email: true,
             branch: true,
-            vehicles: true,
+            // vehicles: true,
           },
         },
       },
@@ -371,7 +371,7 @@ export class DispatchRepository {
           notes: dto.notes,
           createdById: dto.createdById,
           driverId: dto.driverId,
-          vehicleId: dto.vehicleId,
+          // vehicleId: dto.vehicleId,
           awbNumber: dto.awbNumber,
           weight: dto.weight,
           shipmentDate: new Date(dto.shipmentDate),
@@ -382,7 +382,7 @@ export class DispatchRepository {
         include: {
           orders: true,
           driver: true,
-          vehicle: true,
+          // vehicle: true,
           createdBy: true,
         },
       });
@@ -426,7 +426,7 @@ export class DispatchRepository {
         include: {
           orders: true,
           driver: true,
-          vehicle: true,
+          // vehicle: true,
         },
       });
 
@@ -498,7 +498,7 @@ export class DispatchRepository {
         include: {
           orders: true,
           driver: true,
-          vehicle: true,
+          // vehicle: true,
           createdBy: true,
         },
         orderBy: { createdAt: 'desc' },

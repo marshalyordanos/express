@@ -137,7 +137,14 @@ export class UserRepository {
     return this.prisma.user.findUnique({ where: { email } });
   }
   async addAddress(data: AddressDto) {
-    return this.prisma.address.create({ data });
+    const { userId, ...addressData } = data;
+
+    return this.prisma.address.create({
+      data: {
+        ...addressData,
+        user: { connect: { id: userId } }, // ✅ Connects relation correctly
+      },
+    });
   }
 
   async listAddresses(userId: string) {
@@ -239,7 +246,7 @@ export class UserRepository {
 
   //==================================================================Customer Category====================================
   async listCategories(payload: ListQueryDto) {
-       const feature = new PrismaQueryFeature({
+    const feature = new PrismaQueryFeature({
       search: payload.search,
       filter: payload.filter,
       sort: payload.sort,
@@ -252,10 +259,15 @@ export class UserRepository {
       this.prisma.customerCategory.findMany({
         ...query,
         where: query.where || {},
-        include: { discountRules: true, pricingRules: true, tariffs: true, users: true },
+        include: {
+          discountRules: true,
+          pricingRules: true,
+          tariffs: true,
+          users: true,
+        },
       }),
       this.prisma.customerCategory.count({ where: query.where || {} }),
-    ])
+    ]);
 
     const models = results[0] || [];
     const total = results[1] || 0;
@@ -263,7 +275,7 @@ export class UserRepository {
     return {
       models,
       pagination: feature.getPagination(total),
-    }
+    };
   }
   async deleteCategory(id: string) {
     return this.prisma.customerCategory.delete({ where: { id } });
@@ -278,13 +290,13 @@ export class UserRepository {
     return this.prisma.customerCategory.create({ data });
   }
 
-   async assignCustomersToCategory(
+  async assignCustomersToCategory(
     customerIds: string[],
     customerCategoryId: string,
   ) {
     console.log('customerIds repo: ', customerIds);
     console.log('customerCategoryId repo: ', customerCategoryId);
-    
+
     return this.prisma.$transaction(async (tx) => {
       const updates = customerIds.map((customerId) =>
         tx.user.update({
