@@ -1,4 +1,11 @@
-import { ArrayNotEmpty, IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { AddressPurpose } from '@prisma/client';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export interface UserDto {
   name: string;
@@ -38,6 +45,7 @@ export interface AddressDto {
   lat?: string;
   long?: string;
   userId: string;
+  purpose: AddressPurpose;
 }
 
 export interface PreferencesDto {
@@ -92,9 +100,7 @@ export class UpdateCorporateInfoDto {
   @IsOptional() notes?: string;
 }
 
-
 export class CustomerCategoryDto {
-  
   @IsNotEmpty()
   @IsString()
   name: string;
@@ -105,16 +111,14 @@ export class CustomerCategoryDto {
 }
 
 export class UpdateCustomerCategoryDto {
-
   @IsOptional()
   name?: string;
 
-  @IsOptional() 
+  @IsOptional()
   description?: string;
 }
 
-export class AssignCustomerToCategory{
-
+export class AssignCustomerToCategory {
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
@@ -125,11 +129,9 @@ export class AssignCustomerToCategory{
   customerCategoryId: string;
 }
 
-export class UnAssignCustomerToCategory{
-
+export class UnAssignCustomerToCategory {
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
   customerIds: string[];
-
 }

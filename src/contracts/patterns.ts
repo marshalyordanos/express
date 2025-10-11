@@ -149,6 +149,9 @@ export const PATTERNS = {
   DISPATCH_CONFIRM_ARRIVAL_AND_HANDOVER: 'dispatch.confirmArrivalAndHandover',
   DISPATCH_ACCEPT_LAST_MILE_DELIVERY: 'dispatch.acceptLastMileDelivery',
   DISPATCH_COMPLETE_DELIVERY: 'dispatch.completeDelivery',
+  DISPATCH_GENERATE_QR_CODE: 'dispatch.generateQrCode',
+  DISPATCH_CREATE_DRIVER: 'dispatch.createDriver',
+  DISPATCH_FIND_DRIVER: 'dispatch.findDriver',
 
   //Pricing and Tariff Management Module
 

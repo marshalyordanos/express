@@ -19,6 +19,8 @@ import {
   BatchHandoverDto,
   CompleteDeliveryDto,
   ConfirmBatchHandoverDto,
+  CreateDriver,
+  GenerateQrDto,
   LastMileDeliveryDto,
   OrderScanTokenDto,
 } from '../fulfillment/dispatch/dispatch.entity';
@@ -178,7 +180,7 @@ export class DispatchGatewayController {
     });
   }
 
-  //COntroller used for assigning driver for the pick up of the package from the customer
+  //COntroller used for changing driver for the package from or to the customer
   @Patch('change-driver')
   async changeDriverForOrder(
     @Body() data: AssignDriverForPickup,
@@ -231,6 +233,38 @@ export class DispatchGatewayController {
       headers: { authorization: authHeader },
     });
   }
+
+  @Post('/qr-generate')
+  async generateQrCode(@Body() data: GenerateQrDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.dispatchClient.send(PATTERNS.DISPATCH_GENERATE_QR_CODE, {
+      data,
+      headers: { authorization: authHeader },
+    });
+  }
+
+  @Post('/driver')
+  async createDriver(@Body() data: CreateDriver, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    console.log("Create driver datas : ", data);
+    
+    return this.dispatchClient.send(PATTERNS.DISPATCH_CREATE_DRIVER, {
+      data,
+      headers: { authorization: authHeader },
+    });
+  }
+
+    @Get('/driver')
+  async findDriver(@Query() query: ListQueryDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    console.log("FInd driver querys: ", query);
+    
+    return this.dispatchClient.send(PATTERNS.DISPATCH_FIND_DRIVER, {
+      query,
+      headers: { authorization: authHeader },
+    });
+  }
+
 
   @Get(':id')
   async getDispatchById() {}

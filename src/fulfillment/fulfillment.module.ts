@@ -11,16 +11,27 @@ import { DispatchUseCasesImpl } from './dispatch/dispatch.usecase.impl';
 import { PricingRepository } from './pricing/pricing.repository';
 import { PricingMessageController } from './pricing/pricing.controller';
 import { PricingUseCasesImpl } from './pricing/pricing.usecase.impl';
+import { MapsService } from './maps/maps.usecase.impl';
+import { RedisService } from '../redis/redis.service';
+import { DriverLocationService } from './maps/driver-location.service';
+import { MapModule } from '../redis/redis.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    // MapModule,
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'yourSecret',
       signOptions: { expiresIn: '15m' },
     }),
   ],
-  controllers: [OrderMessageController, DispatchMessageController, PricingMessageController],
+  controllers: [
+    OrderMessageController,
+    DispatchMessageController,
+    PricingMessageController,
+  ],
   providers: [
     OrderRepository,
     OrderUseCasesImpl,
@@ -28,8 +39,23 @@ import { PricingUseCasesImpl } from './pricing/pricing.usecase.impl';
     DispatchRepository,
     DispatchUseCasesImpl,
     PricingRepository,
-    PricingUseCasesImpl
+    PricingUseCasesImpl,
+    MapsService,
+    RedisService,
+    // TestRedisService,
+    // DriverLocationSeeder,
+    DriverLocationService,
   ],
-  exports: [OrderUseCasesImpl, PrismaService, DispatchUseCasesImpl, PricingUseCasesImpl],
+  exports: [
+    OrderUseCasesImpl,
+    MapsService,
+    PrismaService,
+    DriverLocationService,
+    RedisService,
+    // TestRedisService,
+    // DriverLocationSeeder,
+    DispatchUseCasesImpl,
+    PricingUseCasesImpl,
+  ],
 })
 export class FulfillmentModule {}

@@ -53,6 +53,8 @@ export class BranchMessageController {
   async updateBranch(
     @Payload() payload: { id: string; data: Partial<BranchUpdateDto> },
   ) {
+    console.log("Updating.....", payload);
+    
     try {
       const result = await this.usecases.updateBranch(payload.id, payload.data);
       return new IResponse(true, 'Branch is Updated Succuessfuly', result);

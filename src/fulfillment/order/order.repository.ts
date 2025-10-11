@@ -10,14 +10,21 @@ import {
   OrderStatus,
   ServiceType,
   FulfillmentType,
+  Prisma,
+  AddressPurpose,
 } from '@prisma/client'; // assuming you use Prisma enums
 import { ListQueryDto } from '../../common/query/query.dto';
 import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
+import { RpcException } from '@nestjs/microservices';
+import { MapsService } from '../maps/maps.usecase.impl';
 // import { AddressDto } from 'src/operations/user/user.entity';
 
 @Injectable()
 export class OrderRepository {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mapsService: MapsService,
+  ) {}
   async trackOrder(orderId: string) {
     return this.prisma.orderTracking.findMany({
       where: { orderId },
@@ -88,7 +95,7 @@ export class OrderRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['type','reason'],
+      searchableFields: ['type', 'reason'],
     });
     const query = feature.getQuery();
     console.log('quest1: ', query);
@@ -155,52 +162,114 @@ export class OrderRepository {
     });
   }
 
-  async createOrder(
+  async createOrderWithAddressesAndDistance(
     data: any,
-    customerConnect: any,
-    branchConnect: any,
-    driverConnect: any,
-    paymentConnect: any,
+    customerId: string,
     trackingCode: string,
-    location: string,
-    updatedBy: string,
-  ): Promise<any> {
-    const order = await this.prisma.order.create({
-      data: {
-        trackingCode,
-        status: OrderStatus.CREATED,
-        serviceType: data.serviceType,
-        fulfillmentType: data.fulfillmentType,
-        weight: data.weight,
-        height: data.height,
-        width: data.width,
-        length: data.length,
-        category: data.category,
-        isFragile: data.isFragile,
-        shipmentType: data.shipmentType,
-        shippingScope: data.shippingScope,
-        pickupAddress: data.pickupAddress,
-        distance: 20,
-        pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
-        deliveryAddress: data.deliveryAddress,
-        deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
-        cost: data.cost,
-        customer: customerConnect,
-        ...(branchConnect && { branch: branchConnect }), // ✅ only add if exists
-        ...(driverConnect && { driver: driverConnect }), // ✅ only add if exists
-        ...(paymentConnect && { payment: paymentConnect }), // ✅ only add if exists
+  ) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        // 🔹 Create addresses
+        let pickupAddress: any = null;
+        if (data.pickupAddress) {
+          pickupAddress = await tx.address.create({
+            data: {
+              ...data.pickupAddress,
+              purpose: 'ORDER_PICKUP',
+              user: { connect: { id: customerId } },
+            },
+          });
+        }
+
+        const deliveryAddress = await tx.address.create({
+          data: {
+            ...data.deliveryAddress,
+            purpose: 'ORDER_DELIVERY',
+            user: { connect: { id: customerId } },
+          },
+        });
+
+        // 🔹 Calculate distance
+        const origin = pickupAddress
+          ? { lat: Number(pickupAddress.lat), lon: Number(pickupAddress.long) }
+          : await this.getBranchCoordinates(data.branchId, tx);
+
+        const destination = {
+          lat: Number(deliveryAddress.lat),
+          lon: Number(deliveryAddress.long),
+        };
+
+        const distance = await this.mapsService.calculateDistance(
+          origin,
+          destination,
+        );
+
+        // 🔹 Create order
+        const orderData = {
+          trackingCode,
+          status: OrderStatus.CREATED,
+          serviceType: data.serviceType,
+          fulfillmentType: data.fulfillmentType,
+          weight: data.weight,
+          height: data.height,
+          width: data.width,
+          length: data.length,
+          category: data.category,
+          isFragile: data.isFragile,
+          shipmentType: data.shipmentType,
+          shippingScope: data.shippingScope,
+          distance,
+          pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
+          deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
+          cost: data.cost,
+          customer: { connect: { id: customerId } },
+          ...(data.branchId && { branch: { connect: { id: data.branchId } } }),
+          ...(data.driverId && { driver: { connect: { id: data.driverId } } }),
+          ...(data.paymentId && {
+            payment: { connect: { id: data.paymentId } },
+          }),
+          ...(pickupAddress && {
+            pickupAddress: { connect: { id: pickupAddress.id } },
+          }),
+          deliveryAddress: { connect: { id: deliveryAddress.id } },
+        };
+
+        const order = await tx.order.create({
+          data: orderData,
+          include: {
+            pickupAddress: true,
+            deliveryAddress: true,
+            customer: true,
+          },
+        });
+
+        // 🔹 Create order tracking
+        await tx.orderTracking.create({
+          data: {
+            orderId: order.id,
+            status: 'CREATED',
+            location: pickupAddress.addressLine ?? 'Customer Home.',
+            updatedBy: customerId,
+            notes: 'Order Created.',
+          },
+        });
+
+        return order;
       },
-    });
-
-    await this.logOrderStatus(
-      order.id,
-      'CREATED',
-      location,
-      updatedBy,
-      'Order Created.',
+      {
+        timeout: 60000,
+      },
     );
+  }
 
-    return order;
+  private async getBranchCoordinates(branchId: string, tx: any) {
+    const branch = await tx.branch.findUnique({
+      where: { id: branchId },
+      include: { address: true },
+    });
+    if (!branch) throw new RpcException('Branch not found');
+
+    return { lat: branch.address.lat, lon: branch.address.long };
   }
 
   async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
@@ -232,62 +301,62 @@ export class OrderRepository {
     });
   }
 
-  async createOrderAndValidate(
-    data: ValidateOrderDto,
-    customerConnect: any,
-    branchConnect: any,
-    driverConnect: any,
-    paymentConnect: any,
-    trackingCode: string,
-    location: string,
-    updatedBy: string,
-  ) {
-    console.log('Validator: ', data.validatedBy);
+  // async createOrderAndValidate(
+  //   data: ValidateOrderDto,
+  //   customerConnect: any,
+  //   branchConnect: any,
+  //   driverConnect: any,
+  //   paymentConnect: any,
+  //   trackingCode: string,
+  //   location: string,
+  //   updatedBy: string,
+  // ) {
+  //   console.log('Validator: ', data.validatedBy);
 
-    const order = await this.prisma.order.create({
-      data: {
-        trackingCode,
-        status: 'PENDING_APPROVAL',
-        serviceType: data.serviceType,
-        fulfillmentType: data.fulfillmentType,
-        weight: data.weight,
-        height: data.height,
-        width: data.width,
-        length: data.length,
-        category: data.category,
-        isFragile: data.isFragile,
-        shipmentType: data.shipmentType,
-        shippingScope: data.shippingScope,
-        pickupAddressId: data.pickupAddressId,
-        pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
-        deliveryAddressId: data.deliveryAddressId,
-        deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
-        cost: data.cost,
-        isUnusual: data.isUnusual ?? false,
-        unusualReason: data.unusualReason ?? null,
-        validator: { connect: { id: data.validatedBy } },
-        validatedAt: new Date(),
-        validatedNotes: data.validatedNotes ?? null,
-        actualDropoffDate: new Date(),
-        dropoffConfirmed: true,
+  //   const order = await this.prisma.order.create({
+  //     data: {
+  //       trackingCode,
+  //       status: 'PENDING_APPROVAL',
+  //       serviceType: data.serviceType,
+  //       fulfillmentType: data.fulfillmentType,
+  //       weight: data.weight,
+  //       height: data.height,
+  //       width: data.width,
+  //       length: data.length,
+  //       category: data.category,
+  //       isFragile: data.isFragile,
+  //       shipmentType: data.shipmentType,
+  //       shippingScope: data.shippingScope,
+  //       pickupAddressId: data.pickupAddressId,
+  //       pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
+  //       deliveryAddressId: data.deliveryAddressId,
+  //       deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
+  //       cost: data.cost,
+  //       isUnusual: data.isUnusual ?? false,
+  //       unusualReason: data.unusualReason ?? null,
+  //       validator: { connect: { id: data.validatedBy } },
+  //       validatedAt: new Date(),
+  //       validatedNotes: data.validatedNotes ?? null,
+  //       actualDropoffDate: new Date(),
+  //       dropoffConfirmed: true,
 
-        customer: customerConnect,
-        ...(branchConnect && { branch: branchConnect }),
-        ...(driverConnect && { driver: driverConnect }),
-        ...(paymentConnect && { payment: paymentConnect }),
-      },
-    });
+  //       customer: customerConnect,
+  //       ...(branchConnect && { branch: branchConnect }),
+  //       ...(driverConnect && { driver: driverConnect }),
+  //       ...(paymentConnect && { payment: paymentConnect }),
+  //     },
+  //   });
 
-    await this.logOrderStatus(
-      order.id,
-      'PENDING_APPROVAL',
-      location,
-      data.validatedBy,
-      'Order Created and validated.',
-    );
+  //   await this.logOrderStatus(
+  //     order.id,
+  //     'PENDING_APPROVAL',
+  //     location,
+  //     data.validatedBy,
+  //     'Order Created and validated.',
+  //   );
 
-    return order;
-  }
+  //   return order;
+  // }
 
   async confirmPickupOrder(
     orderId: string,
@@ -301,6 +370,29 @@ export class OrderRepository {
           status: 'PICKED_UP',
           pickupConfirmed: true,
           actualPickupDate: new Date(),
+        },
+        select: {
+          id: true,
+          trackingCode: true,
+          // status: true,
+          // serviceType: true,
+          // fulfillmentType: true,
+          // pickupAddress: {
+          //   select: { addressLine: true, city: true },
+          // },
+          // deliveryAddress: {
+          //   select: { addressLine: true, city: true },
+          // },
+          pickupDate: true,
+          // deliveryDate: true,
+          pickupDriver: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+            },
+          },
         },
       }),
       await this.logOrderStatus(
@@ -468,11 +560,7 @@ export class OrderRepository {
     return this.prisma.order.findUnique({
       where: { id },
       include: {
-        customer: true,
-        branch: true,
-        driver: true,
-        payment: true,
-        validator: true,
+        pickupAddress: true,
       },
     });
   }
@@ -483,8 +571,8 @@ export class OrderRepository {
       include: {
         customer: true,
         branch: true,
-        driver: true,
         payment: true,
+        pickupDriver: true,
       },
     });
   }
@@ -512,7 +600,9 @@ export class OrderRepository {
           status: true,
           serviceType: true,
           fulfillmentType: true,
-          deliveryAddress: true,
+          deliveryAddress: {
+            select: { addressLine: true, city: true },
+          },
           deliveryDate: true,
           height: true,
           width: true,
@@ -521,10 +611,11 @@ export class OrderRepository {
           shippingScope: true,
           isFragile: true,
           isUnusual: true,
-          dropoffConfirmed: true,
-          actualDropoffDate: true,
+          // dropoffConfirmed: true,
+          // actualDropoffDate: true,
           weight: true,
-          cost: true,
+          // cost: true,
+          finalPrice: true,
           payment: {
             select: {
               id: true,
@@ -540,14 +631,14 @@ export class OrderRepository {
               email: true,
             },
           },
-          driver: {
+          pickupDriver: {
             select: {
               id: true,
               name: true,
               phone: true,
               email: true,
-              branch: true,
-              vehicles: true,
+              // branch: true,
+              // vehicles: true,
             },
           },
           branch: {
@@ -746,6 +837,24 @@ export class OrderRepository {
   ) {
     await this.prisma.orderTracking.create({
       data: { orderId, status, location, updatedBy, notes },
+    });
+  }
+
+  async createAddress(data: any, customerId: string, tx?: any) {
+    const db = tx ?? this.prisma;
+    return db.address.create({
+      data: {
+        label: data.label ?? 'ADDRESS',
+        addressLine: data.addressLine ?? '',
+        city: data.city ?? '',
+        state: data.state ?? '',
+        country: data.country ?? '',
+        postalCode: data.postalCode ?? '',
+        lat: data.lat,
+        long: data.long,
+        purpose: data.purpose ?? 'ORDER',
+        user: { connect: { id: customerId } },
+      },
     });
   }
 }

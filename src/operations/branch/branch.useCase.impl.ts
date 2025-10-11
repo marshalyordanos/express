@@ -74,6 +74,8 @@ export class BranchUseCaseImpl implements BranchUseCases {
     id: string,
     data: Partial<BranchUpdateDto>,
   ): Promise<Branch> {
+    console.log("Updating.....222 : ", data);
+    
     return this.branchRepository.updateBranch(id, data);
   }
 

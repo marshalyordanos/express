@@ -19,14 +19,14 @@ import {
   UpdateSurchargeDto,
   UpdateTariffDto,
 } from './pricing.entity';
-import { Injectable, UseGuards } from '@nestjs/common';
+import { Controller, Injectable, UseGuards } from '@nestjs/common';
 import { IResponse } from '../../common/types';
 import { CheckPermission } from '../../common/decorator/check-permission.decorator';
 import { PermissionGuard } from '../../common/permission.guard';
 import { PermissionActions } from '../../contracts/permission-actions.enum';
 import { ListQueryDto } from '../../common/query/query.dto';
 
-@Injectable()
+@Controller()
 export class PricingMessageController {
   constructor(private readonly usecases: PricingUseCasesImpl) {}
   //=============================================================================TARIFF====================================================================

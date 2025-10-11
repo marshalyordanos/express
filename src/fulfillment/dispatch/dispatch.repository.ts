@@ -1,52 +1,60 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AssignDriverForPickup, BatchDispatchDto } from './dispatch.entity';
+import {
+  AssignDriverForPickup,
+  BatchDispatchDto,
+  CreateDriver,
+} from './dispatch.entity';
 import {
   DispatchStatus,
   ShippingScope,
   ServiceType,
   OrderStatus,
   Prisma,
+  DriverStatus,
+  DriverType,
 } from '@prisma/client';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
+import { RpcException } from '@nestjs/microservices';
+import { create } from 'domain';
 
 @Injectable()
 export class DispatchRepository {
   constructor(private prisma: PrismaService) {}
 
-  async assignDriverForPickup(body: any) {
-    return this.prisma.order.update({
-      where: {
-        id: body.orderId,
+ async assignDriverForPickup(driverId: string, orderId: string) {
+  return this.prisma.order.update({
+    where: { id: orderId },
+    data: {
+      pickupDriverId: driverId,
+      status: 'ASSIGNED', // or maybe 'PICKUP_ASSIGNED' if you want to differentiate stages
+    },
+    select: {
+      id: true,
+      trackingCode: true,
+      // status: true,
+      // serviceType: true,
+      // fulfillmentType: true,
+      pickupAddress: {
+        select: { addressLine: true, city: true },
       },
-      data: {
-        driverId: body.driverId,
-        status: 'ASSIGNED',
-      },
-      select: {
-        id: true,
-        trackingCode: true,
-        status: true,
-        serviceType: true,
-        fulfillmentType: true,
-        pickupAddress: true,
-        deliveryAddress: true,
-        pickupDate: true,
-        deliveryDate: true,
-        driver: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true,
-            branch: true,
-            // vehicles: true,
-          },
+      // deliveryAddress: {
+      //   select: { addressLine: true, city: true },
+      // },
+      pickupDate: true,
+      // deliveryDate: true,
+      pickupDriver: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
         },
       },
-    });
-  }
+    },
+  });
+}
 
   async confirmDispatch(batchIds: string[], officerId: string) {
     return this.prisma.$transaction(async (tx) => {
@@ -61,6 +69,42 @@ export class DispatchRepository {
 
       return updatedBatches;
     });
+  }
+
+  async findDriverById(driverId: string) {
+    const driver = await this.prisma.driver.findUnique({
+      where: { userId: driverId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        // assignedOrders: {
+        //   where: {
+        //     status: { notIn: ['DELIVERED', 'CANCELED'] },
+        //   },
+        //   select: {
+        //     id: true,
+        //     trackingCode: true,
+        //     status: true,
+        //     pickupAddress: {
+        //       select: { addressLine: true, city: true },
+        //     },
+        //     deliveryAddress: {
+        //       select: { addressLine: true, city: true },
+        //     },
+        //   },
+        // },
+      },
+    });
+
+    if (!driver) {
+      throw new Error(`Driver with ID ${driverId} not found`);
+    }
+
+    return driver;
   }
 
   async collectBatchByCargoOfficer(batchIds: string[], officerId: string) {
@@ -281,30 +325,61 @@ export class DispatchRepository {
   }
 
   // 3. Deliver order to customer
-  async deliverOrder(trackingCode: string, driverId: string, notes?: string) {
+  async deliverOrder(orderId: string, driverId: string, notes?: string) {
     return this.prisma.$transaction(async (tx) => {
-      const order = await tx.order.findUnique({ where: { trackingCode } });
-
-      const updatedOrder = await tx.order.update({
-        where: { trackingCode },
-        data: { status: 'DELIVERED', deliveryDate: new Date(), notes },
+      // 🔹 1. Fetch order including delivery address
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: {
+          deliveryAddress: true, // Needed for coordinates & tracking location
+        },
       });
 
+      if (!order) {
+        throw new RpcException(`Order with ID ${orderId} not found.`);
+      }
+
+      // 🔹 2. Ensure it's still in valid state (can’t be delivered twice)
+      if (order.status === 'DELIVERED') {
+        throw new RpcException(
+          `Order ${orderId} is already marked as delivered.`,
+        );
+      }
+
+      // 🔹 3. Update order status
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'DELIVERED',
+          deliveryDate: new Date(),
+          notes: notes || 'Order delivered successfully.',
+        },
+        include: {
+          deliveryAddress: true,
+          driver: true,
+          customer: true,
+        },
+      });
+
+      // 🔹 4. Log delivery completion in tracking
       await tx.orderTracking.create({
         data: {
-          orderId: order.id,
+          orderId,
           status: 'DELIVERED',
           updatedBy: driverId,
-          location: order.deliveryAddress,
+          location:
+            updatedOrder.deliveryAddress?.addressLine || 'Unknown location',
+          // lat: updatedOrder.deliveryAddress?.lat ?? null,
+          // long: updatedOrder.deliveryAddress?.long ?? null,
           notes: notes || 'Order delivered to customer successfully.',
         },
       });
 
-      // Optional: store POD
-      // if (podUrl) {
-      //   await tx.payment.update({
-      //     where: { orderId: order.id },
-      //     data: { transactionId: podUrl }, // or another field for POD
+      // // 🔹 5. (Optional) mark driver available again after delivery
+      // if (updatedOrder.driverId) {
+      //   await tx.driver.update({
+      //     where: { id: updatedOrder.driverId },
+      //     data: { isAvailable: true },
       //   });
       // }
 
@@ -352,62 +427,63 @@ export class DispatchRepository {
   async findOrdersByIds(orderIds: string[]) {
     return await this.prisma.order.findMany({
       where: { id: { in: orderIds } },
+      include: { deliveryAddress: true },
     });
   }
 
   async createBatchDispatch(dto: BatchDispatchDto, batchCode: string) {
-    return this.prisma.$transaction(async (tx) => {
-      // 1. Create the batch and connect orders
-      const batch = await tx.batchDispatch.create({
-        data: {
-          batchCode,
-          scope: dto.scope as any,
-          serviceType: dto.serviceType as any,
-          category: dto.category,
-          isFragile: dto.isFragile ?? false,
-          origin: dto.origin,
-          destination: dto.destination,
-          status: 'PENDING',
-          notes: dto.notes,
-          createdById: dto.createdById,
-          driverId: dto.driverId,
-          // vehicleId: dto.vehicleId,
-          awbNumber: dto.awbNumber,
-          weight: dto.weight,
-          shipmentDate: new Date(dto.shipmentDate),
-          orders: {
-            connect: dto.orders.map((id) => ({ id })),
+    return this.prisma.$transaction(
+      async (tx) => {
+        // Create batch and connect orders
+        const batch = await tx.batchDispatch.create({
+          data: {
+            batchCode,
+            scope: dto.scope as any,
+            serviceType: dto.serviceType as any,
+            category: dto.category,
+            isFragile: dto.isFragile ?? false,
+            originId: dto.originId, // use originId directly
+            destinationId: dto.destinationId, // use destinationId directly
+            status: 'PENDING',
+            notes: dto.notes,
+            createdById: dto.createdById,
+            driverId: dto.driverId,
+            vehicleId: dto.vehicleId,
+            awbNumber: dto.awbNumber,
+            weight: dto.weight,
+            shipmentDate: new Date(dto.shipmentDate),
+            orders: {
+              connect: dto.orders.map((id) => ({ id })),
+            },
           },
-        },
-        include: {
-          orders: true,
-          driver: true,
-          // vehicle: true,
-          createdBy: true,
-        },
-      });
+          include: {
+            orders: true,
+            createdBy: true,
+            origin: true,
+            destination: true,
+          },
+        });
 
-      // 2. Update each connected order's status to DISPATCHED
-      const result = await tx.order.updateMany({
-        where: {
-          id: { in: dto.orders },
-        },
-        data: {
-          status: 'DISPATCHED',
-        },
-      });
-      const orderLogs = await this.logBatchOrdersStatus(
-        tx,
-        [batch.id],
-        'DISPATCHED',
-        dto.origin,
-        dto.createdById,
-        dto.notes,
-      );
-      console.log('Result in transaction :', result);
+        // Update each connected order's status
+        await tx.order.updateMany({
+          where: { id: { in: dto.orders } },
+          data: { status: 'DISPATCHED' },
+        });
 
-      return { batch, orderLogs, result };
-    });
+        // Optional: log batch order status
+        const orderLogs = await this.logBatchOrdersStatus(
+          tx,
+          [batch.id],
+          'DISPATCHED',
+          batch.origin.addressLine,
+          dto.createdById,
+          dto.notes,
+        );
+
+        return { batch, orderLogs };
+      },
+      { timeout: 60000 },
+    );
   }
 
   async addOrdersToBatch(
@@ -416,17 +492,31 @@ export class DispatchRepository {
     updateData?: Partial<BatchDispatchDto>,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      // Update batch info if provided
+      const batchUpdate: any = { ...updateData };
+
+      // Connect origin/destination if included in updateData
+      if (updateData?.originId) {
+        batchUpdate.origin = { connect: { id: updateData.originId } };
+        delete batchUpdate.originId;
+      }
+      if (updateData?.destinationId) {
+        batchUpdate.destination = { connect: { id: updateData.destinationId } };
+        delete batchUpdate.destinationId;
+      }
+
+      // Update batch and connect new orders
       const updatedBatch = await tx.batchDispatch.update({
         where: { id: batchId },
         data: {
-          ...updateData,
+          ...batchUpdate,
           orders: { connect: newOrderIds.map((id) => ({ id })) },
         },
         include: {
           orders: true,
           driver: true,
-          // vehicle: true,
+          vehicle: true,
+          origin: true,
+          destination: true,
         },
       });
 
@@ -435,11 +525,12 @@ export class DispatchRepository {
         where: { id: { in: newOrderIds } },
         data: { status: 'DISPATCHED' },
       });
+
       const ordersLog = await this.logBatchOrdersStatus(
         tx,
         [batchId],
         'PICKED_UP',
-        updatedBatch.origin,
+        updatedBatch.origin.addressLine, // use originId for logs
         updatedBatch.createdById,
         updatedBatch.notes,
       );
@@ -455,7 +546,14 @@ export class DispatchRepository {
   async findBatchById(batchId: string) {
     return this.prisma.batchDispatch.findUnique({
       where: { id: batchId },
-      include: { orders: true },
+      include: {
+        orders: {
+          include: {
+            deliveryAddress: true,
+          },
+        },
+        origin: true,
+      },
     });
   }
 
@@ -553,25 +651,29 @@ export class DispatchRepository {
     return { message: `Tracking logs created for ${orders.length} orders.` };
   }
 
-  async createScan(data: {
-    orderId: string;
-    scannedBy: string;
-    valid: boolean;
-    notes?: string;
-    batchId?: string;
-    location: string;
-  }) {
+  async createScan(
+    data: {
+      orderId: string;
+      scannedBy: string;
+      valid: boolean;
+      notes?: string;
+      batchId?: string;
+    },
+    location: string,
+  ) {
     return this.prisma.$transaction(async (tx) => {
       // 1. Create the scan record
       const scan = await tx.orderScan.create({
         data,
       });
 
+      console.log('location: ', location);
+
       // 2. Create a corresponding tracking log
       await tx.orderTracking.create({
         data: {
           orderId: data.orderId,
-          location: data.location,
+          location: location,
           status: data.valid ? 'SUCCESS' : 'EXCEPTION',
           updatedBy: data.scannedBy,
           notes:
@@ -589,6 +691,7 @@ export class DispatchRepository {
   async findByTrackingCode(trackingCode: string) {
     return this.prisma.order.findUnique({
       where: { trackingCode },
+      include: { deliveryAddress: true },
     });
   }
 
@@ -633,10 +736,17 @@ export class DispatchRepository {
   ) {
     return this.prisma.batchDispatch.findMany({
       where: {
-        destination: branchId, // assuming destination is branchId
+        destination: {
+          branchId: branchId, // check the branch linked to the address
+        },
         status: statuses
           ? { in: statuses.map((s) => s as DispatchStatus) }
           : undefined,
+      },
+      include: {
+        origin: true,
+        destination: true,
+        orders: true,
       },
     });
   }
@@ -713,5 +823,155 @@ export class DispatchRepository {
 
       return { handover, confirmedOrders: validOrders.map((o) => o.orderId) };
     });
+  }
+
+  async createDriver(data: CreateDriver) {
+    return this.prisma.$transaction(async (tx) => {
+      // Step 1: Create driver
+      const driver = await tx.driver.create({
+        data: {
+          user: { connect: { id: data.userId } },
+          vehicleId: data.vehicleId,
+          status: data.status,
+          type: data.type,
+          currentLat: data.currentLat,
+          currentLon: data.currentLong,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Step 2: Create location log
+      await tx.driverLocationLog.create({
+        data: {
+          driverId: driver.id,
+          latitude: data.currentLat,
+          longitude: data.currentLong,
+          speed: 0,
+          heading: 0,
+        },
+      });
+
+      // Step 3: Update vehicle
+      await tx.vehicle.update({
+        where: { id: data.vehicleId },
+        data: { driverId: driver.id },
+      });
+
+      return driver;
+    });
+  }
+
+  async findVehicleById(vehicleId: string) {
+    return await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+    });
+  }
+
+  async findDriver(payload: ListQueryDto) {
+    // Start building dynamic filters
+    const where: any = {
+      AND: [],
+    };
+
+    // Apply general search (text)
+    if (payload.search) {
+      where.AND.push({
+        OR: [
+          { user: { name: { contains: payload.search, mode: 'insensitive' } } },
+          {
+            user: { email: { contains: payload.search, mode: 'insensitive' } },
+          },
+          {
+            user: { phone: { contains: payload.search, mode: 'insensitive' } },
+          },
+          {
+            vehicles: {
+              some: {
+                plateNumber: { contains: payload.search, mode: 'insensitive' },
+              },
+            },
+          },
+          {
+            vehicles: {
+              some: {
+                model: { contains: payload.search, mode: 'insensitive' },
+              },
+            },
+          },
+        ],
+      });
+    }
+
+    let filters: any = {};
+    if (typeof payload.filter === 'string') {
+      try {
+        filters = JSON.parse(payload.filter);
+      } catch {
+        filters = {};
+      }
+    } else if (typeof payload.filter === 'object' && payload.filter !== null) {
+      filters = payload.filter;
+    }
+
+    // Apply optional filters
+    if (filters.status) {
+      where.AND.push({ status: filters.status });
+    }
+    if (filters.type) {
+      where.AND.push({ type: filters.type });
+    }
+    if (filters.vehicleStatus) {
+      where.AND.push({
+        vehicles: { some: { status: filters.vehicleStatus } },
+      });
+    }
+    if (filters.userId) {
+      where.AND.push({ userId: filters.userId });
+    }
+    if (filters.vehicleId) {
+      where.AND.push({
+        vehicles: { some: { id: filters.vehicleId } },
+      });
+    }
+
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: [
+        'user.name',
+        'user.email',
+        'user.phone',
+        'vehicles.plateNumber',
+        'vehicles.model',
+      ],
+    });
+
+    // Construct Prisma query
+    const query = {
+      ...feature.getQuery(),
+      where,
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, phone: true },
+        },
+        vehicles: {
+          select: { id: true, plateNumber: true, model: true, status: true },
+        },
+      },
+    };
+
+    // Run queries in parallel transaction
+    const [drivers, total] = await this.prisma.$transaction([
+      this.prisma.driver.findMany(query),
+      this.prisma.driver.count({ where }),
+    ]);
+
+    return {
+      drivers,
+      pagination: feature.getPagination(total),
+    };
   }
 }

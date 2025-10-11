@@ -1,7 +1,17 @@
 // src/utils/qr-code.helper.ts
-import { Order, ServiceType, ShipmentType, ShippingScope } from '@prisma/client';
-import QRCode from 'qrcode';
+import {
+  Order,
+  ServiceType,
+  ShipmentType,
+  ShippingScope,
+} from '@prisma/client';
+import * as QRCode from 'qrcode';
 
+export interface DeliveryAddressDto {
+  addressLine: string;
+  city: string;
+  country: string;
+}
 export interface OrderQRCodeData {
   trackingCode: string;
   branchId?: string;
@@ -10,7 +20,7 @@ export interface OrderQRCodeData {
   length?: number;
   width?: number;
   height?: number;
-  deliveryAddress: string;
+  deliveryAddress: DeliveryAddressDto;
   batchId?: string;
   shippingScope: ShippingScope; // ShippingScope enum string
   shipmentType: ShipmentType; // ShipmentType enum string
@@ -24,74 +34,95 @@ export interface ScanResult {
   payload?: OrderQRCodeData;
 }
 
-export async function generateOrderQRCode(data: OrderQRCodeData): Promise<string> {
-  // Convert data to JSON string to encode in QR
-  const payload = JSON.stringify(data);
+export async function generateOrderQRCode(
+  data: OrderQRCodeData,
+): Promise<string> {
+  if (!data) throw new Error('Cannot generate QR: data is undefined');
 
-  // Generate QR code as a Base64 string
-  const qrCodeBase64 = await QRCode.toDataURL(payload);
+  console.log('Generating QR for payload:', data);
 
-  return qrCodeBase64;
+  try {
+    const payload = JSON.stringify({
+      trackingCode: data.trackingCode,
+      address: data.deliveryAddress,
+      serviceType: data.serviceType,
+      ShippingScope: data.shippingScope,
+      ShipmentType: data.shipmentType,
+      branchId: data.branchId,
+      batchId: data.batchId,
+      weight: data.weight,
+      length: data.length,
+      width: data.width,
+      height: data.height,
+    });
+
+    const qrCodeBase64 = await QRCode.toDataURL(payload, {
+      errorCorrectionLevel: 'H', // high error correction
+      type: 'image/png',
+      width: 300, // optional size
+    });
+    return qrCodeBase64;
+  } catch (err) {
+    console.error('Failed to generate QR code:', err);
+    throw new Error('QR code generation failed');
+  }
 }
-
 
 export function decodeAndValidateQRCode(
   scannedToken: string,
-  order: Order
+  order: any,
 ): ScanResult {
   let payload: OrderQRCodeData;
 
   try {
     // Decode Base64 Data URL
-    const jsonString = Buffer.from(scannedToken.split(',')[1], 'base64').toString();
+    const jsonString = Buffer.from(
+      scannedToken.split(',')[1],
+      'base64',
+    ).toString();
     payload = JSON.parse(jsonString);
   } catch (err) {
     return { valid: false, notes: 'Invalid QR token' };
   }
 
-  // Compare decoded payload with DB order
-  if (payload.trackingCode !== order.trackingCode) {
-    return { valid: false, orderId: order.id, notes: 'Tracking code mismatch', payload };
-  }
+  // Helper function for field validation
+  const validateField = <T>(
+    fieldName: string,
+    payloadValue: T | undefined,
+    orderValue: T | undefined,
+  ) => {
+    if (payloadValue !== undefined && payloadValue !== orderValue) {
+      return `Mismatch on ${fieldName}: scanned=${payloadValue}, expected=${orderValue}`;
+    }
+    return null;
+  };
 
-  if (payload.batchId && payload.batchId !== order.batchId) {
-    return { valid: false, orderId: order.id, batchId: order.batchId, notes: 'Batch mismatch', payload };
-  }
+  const validations = [
+    validateField('trackingCode', payload.trackingCode, order.trackingCode),
+    validateField('batchId', payload.batchId, order.batchId),
+    validateField('branchId', payload.branchId, order.branchId),
+    validateField('serviceType', payload.serviceType, order.serviceType),
+    validateField('weight', payload.weight, order.weight),
+    validateField('length', payload.length, order.length),
+    validateField('width', payload.width, order.width),
+    validateField('height', payload.height, order.height),
+    validateField(
+      'deliveryAddressLine',
+      payload.deliveryAddress?.addressLine,
+      order.deliveryAddress?.addressLine,
+    ),
+    validateField('shippingScope', payload.shippingScope, order.shippingScope),
+    validateField('shipmentType', payload.shipmentType, order.shipmentType),
+  ].filter(Boolean);
 
-  if (payload.branchId && payload.branchId !== order.branchId) {
-    return { valid: false, orderId: order.id, notes: 'Branch mismatch', payload };
-  }
-
-  if (payload.serviceType !== order.serviceType) {
-    return { valid: false, orderId: order.id, notes: 'Service type mismatch', payload };
-  }
-
-  if (payload.weight !== order.weight) {
-    return { valid: false, orderId: order.id, notes: 'Weight mismatch', payload };
-  }
-
-  if (payload.length !== order.length) {
-    return { valid: false, orderId: order.id, notes: 'Length mismatch', payload };
-  }
-
-  if (payload.width !== order.width) {
-    return { valid: false, orderId: order.id, notes: 'Width mismatch', payload };
-  }
-
-  if (payload.height !== order.height) {
-    return { valid: false, orderId: order.id, notes: 'Height mismatch', payload };
-  }
-
-  if (payload.deliveryAddress !== order.deliveryAddress) {
-    return { valid: false, orderId: order.id, notes: 'Delivery address mismatch', payload };
-  }
-
-  if (payload.shippingScope !== order.shippingScope) {
-    return { valid: false, orderId: order.id, notes: 'Shipping scope mismatch', payload };
-  }
-
-  if (payload.shipmentType !== order.shipmentType) {
-    return { valid: false, orderId: order.id, notes: 'Shipment type mismatch', payload };
+  if (validations.length > 0) {
+    return {
+      valid: false,
+      orderId: order.id,
+      batchId: order.batchId,
+      notes: validations.join('; '),
+      payload,
+    };
   }
 
   return { valid: true, orderId: order.id, batchId: order.batchId, payload };

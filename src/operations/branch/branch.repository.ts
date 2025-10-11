@@ -69,9 +69,32 @@ export class BranchRepository {
   deleteBranch(id: string) {
     return this.prisma.branch.delete({ where: { id } });
   }
+
   async updateBranch(id: string, data: Partial<BranchUpdateDto>) {
-    return this.prisma.branch.update({ where: { id }, data });
-  }
+    console.log('data: ', data);
+    
+  const { address, ...branchData } = data;
+
+  console.log('branchData: ', branchData);
+  
+  console.log('address: ', address);
+  
+  return this.prisma.branch.update({
+    where: { id },
+    data: {
+      ...branchData,
+      ...(address && {
+        address: {
+          upsert: {
+            create: address, // if no address exists yet
+            update: address, // if an address already exists
+          },
+        },
+      }),
+    },
+    include: { address: true },
+  });
+}
   async findAllBranch(payload: ListQueryDto) {
     const feature = new PrismaQueryFeature({
       search: payload.search,
@@ -118,8 +141,22 @@ export class BranchRepository {
     };
   }
 
-  createBranch(data: BranchCreateDto): Promise<Branch> {
-    return this.prisma.branch.create({ data });
+ async createBranch(data: BranchCreateDto): Promise<Branch> {
+    return await this.prisma.branch.create({
+  data: {
+    name: data.name,
+    location: data.location,
+    managerId: data.managerId ?? null,
+    address: {
+      create: {
+        ...data.address,
+        purpose: 'BRANCH_LOCATION',
+      },
+    },
+  },
+  include: { address: true },
+});
+
   }
 
   async findBranchById(id: string): Promise<Branch | null> {

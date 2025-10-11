@@ -10,6 +10,8 @@ import {
   BatchHandoverDto,
   CompleteDeliveryDto,
   ConfirmBatchHandoverDto,
+  CreateDriver,
+  GenerateQrDto,
   LastMileDeliveryDto,
   OrderScanTokenDto,
 } from './dispatch.entity';
@@ -18,6 +20,7 @@ import { ListQueryDto } from '../../common/query/query.dto';
 import { CheckPermission } from '../../common/decorator/check-permission.decorator';
 import { PermissionGuard } from '../../common/permission.guard';
 import { PermissionActions } from '../../contracts/permission-actions.enum';
+import { ServiceType, ShippingScope } from '@prisma/client';
 
 @Controller()
 export class DispatchMessageController {
@@ -111,12 +114,11 @@ export class DispatchMessageController {
   @CheckPermission('Dispatch', PermissionActions.UPDATE)
   //   @Public()
   @MessagePattern(PATTERNS.DISPATCH_COLLECT_FROM_AIRPORT)
-  async collectFromAirport(@Payload() payload: { data: OrderScanTokenDto }): Promise<any> {
+  async collectFromAirport(
+    @Payload() payload: { data: OrderScanTokenDto },
+  ): Promise<any> {
     console.log('collectFromAirport payload :', payload.data);
-    return this.usecases.scanOrder(
-      payload.data.scannedBy,
-      payload.data.token,
-    );
+    return this.usecases.scanOrder(payload.data.scannedBy, payload.data.token);
   }
 
   @UseGuards(PermissionGuard)
@@ -208,5 +210,40 @@ export class DispatchMessageController {
     const result = await this.usecases.changeDriverForOrder(payload.data);
 
     return IResponse.success('Driver changed successfully', result);
+  }
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.DELETE)
+  //   @Public()
+  @MessagePattern(PATTERNS.DISPATCH_GENERATE_QR_CODE)
+  async generateQrCode(@Payload() payload: { data: GenerateQrDto }) {
+    console.log('Generate qr payload :', payload);
+    const result = await this.usecases.prepareQRCodes(payload.data);
+    return IResponse.success('Qr code generated successfully', result);
+  }
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.DISPATCH_CREATE_DRIVER)
+  async createDriver(@Payload() payload: { data: CreateDriver }) {
+    console.log('createDriver payload :', payload);
+    const result = await this.usecases.createDriver(payload.data);
+    return IResponse.success(
+      'Driver with id [' +
+        payload.data.userId +
+        '] is successfully created for vehicle with id [' +
+        payload.data.vehicleId +
+        '].',
+      result,
+    );
+  }
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dispatch', PermissionActions.READ)
+  @MessagePattern(PATTERNS.DISPATCH_FIND_DRIVER)
+  async findDriver(@Payload() payload: { query: ListQueryDto }) {
+    console.log('findDriver payload :', payload);
+    const result = await this.usecases.findDriver(payload.query);
+    return IResponse.success('Officer created successfully', result);
   }
 }

@@ -36,4 +36,7 @@ export interface DispatchUseCases {
   // ): Promise<any>;
   // receiveFromAirport(batchIds: string[]): Promise<any>;
 
+  findDriver(query: ListQueryDto): Promise<any>;
+  confirmHandover(dto: ConfirmBatchHandoverDto): Promise<any>;
+
 }

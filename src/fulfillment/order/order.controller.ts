@@ -27,7 +27,7 @@ export class OrderMessageController {
   @CheckPermission('Order', PermissionActions.CREATE)
   // @Public()
   @MessagePattern(PATTERNS.ORDER_CREATE)
-  async createOrder(@Payload() payload:{data: CreateOrderDto}) {
+  async createOrder(@Payload() payload: { data: CreateOrderDto }) {
     const result = await this.orderUseCases.createOrder(payload.data);
     return IResponse.success('Order created successfully', result);
   }
@@ -36,7 +36,7 @@ export class OrderMessageController {
   @CheckPermission('Order', PermissionActions.CREATE)
   // @Public()
   @MessagePattern(PATTERNS.ORDER_CREATE_AND_VALIDATE)
-  async createOrderAndValidate(@Payload() payload: {data: ValidateOrderDto}) {
+  async createOrderAndValidate(@Payload() payload: { data: ValidateOrderDto }) {
     const result = await this.orderUseCases.createOrder(payload.data);
     return IResponse.success(
       'Order created and validated successfully by customer officer',
@@ -48,7 +48,7 @@ export class OrderMessageController {
   @CheckPermission('Order', PermissionActions.UPDATE)
   // @Public()
   @MessagePattern(PATTERNS.ORDER_ACCEPT_DROP_OFF)
-  async acceptDropOffOrder(@Payload() payload: {data: any}) {
+  async acceptDropOffOrder(@Payload() payload: { data: any }) {
     console.log('data: ', payload.data);
     const trackingCode = payload.data?.trackingCode;
     console.log('trackingCode: ', trackingCode);
@@ -62,7 +62,7 @@ export class OrderMessageController {
   @CheckPermission('Order', PermissionActions.UPDATE)
   // @Public()
   @MessagePattern(PATTERNS.ORDER_CONFIRM_PICKUP)
-  async confirmPickup(@Payload() payload:{data: any}) {
+  async confirmPickup(@Payload() payload: { data: any }) {
     const { orderId, driverId } = payload.data;
     const result = await this.orderUseCases.confirmPickupOrder(
       orderId,
@@ -76,7 +76,7 @@ export class OrderMessageController {
   @CheckPermission('Order', PermissionActions.UPDATE)
   // @Public()
   @MessagePattern(PATTERNS.ORDER_VALIDATE)
-  async validateOrder(@Payload() payload: {data: any, id: string}) {
+  async validateOrder(@Payload() payload: { data: any; id: string }) {
     const { id, data } = payload;
     const { officerId, updates } = payload.data;
     console.log('Orderid and officerId', id, officerId);
@@ -91,13 +91,16 @@ export class OrderMessageController {
   @CheckPermission('Order', PermissionActions.UPDATE)
   // @Public()
   @MessagePattern(PATTERNS.ORDER_MARK_UNUSUAL)
-  async markUnusualOrder(@Payload() payload: {orderId: string, data: any}) {
+  async markUnusualOrder(@Payload() payload: { orderId: string; data: any }) {
     const { orderId, data } = payload;
     console.log('payload: ', payload);
     console.log('orderId: ', orderId);
     console.log('data: ', data);
-    
-    const result = await this.orderUseCases.markUnusualOrder(payload.orderId, payload.data);
+
+    const result = await this.orderUseCases.markUnusualOrder(
+      payload.orderId,
+      payload.data,
+    );
     return IResponse.success('Order Marked as Unusual successfully', result);
   }
 
@@ -117,8 +120,7 @@ export class OrderMessageController {
   @CheckPermission('Order', PermissionActions.UPDATE)
   // @Public()
   @MessagePattern(PATTERNS.ORDER_APPROVE)
-
-  async approveOrder(@Payload() payload: {data: any}) {
+  async approveOrder(@Payload() payload: { data: any }) {
     const orderId = payload.data.orderId;
     const reason = payload.data.reason;
     console.log('Order : ', orderId);
@@ -134,9 +136,11 @@ export class OrderMessageController {
   @CheckPermission('Order', PermissionActions.UPDATE)
   // @Public()
   @MessagePattern(PATTERNS.ORDER_CANCEL)
-  async cancelOrder(@Payload() payload: { data: CancelOrderDto; headers: any }) {
+  async cancelOrder(
+    @Payload() payload: { data: CancelOrderDto; headers: any },
+  ) {
     console.log('payload: ', payload);
-const { data } = payload;
+    const { data } = payload;
     const orderId = data.orderId;
     const result = await this.orderUseCases.cancelOrder(data);
     return IResponse.success(`Order with id: ${orderId} cancelled.`, result);
@@ -159,7 +163,7 @@ const { data } = payload;
   @CheckPermission('Order', PermissionActions.CREATE)
   // @Public()
   @MessagePattern(PATTERNS.ORDER_ADD_EXCEPTION)
-  async addException(@Payload() payload: {data: AddException}) {
+  async addException(@Payload() payload: { data: AddException }) {
     const orderId = payload.data.orderId;
     const result = await this.orderUseCases.addException(payload.data);
     return IResponse.success(
@@ -185,7 +189,9 @@ const { data } = payload;
   @CheckPermission('Order', PermissionActions.UPDATE)
   // @Public()
   @MessagePattern(PATTERNS.ORDER_REMOVE_EXCEPTION)
-  async solveExceptions(@Payload() payload: {data: UpdateOrderDto, orderId: string}) {
+  async solveExceptions(
+    @Payload() payload: { data: UpdateOrderDto; orderId: string },
+  ) {
     const { orderId, data } = payload;
     const result = await this.orderUseCases.solveExceptions(orderId, data);
     return IResponse.success(`Order exception resolved successfully.`, result);
@@ -250,6 +256,5 @@ const { data } = payload;
     return this.orderUseCases.trackOrder(payload.code);
   }
 }
-
 
 //

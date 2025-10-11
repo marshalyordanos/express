@@ -11,6 +11,7 @@ import {
   BatchDispatchDto,
   BatchHandoverDto,
   ConfirmBatchHandoverDto,
+  CreateDriver,
 } from './dispatch.entity';
 import { RpcException } from '@nestjs/microservices';
 import {
@@ -30,13 +31,14 @@ import { ListQueryDto } from '../../common/query/query.dto';
 
 @Injectable()
 export class DispatchUseCasesImpl implements DispatchUseCases {
+
   constructor(
     private readonly dispatchRepo: DispatchRepository,
     private readonly qrCodeService: PrismaService,
   ) {}
 
   async assignDriverForPickup(data: AssignDriverForPickup): Promise<any> {
-    const driver = await this.dispatchRepo.findUserById(data.driverId);
+    const driver = await this.dispatchRepo.findDriverById(data.driverId);
     if (!driver) {
       throw new RpcException({
         statusCode: 404,
@@ -91,12 +93,14 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       });
     }
 
+    console.log("going assigning .....");
+    
     // Assign driver
-    const updatedOrder = await this.dispatchRepo.assignDriverForPickup(data);
+    const updatedOrder = await this.dispatchRepo.assignDriverForPickup(data.driverId, order.id);
 
     return {
       statusCode: 200,
-      message: `Driver ${driver.name} (ID: ${driver.id}) successfully assigned to order ${order.id}.`,
+      message: `Driver ${driver.user.name} (ID: ${driver.user.id}) successfully assigned to order ${order.id}.`,
       data: updatedOrder,
     };
   }
@@ -301,7 +305,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       });
     }
     const result = await this.dispatchRepo.deliverOrder(
-      order.trackingCode,
+      orderId,
       driverId,
       notes,
     );
@@ -509,7 +513,9 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
 
     // Branch validation when batch is at branch
     if (batch.status === 'AT_BRANCH') {
-      const branchMismatch = orders.filter((o) => o.branchId !== batch.origin);
+      const branchMismatch = orders.filter(
+        (o) => o.branchId !== batch.originId,
+      );
       if (branchMismatch.length) {
         throw new RpcException({
           statusCode: 400,
@@ -517,7 +523,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
             .map((o) => o.id)
             .join(
               ', ',
-            )} do not belong to the batch's origin branch (${batch.origin}).`,
+            )} do not belong to the batch's origin branch (${batch.originId}).`,
         });
       }
     }
@@ -542,60 +548,88 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     orderIds?: string[];
     batchId?: string;
     branchId?: string;
+    serviceType?: ServiceType; // optional filter
+    shippingScope?: ShippingScope; // optional filter
   }) {
-    return this.qrCodeService.$transaction(async (tx) => {
-      let orders: any;
+    console.log('input :', input);
 
-      if (input.orderIds && input.orderIds.length > 0) {
-        orders = await this.dispatchRepo.findOrdersByIds(input.orderIds);
-      } else if (input.batchId) {
-        orders = await this.dispatchRepo.findBatchById(input.batchId);
-      } else {
+    // Step 1: Fetch orders based on input
+    let orders: any;
+
+    if (input.orderIds && input.orderIds.length > 0) {
+      orders = await this.dispatchRepo.findOrdersByIds(input.orderIds);
+    } else if (input.batchId) {
+      orders = await this.dispatchRepo.findBatchById(input.batchId);
+      // }
+      //  else if (input.branchId) {
+      //   orders = await this.dispatchRepo.findOrdersByBranch(input.branchId);
+    } else {
+      throw new RpcException(
+        'Must provide at least orderIds, batchId, or branchId',
+      );
+    }
+
+    if (!orders || orders.length === 0) {
+      throw new RpcException('No orders found for the given criteria.');
+    }
+
+    // Step 2: Optional filtering
+    if (input.serviceType) {
+      orders = orders.filter((o) => o.serviceType === input.serviceType);
+    }
+    if (input.shippingScope) {
+      orders = orders.filter((o) => o.shippingScope === input.shippingScope);
+    }
+
+    if (orders.length === 0) {
+      throw new RpcException('No orders match the given filters.');
+    }
+
+    // Step 3: Generate QR codes
+    const qrResults = [];
+
+    for (const order of orders) {
+      const qrPayload: OrderQRCodeData = {
+        trackingCode: order.trackingCode,
+        branchId: order.branchId,
+        serviceType: order.serviceType,
+        weight: order.weight,
+        length: order.length,
+        width: order.width,
+        height: order.height,
+        deliveryAddress: {
+          addressLine: order.deliveryAddress.addressLine,
+          city: order.deliveryAddress.city,
+          country: order.deliveryAddress.country,
+        },
+        batchId: order.batchId,
+        shippingScope: order.shippingScope,
+        shipmentType: order.shipmentType,
+      };
+
+      try {
+        console.log('qrPayload: ', qrPayload);
+
+        const qrCode = await generateOrderQRCode(qrPayload);
+
+        // Optionally: create a downloadable URL for QR (example)
+        const qrDownloadUrl = `data:image/png;base64,${qrCode.split(',')[1]}`;
+
+        qrResults.push({
+          orderId: order.id,
+          batchId: order.batchId,
+          trackingCode: order.trackingCode,
+          qrCode, // Base64 QR
+          qrDownloadUrl, // Optional download link
+        });
+      } catch (err) {
         throw new RpcException(
-          'Must provide at least orderIds, batchId, or branchId',
+          `Failed to generate QR for order ${order.id}: ${err}`,
         );
       }
+    }
 
-      if (orders.length === 0) {
-        throw new RpcException('No orders found for the given criteria.');
-      }
-
-      const qrResults = [];
-
-      for (const order of orders) {
-        const qrPayload: OrderQRCodeData = {
-          trackingCode: order.trackingCode,
-          branchId: order.branchId,
-          serviceType: order.serviceType,
-          weight: order.weight,
-          length: order.length,
-          width: order.width,
-          height: order.height,
-          deliveryAddress: order.deliveryAddress,
-          batchId: order.batchId,
-          shippingScope: order.shippingScope,
-          shipmentType: order.shipmentType,
-        };
-
-        // const qrCode = await generateOrderQRCode(qrPayload);
-
-        try {
-          const qrCode = await generateOrderQRCode(qrPayload);
-          qrResults.push({
-            orderId: order.id,
-            batchId: order.batchId,
-            trackingCode: order.trackingCode,
-            qrCode,
-          });
-        } catch (err) {
-          throw new RpcException(
-            `Failed to generate QR for order ${order.id}: ${err}`,
-          );
-        }
-      }
-
-      return qrResults;
-    });
+    return qrResults;
   }
 
   async scanOrder(officerId: string, scannedToken: string) {
@@ -620,15 +654,18 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     // 3️⃣ Validate
     const result = decodeAndValidateQRCode(scannedToken, order);
 
+    const location = 'At airport';
     // 4️⃣ Save scan log
-    await this.dispatchRepo.createScan({
-      orderId: order.id,
-      scannedBy: officerId,
-      valid: result.valid,
-      notes: result.notes,
-      batchId: order.batchId ?? undefined,
-      location: 'At airport',
-    });
+    await this.dispatchRepo.createScan(
+      {
+        orderId: order.id,
+        scannedBy: officerId,
+        valid: result.valid,
+        notes: result.notes,
+        batchId: order.batchId ?? undefined,
+      },
+      location,
+    );
 
     return result;
   }
@@ -721,5 +758,28 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       message: 'All scanned valid orders have been confirmed.',
       ...result,
     };
+  }
+
+   async createDriver(data: CreateDriver) {
+    const user= await this.dispatchRepo.findUserById(data.userId);
+    if (!user) {
+      throw new RpcException({
+        statusCode: 404,
+        message: `User with ID ${data.userId} not found and can not create driver with it.`,
+      });
+    }
+
+    const vehicle = await this.dispatchRepo.findVehicleById(data.vehicleId);
+    if (!vehicle) {
+      throw new RpcException({
+        statusCode: 404,
+        message: `Vehicle with ID ${data.vehicleId} not found and can not create driver for it.`,
+      });
+    }
+    return await this.dispatchRepo.createDriver(data);
+  }
+
+  async findDriver(query: ListQueryDto) {
+    return await this.dispatchRepo.findDriver(query);
   }
 }

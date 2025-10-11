@@ -9,6 +9,7 @@ import {
 } from './order.entity';
 import { OrderRepository } from './order.repository';
 import {
+  Address,
   FulfillmentType,
   Order,
   OrderStatus,
@@ -19,15 +20,17 @@ import {
 import { RpcException } from '@nestjs/microservices';
 import { IPagination, IResponse } from '../../common/types';
 import { ListQueryDto } from '../../common/query/query.dto';
+import { MapsService } from '../maps/maps.usecase.impl';
 
 @Injectable()
 export class OrderUseCasesImpl implements OrderUseCases {
-  constructor(private readonly orderRepo: OrderRepository) {}
+  constructor(
+    private readonly orderRepo: OrderRepository,
+    private readonly mapsService: MapsService,
+  ) {}
   //Customer order creating API: For customer to create for it self and staff/Admin to create for customer
-  async createOrder(data: any): Promise<any> {
-    console.log('data: ', data);
-
-    // Find or create customer
+  async createOrder(data: any): Promise<Order> {
+    // 🔹 Find or create customer
     let customer =
       (data.customerId &&
         (await this.orderRepo.findCustomer(data.customerId))) ||
@@ -40,7 +43,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
     if (!customer) {
       if (!data.name || (!data.email && !data.phone)) {
         throw new RpcException(
-          'Customer not found or required details (name and either email or phone) not provided',
+          'Customer not found or required details not provided',
         );
       }
       customer = await this.orderRepo.createCustomer({
@@ -50,63 +53,17 @@ export class OrderUseCasesImpl implements OrderUseCases {
       });
     }
 
-    console.log('customer: ', customer);
-
-    // Generate tracking code
     const username = customer.name.substring(0, 3).toUpperCase();
     const trackingCode = this.generateTrackingCode(username);
-    console.log('trackingCode: ', trackingCode);
 
-    // Helper to create connect object or undefined
-    const connectIfExists = async (
-      id: string,
-      findFn: (id: string) => Promise<any>,
-    ) => {
-      if (!id) return undefined;
-      const entity = await findFn(id);
-      if (!entity)
-        throw new RpcException(`${findFn.name.replace('find', '')} not found`);
-      return { connect: { id } };
-    };
-    // Validate pickup details
-    if (data.fulfillmentType === 'PICKUP' && !data.pickupAddress) {
-      throw new RpcException('Pickup address is required for pickup orders');
-    }
-
-    const customerConnect = { connect: { id: customer.id } };
-    const branchConnect = await connectIfExists(
-      data.branchId,
-      this.orderRepo.findBranch.bind(this.orderRepo),
-    );
-    const driverConnect = await connectIfExists(
-      data.driverId,
-      this.orderRepo.findDriver.bind(this.orderRepo),
-    );
-    const paymentConnect = await connectIfExists(
-      data.paymentId,
-      this.orderRepo.findPayment.bind(this.orderRepo),
-    );
-
-    let location: string | null = null;
-
-    if (data.fulfillmentType === 'PICKUP') {
-      location = data.pickupAddress;
-    } else if (data.fulfillmentType === 'DROPOFF' && data.branchId) {
-      const branch = await this.orderRepo.findBranch(data.branchId);
-      location = branch?.location ?? null;
-    }
-
-    const updatedBy = customer.id;
-    return this.orderRepo.createOrder(
+    // 🔹 Delegate entire order creation + addresses + tracking + distance to repository
+    const order = await this.orderRepo.createOrderWithAddressesAndDistance(
       data,
-      customerConnect,
-      branchConnect,
-      driverConnect,
-      paymentConnect,
+      customer.id,
       trackingCode,
-      location,
-      updatedBy,
     );
+
+    return order;
   }
 
   async solveExceptions(orderId: string, data: UpdateOrderDto): Promise<any> {
@@ -131,9 +88,9 @@ export class OrderUseCasesImpl implements OrderUseCases {
         `Order with tracking code ${trackingCode} not found`,
       );
     }
-
+    
     // Determine branchId from order or driver's branch
-    const branchId = order.branchId ?? order.driver?.branchId;
+    const branchId = order.branchId ?? order.pickupDriver?.branchId;
 
     if (!branchId) {
       throw new RpcException(
@@ -174,8 +131,10 @@ export class OrderUseCasesImpl implements OrderUseCases {
       });
     }
 
+    console.log("Order for comfirming order pickup : ", order);
+    
     // ✅ Check if order is assigned to this driver
-    if (order.driverId !== driverId) {
+    if (order.pickupDriverId !== driverId) {
       throw new RpcException({
         statusCode: 403, // Forbidden
         message: `Order with ID ${orderId} is not assigned to this driver.`,
@@ -187,8 +146,10 @@ export class OrderUseCasesImpl implements OrderUseCases {
         message: `Order with Tracking code ['${order.trackingCode}'] or Order Id ['${order.id}'] is not ASSIGNED to the driver for the pick up or the package already picked up.`,
       });
     }
-    const location = order.pickupAddress;
+    const location = order.pickupAddress.addressLine;
 
+    console.log("location to be the pickup happened. : ", location);
+    
     return this.orderRepo.confirmPickupOrder(orderId, location, driverId);
   }
 
@@ -337,8 +298,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
   }
 
   async getOrdersGroupedByScope(query: ListQueryDto) {
-
-    const result= await this.orderRepo.getOrdersGroupedByScope(query);
+    const result = await this.orderRepo.getOrdersGroupedByScope(query);
     // Initialize structure
     const grouped: Record<ShippingScope, Record<ServiceType, any[]>> = {
       TOWN: { STANDARD: [], EXPRESS: [], SAME_DAY: [], OVERNIGHT: [] },
@@ -432,4 +392,22 @@ export class OrderUseCasesImpl implements OrderUseCases {
     usedCodes.add(trackingCode);
     return trackingCode;
   }
+}
+
+function calculateDistanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Number((R * c).toFixed(2)); // Distance in km
 }

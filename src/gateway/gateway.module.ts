@@ -14,9 +14,19 @@ import { LoggerModule } from 'nestjs-pino';
 import { PermissionBootstrapper } from './Permission.Bootstrapper';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
+import { WebSocketModule } from './websocket/websocket.module';
+import { MapGatewayController } from './maps.gateway.controller';
+import { MapModule } from '../redis/redis.module';
+import { DriverLocationService } from '../fulfillment/maps/driver-location.service';
+import { RedisService } from '../redis/redis.service';
+import { FulfillmentModule } from '../fulfillment/fulfillment.module';
+
 
 @Module({
   imports: [
+    // MapModule,
+    FulfillmentModule,
+    WebSocketModule,
     MicroserviceClientsModule,
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRoot({
@@ -36,7 +46,7 @@ import { ConfigModule } from '@nestjs/config';
       },
     }),
   ],
-  providers: [PermissionBootstrapper, PrismaService],
+  providers: [PermissionBootstrapper, PrismaService, RedisService],
   controllers: [
     AuthGatewayController,
     UserGatewayController,
@@ -48,6 +58,7 @@ import { ConfigModule } from '@nestjs/config';
     OrderGatewayController,
     DispatchGatewayController,
     PricingGatewayController,
+    MapGatewayController,
   ],
 })
 export class GatewayModule {}

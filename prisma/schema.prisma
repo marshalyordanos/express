@@ -28,7 +28,7 @@ model User {
   mfa                Mfa?
   notifications      Notification[]
   orders             Order[]            @relation("CustomerOrders")
-  assignedOrders     Order[]            @relation("DriverOrders")
+  //assignedOrders     Order[]            @relation("DriverOrders")
   validatedOrders    Order[]            @relation("ValidateOrders")
   passwordReset      PasswordReset[]
   refreshTokens      RefreshToken[]
@@ -46,6 +46,9 @@ model User {
   driverBatches          BatchDispatch[]  @relation("BatchDispatchDriver")
   officerBatches         BatchDispatch[]  @relation("BatchDispatchOfficer")
   handOverBatchesOfficer BatchHandover[]  @relation("HandoverBatchesOfficer")
+
+pickupOrders  Order[]  @relation("PickupDriverOrders")
+deliveryOrders Order[] @relation("DeliveryDriverOrders")
 
   corporateInfo CorporateInfo?
   driver        Driver?
@@ -91,10 +94,15 @@ model Address {
   userId      String?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+    branchId    String?        @unique 
 
   user           User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
   pickupOrders   Order[] @relation("PickupAddress")
   deliveryOrders Order[] @relation("DeliveryAddress")
+  branch         Branch?  @relation("BranchAddress", fields: [branchId], references: [id], onDelete: Cascade)
+
+  originBatches      BatchDispatch[] @relation("BatchOrigin")
+  destinationBatches BatchDispatch[] @relation("BatchDestination")
 
   @@index([lat, long], name: "idx_address_coords")
   @@index([userId])
@@ -160,6 +168,7 @@ model Branch {
   manager   User?    @relation("BranchManager", fields: [managerId], references: [id])
   orders    Order[]
   staff     User[]
+  address   Address? @relation("BranchAddress")
 }
 
 model Vehicle {
@@ -195,7 +204,8 @@ model Order {
   trackingCode    String          @unique
   customerId      String
   branchId        String?
-  driverId        String?
+  pickupDriverId  String?        
+  deliveryDriverId String? 
   status          OrderStatus     @default(PENDING)
   serviceType     ServiceType
   fulfillmentType FulfillmentType @default(PICKUP)
@@ -253,16 +263,20 @@ model Order {
   pickupAddress   Address? @relation("PickupAddress", fields: [pickupAddressId], references: [id])
   deliveryAddress Address? @relation("DeliveryAddress", fields: [deliveryAddressId], references: [id])
 
+pickupDriver    User?  @relation("PickupDriverOrders", fields: [pickupDriverId], references: [id])
+deliveryDriver  User?  @relation("DeliveryDriverOrders", fields: [deliveryDriverId], references: [id])
+
   optimizationJob OptimizationJob?      @relation("OptimizationJobOrders", fields: [optimizationJobId], references: [id])
-  driver          User?                 @relation("DriverOrders", fields: [driverId], references: [id], map: "Order_driver_fk_user")
-  orderDriver     Driver?               @relation("DriverAssignedOrders", fields: [driverId], references: [id], map: "Order_driver_fk_driver")
+ // driver          User?                 @relation("DriverOrders", fields: [driverId], references: [id], map: "Order_driver_fk_user")
+  //orderDriver     Driver?               @relation("DriverAssignedOrders", fields: [driverId], references: [id], map: "Order_driver_fk_driver")
   priceLogs       PriceCalculationLog[]
 
   @@index([pickupAddressId, deliveryAddressId], name: "idx_order_addresses") // compound index for route optimization
   @@index([branchId, status], name: "idx_branch_status") // filter orders by branch + status
   @@index([customerId])
   @@index([branchId])
-  @@index([driverId])
+  @@index([pickupDriverId])
+  @@index([deliveryDriverId])
   @@index([status])
   @@index([serviceType])
   @@index([fulfillmentType])
@@ -324,8 +338,6 @@ model BatchDispatch {
   serviceType  ServiceType // SAME_DAY, EXPRESS, etc.
   category     String? // e.g., Electronics, Documents, Mixed
   isFragile    Boolean        @default(false)
-  origin       String // e.g., branch code or location
-  destination  String // e.g., branch code or airport
   status       DispatchStatus @default(PENDING)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
@@ -335,6 +347,10 @@ model BatchDispatch {
   shipmentDate DateTime?      @db.Date
 
   // Relations
+  originId      String?
+  destinationId String?
+  origin        Address?       @relation("BatchOrigin", fields: [originId], references: [id], onDelete: SetNull)
+  destination   Address?       @relation("BatchDestination", fields: [destinationId], references: [id], onDelete: SetNull)
   orders           Order[]           @relation("BatchOrders")
   createdBy        User?             @relation("CreatedBatches", fields: [createdById], references: [id])
   driverId         String?
@@ -727,7 +743,6 @@ model Driver {
   vehicles         Vehicle[]           @relation("VehicleDriver")
   logs             DriverLocationLog[]
   optimizationJobs OptimizationJob[]
-  assignedOrders   Order[]             @relation("DriverAssignedOrders") // <-- renamed relation
 
   @@index([userId])
   @@index([vehicleId])
@@ -766,7 +781,10 @@ model TrafficCondition {
 
 enum DriverStatus {
   OFFLINE
+  ONLINE
   AVAILABLE
+  BUSY
+  INTAKE
   ENROUTE
   BREAK
 }
@@ -781,6 +799,7 @@ enum AddressPurpose {
   USER_WORK
   ORDER_PICKUP
   ORDER_DELIVERY
+  BRANCH_LOCATION
 }
 
 enum CongestionLevel {

@@ -9,6 +9,7 @@ import {
   IsEnum,
   ValidateIf,
   IsBoolean,
+  IsObject,
 } from 'class-validator';
 import {
   ServiceType,
@@ -99,20 +100,46 @@ export class CreateOrderDto {
   height?: number;
 
   // Pickup info — required if fulfillmentType is PICKUP
-  @ValidateIf((o) => o.fulfillmentType === FulfillmentType.PICKUP)
-  @IsString()
-  @IsNotEmpty()
-  pickupAddressId?: string;
+  // @ValidateIf((o) => o.fulfillmentType === FulfillmentType.PICKUP)
+  // @IsString()
+  // @IsNotEmpty()
+  // pickupAddressId?: string;
 
   @ValidateIf((o) => o.fulfillmentType === FulfillmentType.PICKUP)
   @IsDateString()
   @IsOptional()
   pickupDate?: string;
 
-  // Delivery info — always required
-  @IsString()
+  @ValidateIf((o) => o.fulfillmentType === FulfillmentType.PICKUP)
+  @IsOptional()
+  @IsObject()
+  pickupAddress?: {
+    label?: string;
+    addressLine?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    lat: string;
+    long: string;
+  };
+
+  @IsObject()
   @IsNotEmpty()
-  deliveryAddressId: string;
+  deliveryAddress: {
+    label?: string;
+    addressLine?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    lat: string;
+    long: string;
+  };
+  // Delivery info — always required
+  // @IsString()
+  // @IsNotEmpty()
+  // deliveryAddressId: string;
 
   @IsDateString()
   @IsOptional()

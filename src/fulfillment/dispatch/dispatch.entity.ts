@@ -1,4 +1,10 @@
-import { ParcelCategory, ServiceType, ShippingScope } from '@prisma/client';
+import {
+  DriverStatus,
+  DriverType,
+  ParcelCategory,
+  ServiceType,
+  ShippingScope,
+} from '@prisma/client';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -40,11 +46,11 @@ export class BatchDispatchDto {
 
   @IsNotEmpty()
   @IsString()
-  origin: string; // branch code or location
+  originId: string; // <-- now we use Address ID
 
   @IsNotEmpty()
   @IsString()
-  destination: string; // branch code or airport
+  destinationId: string; // <-- now we use Address ID
 
   @IsOptional()
   @IsString()
@@ -83,6 +89,33 @@ export class BatchDispatchDto {
   )
   shipmentDate: string; // Example: "2025-09-24"
 }
+
+export class CreateDriver {
+  @IsNotEmpty()
+  @IsString()
+  userId: string;
+
+  @IsNotEmpty()
+  @IsString()
+  vehicleId: string;
+
+  @IsNotEmpty()
+  @IsEnum(DriverStatus, { message: 'Invalid driver status' })
+  status: DriverStatus;
+
+  @IsNotEmpty()
+  @IsEnum(DriverType, { message: 'Invalid driver type' })
+  type: DriverType;
+
+  @IsOptional()
+  @IsNumber({}, { message: 'Latitude must be a number' })
+  currentLat: number;
+
+  @IsOptional()
+  @IsNumber({}, { message: 'Longitude must be a number' })
+  currentLong: number;
+}
+
 export class AssignOfficerForBatch {
   @IsNotEmpty()
   @IsArray()
@@ -176,4 +209,27 @@ export class LastMileDeliveryDto {
   @IsString()
   @IsOptional()
   notes?: string;
+}
+
+export class GenerateQrDto {
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  orderIds?: string[];
+
+  @IsOptional()
+  @IsString()
+  batchId?: string;
+
+  @IsOptional()
+  @IsString()
+  branchId?: string;
+
+  @IsOptional()
+  @IsEnum(ServiceType)
+  serviceType?: ServiceType;
+
+  @IsOptional()
+  @IsEnum(ShippingScope)
+  shippingScope?: ShippingScope;
 }

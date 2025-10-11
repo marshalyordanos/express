@@ -1,36 +1,44 @@
-import { NestFactory, Reflector } from "@nestjs/core";
-import { Transport, MicroserviceOptions } from "@nestjs/microservices";
-import { FulfillmentModule } from "./fulfillment.module";
-import { ValidationPipe } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { JwtAuthGuard } from "../common/auth.guard";
+import { NestFactory, Reflector } from '@nestjs/core';
+import { Transport, MicroserviceOptions } from '@nestjs/microservices';
+import { FulfillmentModule } from './fulfillment.module';
+import { ValidationPipe } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { JwtAuthGuard } from '../common/auth.guard';
 
 async function bootstrap() {
-    const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-        FulfillmentModule,
-        {
-            transport: Transport.TCP,
-            options:{
-                host: '0.0.0.0',
-                port: Number(process.env.FULFILLMENT_PORT ?? 4003),
-            },
-        },
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+    FulfillmentModule,
+    {
+      transport: Transport.TCP,
+      options: {
+        host: '0.0.0.0',
+        port: Number(process.env.FULFILLMENT_PORT ?? 4003),
+      },
+    },
+  );
+  const jwtService = app.get(JwtService);
+  const reflector = app.get(Reflector);
+  app.useGlobalGuards(new JwtAuthGuard(jwtService, reflector));
 
-    );
-    const jwtService = app.get(JwtService);
-    const reflector = app.get(Reflector);
-   
-    app.useGlobalGuards(new JwtAuthGuard(jwtService, reflector));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
 
-    app.useGlobalPipes(new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true
-    }));
+  await app.listen();
 
-    await app.listen();
+//   const redisTest = app.get(TestRedisService);
 
-    console.log("Fulfillment microservice running on TCP port", process.env.FULFILLMENT_PORT ?? 4003);
+//   await redisTest.test();
 
+//   const seeder = app.get(DriverLocationSeeder);
+//   await seeder.seed(); // 🌍 seed sample driver data
+  console.log(
+    'Fulfillment microservice running on TCP port',
+    process.env.FULFILLMENT_PORT ?? 4003,
+  );
 }
-bootstrap()
+bootstrap();
