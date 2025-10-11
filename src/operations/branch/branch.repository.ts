@@ -71,30 +71,47 @@ export class BranchRepository {
   }
 
   async updateBranch(id: string, data: Partial<BranchUpdateDto>) {
-    console.log('data: ', data);
-    
-  const { address, ...branchData } = data;
+    const { address, managerId, ...branchData } = data;
 
-  console.log('branchData: ', branchData);
-  
-  console.log('address: ', address);
-  
-  return this.prisma.branch.update({
-    where: { id },
-    data: {
-      ...branchData,
-      ...(address && {
-        address: {
-          upsert: {
-            create: address, // if no address exists yet
-            update: address, // if an address already exists
+    return this.prisma.branch.update({
+      where: { id },
+      data: {
+        ...branchData,
+        ...(managerId && {
+          manager: { connect: { id: managerId } },
+        }),
+        ...(address && {
+          address: {
+            upsert: {
+              create: {
+                label: address.label!,
+                addressLine: address.addressLine!,
+                city: address.city!,
+                state: address.state ?? null,
+                country: address.country ?? null,
+                postalCode: address.postalCode ?? null,
+                lat: address.lat,
+                long: address.long,
+                purpose: address.purpose ?? 'BRANCH_LOCATION',
+              },
+              update: {
+                label: address.label ?? undefined,
+                addressLine: address.addressLine ?? undefined,
+                city: address.city ?? undefined,
+                state: address.state ?? undefined,
+                country: address.country ?? undefined,
+                postalCode: address.postalCode ?? undefined,
+                lat: address.lat ?? undefined,
+                long: address.long ?? undefined,
+              },
+            },
           },
-        },
-      }),
-    },
-    include: { address: true },
-  });
-}
+        }),
+      },
+      include: { address: true },
+    });
+  }
+
   async findAllBranch(payload: ListQueryDto) {
     const feature = new PrismaQueryFeature({
       search: payload.search,
@@ -141,22 +158,21 @@ export class BranchRepository {
     };
   }
 
- async createBranch(data: BranchCreateDto): Promise<Branch> {
+  async createBranch(data: BranchCreateDto): Promise<Branch> {
     return await this.prisma.branch.create({
-  data: {
-    name: data.name,
-    location: data.location,
-    managerId: data.managerId ?? null,
-    address: {
-      create: {
-        ...data.address,
-        purpose: 'BRANCH_LOCATION',
+      data: {
+        name: data.name,
+        location: data.location,
+        managerId: data.managerId ?? null,
+        address: {
+          create: {
+            ...data.address,
+            purpose: 'BRANCH_LOCATION',
+          },
+        },
       },
-    },
-  },
-  include: { address: true },
-});
-
+      include: { address: true },
+    });
   }
 
   async findBranchById(id: string): Promise<Branch | null> {

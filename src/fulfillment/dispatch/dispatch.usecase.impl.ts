@@ -54,7 +54,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       });
     }
 
-    if (order.driverId) {
+    if (order.pickupDriverId) {
       throw new RpcException({
         statusCode: 400,
         message: `Order with ID ${data.orderId} is already assigned to another driver.`,
@@ -235,7 +235,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         message: `Order with ID ${orderId} is not eligible for driver assignment or already assigned to another driver. Current status: ${order.status}.`,
       });
     }
-    if (order.driverId && order.driverId !== driverId) {
+    if (order.deliveryDriverId && order.deliveryDriverId !== driverId) {
       throw new RpcException({
         statusCode: 400,
         message: `Order with ID ${orderId} is already assigned to another driver.`,
@@ -260,7 +260,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         message: `Order with ID ${orderId} not found.`,
       });
     }
-    if (order.driverId !== driverId) {
+    if (order.deliveryDriverId !== driverId) {
       throw new RpcException({
         statusCode: 403, // Forbidden
         message: `Order with ID ${orderId} is not assigned to this driver.`,
@@ -292,7 +292,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         message: `Order with ID ${orderId} not found.`,
       });
     }
-    if (order.driverId !== driverId) {
+    if (order.deliveryDriverId !== driverId) {
       throw new RpcException({
         statusCode: 403, // Forbidden
         message: `Order with ID ${orderId} is not assigned to this driver.`,
@@ -314,7 +314,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
 
   async removeDriverFromOrder(orderId: string): Promise<any> {
     const order = await this.dispatchRepo.findOrderById(orderId);
-    if (!order || order.driverId === null) {
+    if (!order || order.deliveryDriverId === null) {
       throw new RpcException({
         statusCode: 404,
         message: `Order with ID ${orderId} is not assigned to any driver or Order does not Exist.`,
@@ -326,7 +326,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
   async changeDriverForOrder(data: AssignDriverForPickup): Promise<any> {
     const { orderId, driverId } = data;
     const order = await this.dispatchRepo.findOrderById(orderId);
-    if (!order || order.driverId === null) {
+    if (!order || order.deliveryDriverId === null) {
       throw new RpcException({
         statusCode: 404,
         message: `Order with ID ${orderId} is not assigned to any driver or Order does not Exist.`,

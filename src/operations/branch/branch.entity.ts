@@ -1,9 +1,11 @@
+import { AddressPurpose } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsNotEmpty,
   IsString,
   IsOptional,
   ValidateNested,
+  IsEnum,
 } from 'class-validator';
 
 
@@ -49,9 +51,9 @@ export class UpdateAddressDto {
   @IsString()
   long?: string;
 
-  @IsOptional()
-  @IsString()
-  purpose?: string;
+ @IsOptional()
+  @IsEnum(AddressPurpose)
+  purpose?: AddressPurpose;
 }
 
 export class BranchUpdateDto {

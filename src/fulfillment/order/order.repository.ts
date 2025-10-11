@@ -109,7 +109,8 @@ export class OrderRepository {
             include: {
               customer: true,
               branch: true,
-              driver: true,
+              pickupDriver: true,
+              deliveryDriver: true,
               payment: true,
             },
           },
@@ -539,7 +540,6 @@ export class OrderRepository {
         include: {
           customer: true,
           branch: true,
-          driver: true,
           payment: true,
           validator: true,
           approvalRequest: true,

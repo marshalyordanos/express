@@ -251,7 +251,7 @@ export class DispatchRepository {
   async assignDriverForDelivery(data: AssignDriverForPickup) {
     return this.prisma.order.update({
       where: { id: data.orderId },
-      data: { driverId: data.driverId, status: 'OUT_FOR_DELIVERY' },
+      data: { deliveryDriverId: data.driverId, status: 'OUT_FOR_DELIVERY' },
     });
   }
   // 1. Assign order to driver (no pickup yet)
@@ -260,7 +260,7 @@ export class DispatchRepository {
       // 1. Update the order → assign to driver
       const updatedOrder = await tx.order.update({
         where: { id: orderId },
-        data: { status: 'ASSIGNED', driverId },
+        data: { status: 'ASSIGNED', deliveryDriverId: driverId },
         include: { batch: true }, // include to get batch info
       });
 
@@ -356,7 +356,7 @@ export class DispatchRepository {
         },
         include: {
           deliveryAddress: true,
-          driver: true,
+          deliveryDriver: true,
           customer: true,
         },
       });
@@ -390,7 +390,7 @@ export class DispatchRepository {
   async completeDelivery(data: AssignDriverForPickup) {
     return this.prisma.order.update({
       where: { id: data.orderId },
-      data: { driverId: data.driverId, status: 'DELIVERED' },
+      data: { deliveryDriverId: data.driverId, status: 'DELIVERED' },
     });
   }
   async findOrderById(orderId: string) {
@@ -413,14 +413,14 @@ export class DispatchRepository {
   async removeDriverFromOrder(orderId: string) {
     return this.prisma.order.update({
       where: { id: orderId },
-      data: { driverId: null },
+      data: { deliveryDriverId : null,  },
     });
   }
 
   async changeDriverForOrder(orderId: string, driverId: string) {
     return this.prisma.order.update({
       where: { id: orderId },
-      data: { driverId },
+      data: { deliveryDriverId:driverId },
     });
   }
 
