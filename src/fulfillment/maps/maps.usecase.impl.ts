@@ -1,116 +1,24 @@
-import { RpcException } from "@nestjs/microservices";
-import { MapsUseCases } from "./maps.usecase";
-import { Injectable } from "@nestjs/common";
-import { ListQueryDto } from "src/common/query/query.dto";
-import { MapsRepository } from "./maps.repository";
-
-type LatLon = { lat: number; lon: number };
-
-export class MapsService {
-  // Public entry - ensure numeric lat/lon before calling ORS
-  async calculateDistance(origin: LatLon, destination: LatLon): Promise<number> {
-    const o = { lat: Number(origin.lat), lon: Number(origin.lon) };
-    const d = { lat: Number(destination.lat), lon: Number(destination.lon) };
-
-    if ([o.lat, o.lon, d.lat, d.lon].some((v) => Number.isNaN(v))) {
-      throw new RpcException('Invalid coordinates (not numbers)');
-    }
-
-    try {
-      return await this.callOpenRouteService(o, d);
-    } catch (err) {
-      // Log for debugging then fallback to straight-line distance
-      console.warn('ORS routing failed, falling back to Haversine:', err?.message ?? err);
-      return Number(this.haversineKm(o.lat, o.lon, d.lat, d.lon).toFixed(2));
-    }
-  }
-
-  private async callOpenRouteService(origin: LatLon, destination: LatLon): Promise<number> {
-    const apiKey = process.env.OPENROUTESERVICE_API_KEY || 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjgwMmU3YTY3MDMwMjRlZjViNWE4MzczYzE3ZGZlNDBkIiwiaCI6Im11cm11cjY0In0=';
-    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${origin.lon},${origin.lat}&end=${destination.lon},${destination.lat}`;
-
-    console.log('ORS URL:', url);
-    
-    const response = await fetch(url);
-    console.log('ORS response:', response);
-    console.log('ORS response status:', response.status);
-    
-    const data = await response.json();
-
-    console.log('ORS response:', JSON.stringify(data, null, 2));
-    
-    // If non-2xx, bubble useful message
-    if (!response.ok) {
-      console.error('ORS API responded with error:', response.status, data);
-      throw new Error(`ORS API error: ${data?.error?.message ?? response.statusText}`);
-    }
-
-    // 1) Try common "routes[0].summary.distance" (some ORS versions)
-    const routeDistanceMeters =
-      data?.routes?.[0]?.summary?.distance ??
-      // 2) Try GeoJSON "features[0].properties.summary.distance"
-      data?.features?.[0]?.properties?.summary?.distance ??
-      // 3) Try "features[0].properties.segments[0].distance"
-      data?.features?.[0]?.properties?.segments?.[0]?.distance ??
-      // 4) If distance field not present, try to sum geometry coordinates (LineString)
-      (data?.features?.[0]?.geometry?.coordinates
-        ? this.sumCoordinatesDistanceKm(data.features[0].geometry.coordinates) * 1000 // returned as km, convert to meters to unify
-        : undefined);
-
-    if (routeDistanceMeters == null || Number.isNaN(routeDistanceMeters)) {
-      // final defensive: if geometry present but our summation returned NaN, throw for fallback above
-      console.error('ORS: no distance in response and no usable geometry:', JSON.stringify(data?.features?.[0]?.properties ?? data, null, 2));
-      throw new Error('ORS: no valid route distance found');
-    }
-
-    const distanceKm = Number(routeDistanceMeters) / 1000; // convert meters -> km
-    return Number(distanceKm.toFixed(2));
-  }
-
-  // Sum distances of successive coordinates from a LineString.
-  // ORS geometry coordinates are [lon, lat], so take care of ordering.
-  private sumCoordinatesDistanceKm(coords: Array<[number, number]>): number {
-    if (!Array.isArray(coords) || coords.length < 2) return 0;
-    let totalKm = 0;
-    for (let i = 1; i < coords.length; i++) {
-      const [lon1, lat1] = coords[i - 1];
-      const [lon2, lat2] = coords[i];
-      const a = Number(lat1), b = Number(lon1), c = Number(lat2), d = Number(lon2);
-      if ([a, b, c, d].some((v) => Number.isNaN(v))) continue;
-      totalKm += this.haversineKm(a, b, c, d);
-    }
-    return Number(totalKm.toFixed(3));
-  }
-
-  // Haversine formula (returns km)
-  private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371; // Earth radius km
-    const toRad = (deg: number) => (deg * Math.PI) / 180;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  private async callStreetMapApi(
-    origin: any,
-    destination: any,
-  ): Promise<number> {
-    // your logic for street map routing
-    return 20; // placeholder
-  }
-}
-
+import { RpcException } from '@nestjs/microservices';
+import { MapsUseCases } from './maps.usecase';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { ListQueryDto } from '../../common/query/query.dto';
+import { MapsRepository } from './maps.repository';
+import { RouteOptimizerService } from './route-optimizer.service';
+import { MapsService } from './maps.service';
+import { RouteCacheService } from './navigation.service';
 
 @Injectable()
 export class MapsUseCasesImpl implements MapsUseCases {
-  constructor(private readonly mapRepo: MapsRepository) {}
+  constructor(
+    private readonly mapRepo: MapsRepository,
+    @Inject(forwardRef(() => RouteOptimizerService))
+    private readonly routeOptimizerService: RouteOptimizerService,
+    private readonly mapService: MapsService,
+    private readonly routeCacheService: RouteCacheService,
+  ) {}
   async createDriver(body: any): Promise<any> {
-    const user= await this.mapRepo.findUserById(body.userId);
-    if(!user){
+    const user = await this.mapRepo.findUserById(body.userId);
+    if (!user) {
       throw new RpcException({
         statusCode: 404,
         message: 'User Not found. We can not create driver.',
@@ -120,13 +28,142 @@ export class MapsUseCasesImpl implements MapsUseCases {
     return this.mapRepo.createDriver(body);
   }
   async createDriverLocation(body: any): Promise<any> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.');
   }
- async getDrivers(query: ListQueryDto): Promise<any> {
-    throw new Error("Method not implemented.");
+  async getDrivers(query: ListQueryDto): Promise<any> {
+    throw new Error('Method not implemented.');
   }
- async getDriverById(id: string): Promise<any> {
-    throw new Error("Method not implemented.");
+  async getDriverById(id: string): Promise<any> {
+    throw new Error('Method not implemented.');
   }
-  
+
+  async getRoute(driverId: string) {
+    let route: any = null;
+    // 1️⃣ Fetch driver and assigned orders
+    const driver = await this.mapRepo.findDriverById(driverId);
+    if (!driver) throw new Error('Driver not found');
+
+    const orders = await this.mapRepo.findOrdersByDriverId(driverId);
+    if (!orders.length) return null;
+
+    const driverLocation = { lat: driver.lat, lon: driver.lon };
+
+    // 2️⃣ Prepare stops for optimization
+    const stops = orders.map((o) => ({
+      orderId: o.orderId,
+      lat: o.lat,
+      lon: o.lon,
+    }));
+
+    // 3️⃣ Compute optimized route
+    const optimizedRoute =
+      await this.routeOptimizerService.computeOptimizedRoute(
+        driverId,
+        driverLocation,
+        stops,
+      );
+
+    // 4️⃣ Save OptimizationJob in DB
+    const optimizationJob = await this.mapRepo.createOptimizationJob({
+      driverId: driver.id,
+      jobCode: `JOB-${Date.now()}`,
+      type: 'MULTI_STOP',
+      status: 'PENDING', // not completed yet
+      optimizedOrder: optimizedRoute.stops,
+      totalDistance: optimizedRoute.distanceMeters,
+      totalDuration: optimizedRoute.durationSec / 60,
+    });
+
+    // 5️⃣ Save initial route segments in DB (optional) but mark as pending
+    for (let i = 0; i < optimizedRoute.stops.length - 1; i++) {
+      const origin = optimizedRoute.stops[i];
+      const destination = optimizedRoute.stops[i + 1];
+
+      const originLoc = await this.mapRepo.upsertLocationFromCoords({
+        latitude: Number(origin.lat),
+        longitude: Number(origin.lon),
+        mapServiceResult: origin.mapServiceResult, // optional
+      });
+
+      const destinationLoc = await this.mapRepo.upsertLocationFromCoords({
+        latitude: Number(destination.lat),
+        longitude: Number(destination.lon),
+        mapServiceResult: destination.mapServiceResult,
+      });
+
+      route = await this.mapRepo.createRoute({
+        originId: originLoc.id,
+        destinationId: destinationLoc.id,
+        distanceKm: optimizedRoute.segments[i]?.distance / 1000 || 0,
+        durationMin: optimizedRoute.segments[i]?.duration / 60 || 0,
+        routePath: optimizedRoute.segments,
+        optimized: true,
+        trafficAware: false,
+        optimizationJobId: optimizationJob.id,
+      });
+    }
+
+    // 6️⃣ Store the route in Redis and broadcast via WebSocket
+    await this.routeCacheService.saveDriverRoute(driverId, {
+      optimizationJobId: optimizationJob.id,
+      routeId: route.id,
+      stops: optimizedRoute.stops.map((s) => ({ ...s, visited: false })),
+      totalDistance: optimizedRoute.distanceMeters,
+      totalDuration: optimizedRoute.durationSec,
+      lastUpdated: Date.now(),
+    });
+
+    return {
+      optimizationJobId: optimizationJob.id,
+      route: optimizedRoute,
+    };
+  }
+
+  async markStopVisited(driverId: string, orderId: string) {
+    if (!orderId) {
+      throw new RpcException('orderId is required');
+    }
+    // 1️⃣ Get the route from Redis
+    const route = await this.routeCacheService.getDriverRoute(driverId);
+    if (!route) throw new RpcException('No route found for driver');
+
+    // 2️⃣ Mark the stop as visited
+    route.stops = route.stops.map((s) =>
+      s.orderId === orderId ? { ...s, visited: true } : s,
+    );
+
+    // 3️⃣ Save back to Redis
+    await this.routeCacheService.saveDriverRoute(driverId, route);
+
+    // 4️⃣ Check if all stops visited
+    const allVisited = route.stops.every((s) => s.visited);
+
+    if (allVisited) {
+      // 5️⃣ Mark route completed in DB
+      await this.mapRepo.updateOptimizationJobStatus(
+        route.optimizationJobId,
+        'COMPLETED',
+      );
+
+      // 6️⃣ Optionally, broadcast completion via WebSocket
+      // this.wsEvent.emit('route:completed', { driverId, routeId: route.routeId });
+
+      // 7️⃣ Remove it from Redis
+      await this.routeCacheService.deleteDriverRoute(driverId);
+
+      return { message: 'All stops visited. Route completed.' };
+    }
+
+    return { message: `Stop ${orderId} marked as visited.` };
+  }
+
+  async getRouteStatus(driverId: string): Promise<any> {
+    try {
+      const route = await this.routeCacheService.getDriverRoute(driverId);
+      if (!route) return { status: 'no_route', route: null };
+      return { status: 'ok', route };
+    } catch (err) {
+      throw new RpcException(err.message);
+    }
+  }
 }

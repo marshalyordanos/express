@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { OrderMessageController } from './order/order.controller';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
@@ -11,15 +11,24 @@ import { DispatchUseCasesImpl } from './dispatch/dispatch.usecase.impl';
 import { PricingRepository } from './pricing/pricing.repository';
 import { PricingMessageController } from './pricing/pricing.controller';
 import { PricingUseCasesImpl } from './pricing/pricing.usecase.impl';
-import { MapsService } from './maps/maps.usecase.impl';
+import { MapsService } from './maps/maps.service';
 import { RedisService } from '../redis/redis.service';
 import { DriverLocationService } from './maps/driver-location.service';
-import { MapModule } from '../redis/redis.module';
+import { RouteOptimizerService } from './maps/route-optimizer.service';
 import { ScheduleModule } from '@nestjs/schedule';
+// import { MapsSharedModule } from './maps/maps-shared.module';
+// import { WebSocketSharedModule } from '../websocket/websocket.shared.module';
+import { WebSocketModule } from '../websocket/socket.module';
+import { MapsUseCasesImpl } from './maps/maps.usecase.impl';
+import { MapsRepository } from './maps/maps.repository';
+import { MapMessageController } from './maps/maps.controller';
+import { RouteCacheService } from './maps/navigation.service';
 
 @Module({
   imports: [
-    // MapModule,
+    // MapsSharedModule,
+    forwardRef(() => WebSocketModule),
+    // forwardRef(() => WebSocketSharedModule),
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.register({
@@ -31,6 +40,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     OrderMessageController,
     DispatchMessageController,
     PricingMessageController,
+    MapMessageController,
   ],
   providers: [
     OrderRepository,
@@ -42,20 +52,23 @@ import { ScheduleModule } from '@nestjs/schedule';
     PricingUseCasesImpl,
     MapsService,
     RedisService,
-    // TestRedisService,
-    // DriverLocationSeeder,
     DriverLocationService,
+    RouteOptimizerService,
+    RouteCacheService,
+    MapsUseCasesImpl,
+    MapsRepository,
   ],
   exports: [
     OrderUseCasesImpl,
     MapsService,
     PrismaService,
     DriverLocationService,
+    RouteOptimizerService,
+    RouteCacheService,
     RedisService,
-    // TestRedisService,
-    // DriverLocationSeeder,
     DispatchUseCasesImpl,
     PricingUseCasesImpl,
+    MapsUseCasesImpl,
   ],
 })
 export class FulfillmentModule {}

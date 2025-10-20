@@ -153,6 +153,10 @@ export const PATTERNS = {
   DISPATCH_CREATE_DRIVER: 'dispatch.createDriver',
   DISPATCH_FIND_DRIVER: 'dispatch.findDriver',
 
+
+  MAP_GET_ROUTE: 'map.getRoute',
+  MAP_MARK_STOP_VISITED: 'map.markStopVisited',
+  MAP_GET_CURRENT_ROUTE_STATUS: 'map.getCurrentRouteStatus',
   //Pricing and Tariff Management Module
 
   //Tariff

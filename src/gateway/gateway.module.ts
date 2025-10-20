@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { AuthGatewayController } from './auth.gateway.controller';
 import { UserGatewayController } from './user.gateway.controller';
 import { MicroserviceClientsModule } from './clients.module';
@@ -14,18 +14,16 @@ import { LoggerModule } from 'nestjs-pino';
 import { PermissionBootstrapper } from './Permission.Bootstrapper';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
-import { WebSocketModule } from './websocket/websocket.module';
 import { MapGatewayController } from './maps.gateway.controller';
-import { MapModule } from '../redis/redis.module';
-import { DriverLocationService } from '../fulfillment/maps/driver-location.service';
 import { RedisService } from '../redis/redis.service';
+import { WebSocketModule } from '../websocket/socket.module';
+// import { DriverLocationService } from '../fulfillment/maps/driver-location.service';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 
 
 @Module({
   imports: [
-    // MapModule,
-    FulfillmentModule,
+    forwardRef(() => FulfillmentModule), 
     WebSocketModule,
     MicroserviceClientsModule,
     ConfigModule.forRoot({ isGlobal: true }),

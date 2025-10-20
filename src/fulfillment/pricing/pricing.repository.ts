@@ -361,7 +361,13 @@ export class PricingRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['name', 'feeType','description', 'shippingCope', 'serviceType'],
+      searchableFields: [
+        'name',
+        'feeType',
+        'description',
+        'shippingCope',
+        'serviceType',
+      ],
     });
 
     const query = feature.getQuery();
@@ -866,10 +872,10 @@ export class PricingRepository {
       where: {
         serviceType,
         shippingScope,
-        customerCategoryId: customerCategoryId ? customerCategoryId : null,
         isActive: true,
         effectiveFrom: { lte: new Date() },
         OR: [{ effectiveTo: null }, { effectiveTo: { gte: new Date() } }],
+        ...(customerCategoryId ? { customerCategoryId } : {}), // ✅ Only adds filter if provided
       },
       include: {
         miscFees: true,

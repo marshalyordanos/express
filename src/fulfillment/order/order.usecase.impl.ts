@@ -20,13 +20,13 @@ import {
 import { RpcException } from '@nestjs/microservices';
 import { IPagination, IResponse } from '../../common/types';
 import { ListQueryDto } from '../../common/query/query.dto';
-import { MapsService } from '../maps/maps.usecase.impl';
+// import { MapsService } from '../maps/maps.usecase.impl';
 
 @Injectable()
 export class OrderUseCasesImpl implements OrderUseCases {
   constructor(
     private readonly orderRepo: OrderRepository,
-    private readonly mapsService: MapsService,
+    // private readonly mapsService: MapsService,
   ) {}
   //Customer order creating API: For customer to create for it self and staff/Admin to create for customer
   async createOrder(data: any): Promise<Order> {
@@ -57,7 +57,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
     const trackingCode = this.generateTrackingCode(username);
 
     // 🔹 Delegate entire order creation + addresses + tracking + distance to repository
-    const order = await this.orderRepo.createOrderWithAddressesAndDistance(
+    const order = await this.orderRepo.createOrderWithAddresses(
       data,
       customer.id,
       trackingCode,
@@ -372,6 +372,11 @@ export class OrderUseCasesImpl implements OrderUseCases {
       });
     }
     return exception;
+  }
+
+
+  async updateOrderDistance(orderId: string, distance: number) {
+   return await this.orderRepo.updateOrderDistance(orderId, distance);
   }
   // Local method for tracking code generation
   private generateTrackingCode(username: string): string {

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, forwardRef, Inject } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateOrderDto,
@@ -12,18 +12,22 @@ import {
   FulfillmentType,
   Prisma,
   AddressPurpose,
+  Address,
+  Order,
 } from '@prisma/client'; // assuming you use Prisma enums
 import { ListQueryDto } from '../../common/query/query.dto';
 import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 import { RpcException } from '@nestjs/microservices';
-import { MapsService } from '../maps/maps.usecase.impl';
+import { MapsService } from '../maps/maps.service';
+import { WebSocketEventService } from '../../websocket/services/websocket-event.service';
 // import { AddressDto } from 'src/operations/user/user.entity';
 
 @Injectable()
 export class OrderRepository {
   constructor(
     private prisma: PrismaService,
-    private mapsService: MapsService,
+    @Inject(forwardRef(() => WebSocketEventService))
+    private readonly websocketService: WebSocketEventService,
   ) {}
   async trackOrder(orderId: string) {
     return this.prisma.orderTracking.findMany({
@@ -163,108 +167,146 @@ export class OrderRepository {
     });
   }
 
-  async createOrderWithAddressesAndDistance(
-    data: any,
-    customerId: string,
-    trackingCode: string,
-  ) {
-    return this.prisma.$transaction(
-      async (tx) => {
-        // 🔹 Create addresses
-        let pickupAddress: any = null;
-        if (data.pickupAddress) {
-          pickupAddress = await tx.address.create({
-            data: {
-              ...data.pickupAddress,
-              purpose: 'ORDER_PICKUP',
-              user: { connect: { id: customerId } },
-            },
-          });
-        }
+async createOrderWithAddresses(
+  data: any,
+  customerId: string,
+  trackingCode: string,
+): Promise<Order> {
+  // 1️⃣ Create addresses and order in a short Prisma transaction
+  const order = await this.prisma.$transaction(async (tx) => {
+    // Create pickup address if provided
+    let pickupAddress: Address | null = null;
+    if (data.pickupAddress) {
+      pickupAddress = await tx.address.create({
+        data: {
+          addressLine: data.pickupAddress.addressLine,
+          label: data.pickupAddress.label,
+          lat: data.pickupAddress.lat,
+          long: data.pickupAddress.long,
+          city: data.pickupAddress.city,
+          state: data.pickupAddress.state,
+          country: data.pickupAddress.country,
+          postalCode: data.pickupAddress.postalCode,
+          purpose: 'ORDER_PICKUP',
+          user: { connect: { id: customerId } },
+        },
+      });
+    }
+    console.log("Pick up created:: ");
+    
 
-        const deliveryAddress = await tx.address.create({
-          data: {
-            ...data.deliveryAddress,
-            purpose: 'ORDER_DELIVERY',
-            user: { connect: { id: customerId } },
-          },
-        });
-
-        // 🔹 Calculate distance
-        const origin = pickupAddress
-          ? { lat: Number(pickupAddress.lat), lon: Number(pickupAddress.long) }
-          : await this.getBranchCoordinates(data.branchId, tx);
-
-        const destination = {
-          lat: Number(deliveryAddress.lat),
-          lon: Number(deliveryAddress.long),
-        };
-
-        const distance = await this.mapsService.calculateDistance(
-          origin,
-          destination,
-        );
-
-        // 🔹 Create order
-        const orderData = {
-          trackingCode,
-          status: OrderStatus.CREATED,
-          serviceType: data.serviceType,
-          fulfillmentType: data.fulfillmentType,
-          weight: data.weight,
-          height: data.height,
-          width: data.width,
-          length: data.length,
-          category: data.category,
-          isFragile: data.isFragile,
-          shipmentType: data.shipmentType,
-          shippingScope: data.shippingScope,
-          distance,
-          pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
-          deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
-          cost: data.cost,
-          customer: { connect: { id: customerId } },
-          ...(data.branchId && { branch: { connect: { id: data.branchId } } }),
-          ...(data.driverId && { driver: { connect: { id: data.driverId } } }),
-          ...(data.paymentId && {
-            payment: { connect: { id: data.paymentId } },
-          }),
-          ...(pickupAddress && {
-            pickupAddress: { connect: { id: pickupAddress.id } },
-          }),
-          deliveryAddress: { connect: { id: deliveryAddress.id } },
-        };
-
-        const order = await tx.order.create({
-          data: orderData,
-          include: {
-            pickupAddress: true,
-            deliveryAddress: true,
-            customer: true,
-          },
-        });
-
-        // 🔹 Create order tracking
-        await tx.orderTracking.create({
-          data: {
-            orderId: order.id,
-            status: 'CREATED',
-            location: pickupAddress.addressLine ?? 'Customer Home.',
-            updatedBy: customerId,
-            notes: 'Order Created.',
-          },
-        });
-
-        return order;
+    // Create delivery address
+    const deliveryAddress = await tx.address.create({
+      data: {
+        addressLine: data.deliveryAddress.addressLine,
+        label: data.deliveryAddress.label,
+        lat: data.deliveryAddress.lat,
+        long: data.deliveryAddress.long,
+        city: data.deliveryAddress.city,
+        state: data.deliveryAddress.state,
+        country: data.deliveryAddress.country,
+        postalCode: data.deliveryAddress.postalCode,
+        purpose: 'ORDER_DELIVERY',
+        user: { connect: { id: customerId } },
       },
-      {
-        timeout: 60000,
+    });
+    console.log("Delivery created:: ");
+
+    // Prepare order data
+    const orderData: any = {
+      trackingCode: trackingCode,
+      status: OrderStatus.CREATED,
+      serviceType: data.serviceType,
+      fulfillmentType: data.fulfillmentType,
+      weight: data.weight,
+      height: data.height,
+      width: data.width,
+      length: data.length,
+      category: data.category,
+      isFragile: data.isFragile,
+      shipmentType: data.shipmentType,
+      shippingScope: data.shippingScope,
+      pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
+      deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
+      cost: data.cost,
+      customerId: customerId,
+      // customer: { connect: { id: customerId } },
+      branchId: data.branchId ? data.branchId : null,
+      // branch: data.branchId ? { connect: { id: data.branchId } } : undefined,
+      pickupAddressId: pickupAddress?.id ?? null,
+      // pickupAddress: pickupAddress ? { connect: { id: pickupAddress.id } } : undefined,
+      deliveryAddressId: deliveryAddress.id,
+      // deliveryAddress: { connect: { id: deliveryAddress.id } },
+    };
+
+    // Create order
+    const order = await tx.order.create({
+      data: orderData,
+      include: { pickupAddress: true, deliveryAddress: true },
+    });
+
+    console.log("Order created:: ");
+    
+    // Create order tracking record
+    await tx.orderTracking.create({
+      data: {
+        orderId: order.id,
+        status: 'CREATED',
+        location: pickupAddress?.addressLine ?? 'Customer Home',
+        updatedBy: customerId,
+        notes: 'Order Created.',
       },
-    );
+    });
+
+    console.log("Log created:: ");
+
+    return order;
+  }, { timeout: 60000 });
+
+  // 2️⃣ Trigger async distance & pricing calculation outside transaction
+  let origin: { lat: number; lon: number };
+  if (order.pickupAddress) {
+    origin = {
+      lat: Number(order.pickupAddress.lat),
+      lon: Number(order.pickupAddress.long),
+    };
+  } else {
+    origin = await this.getBranchCoordinates(data.branchId) as any;
   }
 
-  private async getBranchCoordinates(branchId: string, tx: any) {
-    const branch = await tx.branch.findUnique({
+  const destination = {
+    lat: Number(order.deliveryAddress.lat),
+    lon: Number(order.deliveryAddress.long),
+  };
+
+  console.log("before calculating : ", origin, destination);
+  
+  // Emit WebSocket or background job for async processing
+  this.websocketService.emitOrderDistanceCalculation(order.id, origin, destination);
+
+    console.log("Distance and price calculated:: ");
+
+  // 3️⃣ Return immediately, transaction is complete
+  return order;
+}
+
+
+  async updateOrderDistance(orderId: string, distance: number) {
+    try {
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { distance },
+      });
+      console.log(`✅ Updated distance for order ${orderId}: ${distance} km`);
+    } catch (error) {
+      console.error(
+        `❌ Failed to update order distance for ${orderId}:`,
+        error,
+      );
+    }
+  }
+  private async getBranchCoordinates(branchId: string) {
+    const branch = await this.prisma.branch.findUnique({
       where: { id: branchId },
       include: { address: true },
     });

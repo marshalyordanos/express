@@ -410,9 +410,9 @@ export class UpdateMiscellaneousFeeDto {
 }
 //===================================================================================PRICE CALCULATION LOG==================================================================
 export class PriceCalculationLogDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  customerId: string;
+  customerId?: string;
 
   @IsNotEmpty()
   @IsString()

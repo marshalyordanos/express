@@ -680,7 +680,7 @@ model Location {
 
   @@index([latitude])
   @@index([longitude])
-  @@index([longitude, latitude])
+@@unique([latitude, longitude], name: "latitude_longitude")
 }
 
 model Route {

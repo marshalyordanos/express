@@ -1,4 +1,13 @@
-import { FeeType, ServiceType, ShippingScope } from '@prisma/client';
+import {
+  AirportFee,
+  DiscountRule,
+  FeeType,
+  MiscFee,
+  ProfitMargin,
+  ServiceType,
+  ShippingScope,
+  Surcharge,
+} from '@prisma/client';
 import { PricingRepository } from './pricing.repository';
 import { PricingUseCases } from './pricing.usecase';
 import {
@@ -21,6 +30,18 @@ import { Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { ListQueryDto } from '../../common/query/query.dto';
 
+interface OrderLike {
+  id: string;
+  serviceType?: string;
+  [key: string]: any;
+}
+
+interface FeeBreakdown {
+  name?: string;
+  amount: number;
+  airportCode?: string;
+  percentage?: number;
+}
 @Injectable()
 export class PricingUseCasesImpl implements PricingUseCases {
   constructor(private readonly pricingRepo: PricingRepository) {}
@@ -936,49 +957,50 @@ export class PricingUseCasesImpl implements PricingUseCases {
       `🔹 Calculating price for Order ID: ${orderId}, User ID: ${userId || 'N/A'}`,
     );
 
-    // 1️⃣ Get order and customer
-    const order = await this.pricingRepo.getOrderById(orderId, {
-      includeCustomer: true,
-    });
-    if (!order)
-      throw new RpcException({
-        code: 404,
-        message: `Order ${orderId} not found`,
-      });
-
-    const customer = userId
-      ? await this.pricingRepo.findCustomerById(userId)
-      : null;
-
-    // 2️⃣ Get customer category
-    let category = null;
-    if (customer?.customerCategoryId) {
-      category = await this.pricingRepo.findCustomerCategoryById(
-        customer.customerCategoryId,
-      );
-      console.log(
-        `🔹 Customer Category: ${category.name} (ID: ${category.id})`,
-      );
-    } else {
-      console.log('🔹 No customer category assigned');
+    // 1️⃣ Fetch order & customer concurrently
+    const [order, customer] = await Promise.all([
+      this.pricingRepo.getOrderById(orderId, { includeCustomer: true }),
+      userId
+        ? this.pricingRepo.findCustomerById(userId)
+        : Promise.resolve(null),
+    ]);
+    // if (!order)
+    // throw new RpcException({
+    //   code: 404,
+    //   message: `Order ${orderId} not found`,
+    // });
+    if (!order) {
+      return { result: null, error: `Order ${orderId} not found` };
     }
 
-    // 3️⃣ Get tariff
+    // 2️⃣ Resolve customer category (if exists)
+    const categoryPromise = customer?.customerCategoryId
+      ? this.pricingRepo.findCustomerCategoryById(customer.customerCategoryId)
+      : Promise.resolve(null);
+    const category = await categoryPromise;
+    if (category)
+      console.log(`🔹 Customer Category: ${category.name} (${category.id})`);
+
+    // 3️⃣ Fetch tariff
     const tariff =
       await this.pricingRepo.findTariffByScopeAndServiceTypeAndCustomerCategory(
         order.shippingScope,
         order.serviceType,
         category?.id,
       );
+    // if (!tariff)
+    //   throw new RpcException({
+    //     code: 404,
+    //     message: `Tariff not found for ${order.shippingScope}/${order.serviceType}/${category?.name || 'None'}`,
+    //   });
     if (!tariff) {
-      throw new RpcException({
-        code: 404,
-        message: `Tariff not found for scope ${order.shippingScope}, service ${order.serviceType}, category ${category?.name || 'None'}`,
-      });
+      return {
+        result: null,
+        error: `Tariff not found for ${order.shippingScope}/${order.serviceType}/${category?.name || 'None'}`,
+      };
     }
 
-    const weight = order.weight || 0;
-    const distance = order.distance || 0;
+    const { weight = 0, distance = 0 } = order;
     const breakdown: any = {};
 
     // 4️⃣ Base price
@@ -988,108 +1010,45 @@ export class PricingUseCasesImpl implements PricingUseCases {
       (tariff.perKmRate || 0) * distance;
     breakdown.basePrice = basePrice;
 
-    // 5️⃣ Misc fees
-    let miscTotal = 0;
-    breakdown.miscFees = [];
-    tariff.miscFees.forEach((fee) => {
-      if (fee.serviceType && fee.serviceType !== order.serviceType) return;
-
-      let applyFee = true;
-      if (fee.condition) {
-        for (const [key, value] of Object.entries(fee.condition)) {
-          const orderValue = (order as any)[key];
-          if (typeof value === 'object') {
-            if (value.gte !== undefined && orderValue < value.gte)
-              applyFee = false;
-            if (value.lte !== undefined && orderValue > value.lte)
-              applyFee = false;
-          } else if (orderValue !== value) applyFee = false;
-        }
-      }
-      if (!applyFee) return;
-
-      let feeAmount = 0;
-      if (fee.isPercentage) feeAmount = (basePrice * fee.amount) / 100;
-      else if (fee.feeType === 'FLAT') feeAmount = fee.amount;
-      else if (fee.feeType === 'PER_KG') feeAmount = fee.amount * weight;
-      else if (fee.feeType === 'PER_KM') feeAmount = fee.amount * distance;
-
-      miscTotal += feeAmount;
-      breakdown.miscFees.push({ name: fee.name, amount: feeAmount });
-    });
-
-    // 6️⃣ Airport fees
-    let airportFeeTotal = 0;
-    breakdown.airportFees = [];
-    tariff.airportFees.forEach((fee) => {
-      if (!fee.serviceType || fee.serviceType === order.serviceType) {
-        let feeAmount = (fee.perKgRate || 0) * weight + (fee.flatFee || 0);
-        airportFeeTotal += feeAmount;
-        breakdown.airportFees.push({
-          airportCode: fee.airportCode,
-          amount: feeAmount,
-        });
-      }
-    });
-
-    // 7️⃣ Surcharges
-    let surchargeTotal = 0;
-    breakdown.surcharges = [];
-    tariff.surcharges.forEach((s) => {
-      if (!s.serviceType || s.serviceType === order.serviceType) {
-        const feeAmount =
-          s.type === 'percentage'
-            ? ((basePrice + miscTotal + airportFeeTotal) * s.value) / 100
-            : s.value;
-
-        surchargeTotal += feeAmount;
-        breakdown.surcharges.push({ name: s.name, amount: feeAmount });
-      }
-    });
-
-    // 8️⃣ Discounts
-    let discountTotal = 0;
-    breakdown.discounts = [];
-    if (category) {
-      const discounts = await this.pricingRepo.getDiscountRules(
-        tariff.id,
-        category.id,
-      );
-      discounts.forEach((d) => {
-        const discountAmount =
-          d.type === 'percentage'
-            ? ((basePrice + miscTotal + airportFeeTotal + surchargeTotal) *
-                d.value) /
-              100
-            : d.value;
-
-        discountTotal += discountAmount;
-        breakdown.discounts.push({ name: d.name, amount: -discountAmount });
-      });
-    }
-
-    // 9️⃣ Profit margin
-    let profitTotal = 0;
-    breakdown.profitMargins = [];
-    tariff.profitMargins.forEach((pm) => {
-      if (!pm.serviceType || pm.serviceType === order.serviceType) {
-        let pmValue =
-          (basePrice +
-            miscTotal +
-            airportFeeTotal +
-            surchargeTotal -
-            discountTotal) *
-          (pm.percentage / 100);
-        if (pm.minAmount && pmValue < pm.minAmount) pmValue = pm.minAmount;
-        if (pm.maxAmount && pmValue > pm.maxAmount) pmValue = pm.maxAmount;
-
-        profitTotal += pmValue;
-        breakdown.profitMargins.push({
-          percentage: pm.percentage,
-          amount: pmValue,
-        });
-      }
-    });
+    // 5️⃣ Compute all other fees in parallel
+    const [miscTotal, miscFees] = this.calculateMiscFees(
+      tariff.miscFees,
+      order,
+      basePrice,
+      weight,
+      distance,
+    );
+    const [airportFeeTotal, airportFees] = this.calculateAirportFees(
+      tariff.airportFees,
+      order,
+      weight,
+    );
+    const [surchargeTotal, surcharges] = this.calculateSurcharges(
+      tariff.surcharges,
+      order,
+      basePrice,
+      miscTotal,
+      airportFeeTotal,
+    );
+    const [discountTotal, discounts] = category
+      ? await this.calculateDiscounts(
+          tariff.id,
+          category.id,
+          basePrice,
+          miscTotal,
+          airportFeeTotal,
+          surchargeTotal,
+        )
+      : [0, []];
+    const [profitTotal, profitMargins] = this.calculateProfitMargins(
+      tariff.profitMargins,
+      order,
+      basePrice,
+      miscTotal,
+      airportFeeTotal,
+      surchargeTotal,
+      discountTotal,
+    );
 
     // 🔟 Final price
     const finalPrice =
@@ -1101,24 +1060,204 @@ export class PricingUseCasesImpl implements PricingUseCases {
       profitTotal;
     breakdown.finalPrice = finalPrice;
 
-    // 1️⃣1️⃣ Log cleanly
+    breakdown.miscFees = miscFees;
+    breakdown.airportFees = airportFees;
+    breakdown.surcharges = surcharges;
+    breakdown.discounts = discounts;
+    breakdown.profitMargins = profitMargins;
+
     console.log('🔹 Price breakdown:', JSON.stringify(breakdown, null, 2));
 
+    // 1️⃣1️⃣ Save calculation & update order in background
     await this.pricingRepo.logPriceCalculationAndUpdateOrder({
       orderId: order.id,
       weight,
       distance,
       baseRate: basePrice,
       appliedRate: basePrice + miscTotal + airportFeeTotal + surchargeTotal,
-      surcharges: breakdown.surcharges,
-      discounts: breakdown.discounts,
-      miscFees: breakdown.miscFees,
+      surcharges,
+      discounts,
+      miscFees,
       profit: { total: profitTotal },
       airportFee: { total: airportFeeTotal },
       finalPrice,
       currency: tariff.currency || 'ETB',
     });
 
-    return { finalPrice, currency: tariff.currency || 'ETB', breakdown };
+    return {
+      result: { finalPrice, currency: tariff.currency || 'ETB', breakdown },
+      error: null,
+    };
+    // return { finalPrice, currency: tariff.currency || 'ETB', breakdown };
+  }
+
+  //===========================================================HELPER METHODS===========================================================================================================
+
+  /**
+   * Calculate miscellaneous fees based on order conditions.
+   */
+  private calculateMiscFees(
+    fees: MiscFee[],
+    order: OrderLike,
+    basePrice: number,
+    weight: number,
+    distance: number,
+  ): [number, FeeBreakdown[]] {
+    let total = 0;
+    const list: FeeBreakdown[] = [];
+
+    for (const fee of fees) {
+      // Match by service type if defined
+      if (fee.serviceType && fee.serviceType !== order.serviceType) continue;
+
+      let apply = true;
+
+      // Check dynamic JSON conditions
+      if (fee.condition) {
+        const condition = fee.condition as Record<string, any>;
+        for (const [key, val] of Object.entries(condition)) {
+          const orderVal = (order as any)[key];
+          if (typeof val === 'object') {
+            if (val.gte !== undefined && orderVal < val.gte) apply = false;
+            if (val.lte !== undefined && orderVal > val.lte) apply = false;
+          } else if (orderVal !== val) apply = false;
+        }
+      }
+
+      if (!apply) continue;
+
+      let amount = 0;
+      switch (fee.feeType) {
+        case 'PERCENTAGE':
+          amount = (basePrice * fee.amount) / 100;
+          break;
+        case 'PER_KG':
+          amount = fee.amount * weight;
+          break;
+        case 'PER_KM':
+          amount = fee.amount * distance;
+          break;
+        default:
+          amount = fee.amount; // FLAT
+          break;
+      }
+
+      total += amount;
+      list.push({ name: fee.name, amount });
+    }
+
+    return [total, list];
+  }
+
+  /**
+   * Calculate airport-related fees.
+   */
+  private calculateAirportFees(
+    fees: AirportFee[],
+    order: OrderLike,
+    weight: number,
+  ): [number, FeeBreakdown[]] {
+    let total = 0;
+    const list: FeeBreakdown[] = [];
+
+    for (const fee of fees) {
+      if (!fee.serviceType || fee.serviceType === order.serviceType) {
+        const amount = (fee.perKgRate ?? 0) * weight + (fee.flatFee ?? 0);
+        total += amount;
+        list.push({ airportCode: fee.airportCode, amount });
+      }
+    }
+
+    return [total, list];
+  }
+
+  /**
+   * Calculate surcharges like fuel or service markup.
+   */
+  private calculateSurcharges(
+    fees: Surcharge[],
+    order: OrderLike,
+    basePrice: number,
+    miscTotal: number,
+    airportTotal: number,
+  ): [number, FeeBreakdown[]] {
+    let total = 0;
+    const list: FeeBreakdown[] = [];
+
+    for (const s of fees) {
+      if (!s.isActive) continue;
+      if (s.serviceType && s.serviceType !== order.serviceType) continue;
+
+      const subtotal = basePrice + miscTotal + airportTotal;
+      const amount =
+        s.type === 'percentage' ? (subtotal * s.value) / 100 : s.value;
+
+      total += amount;
+      list.push({ name: s.name, amount });
+    }
+
+    return [total, list];
+  }
+
+  /**
+   * Calculate applicable discounts.
+   */
+  private async calculateDiscounts(
+    tariffId: string,
+    categoryId: string,
+    basePrice: number,
+    miscTotal: number,
+    airportTotal: number,
+    surchargeTotal: number,
+  ): Promise<[number, FeeBreakdown[]]> {
+    const discounts = await this.pricingRepo.getDiscountRules(
+      tariffId,
+      categoryId,
+    );
+    let total = 0;
+    const list: FeeBreakdown[] = [];
+
+    for (const d of discounts as DiscountRule[]) {
+      if (!d.isActive) continue;
+      const subtotal = basePrice + miscTotal + airportTotal + surchargeTotal;
+      const amount =
+        d.type === 'percentage' ? (subtotal * d.value) / 100 : d.value;
+      total += amount;
+      list.push({ name: d.name, amount: -amount }); // Negative for discount
+    }
+
+    return [total, list];
+  }
+
+  /**
+   * Calculate profit margins (percentage or min/max capped).
+   */
+  private calculateProfitMargins(
+    fees: ProfitMargin[],
+    order: OrderLike,
+    basePrice: number,
+    miscTotal: number,
+    airportTotal: number,
+    surchargeTotal: number,
+    discountTotal: number,
+  ): [number, FeeBreakdown[]] {
+    let total = 0;
+    const list: FeeBreakdown[] = [];
+
+    for (const pm of fees) {
+      if (pm.serviceType && pm.serviceType !== order.serviceType) continue;
+
+      const subtotal =
+        basePrice + miscTotal + airportTotal + surchargeTotal - discountTotal;
+      let value = subtotal * (pm.percentage / 100);
+
+      if (pm.minAmount && value < pm.minAmount) value = pm.minAmount;
+      if (pm.maxAmount && value > pm.maxAmount) value = pm.maxAmount;
+
+      total += value;
+      list.push({ percentage: pm.percentage, amount: value });
+    }
+
+    return [total, list];
   }
 }

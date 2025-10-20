@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../../redis/redis.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Cron } from '@nestjs/schedule';
+import { MapLocationGateway } from '../../websocket/gateways/map-location.gateway';
 
 export interface NearbyDriver {
   driverId: string;
@@ -31,7 +32,11 @@ export class DriverLocationService {
   constructor(
     private readonly redisService: RedisService,
     private readonly prisma: PrismaService,
-  ) {}
+    @Inject(forwardRef(() => MapLocationGateway))
+    private readonly mapGateway: MapLocationGateway,
+  ) {
+    this.onlineEmitter = this.mapGateway.emitDriverStatus.bind(this.mapGateway);
+  }
 
   // -------------------------------
   // CRON: Sync location and offline detection
@@ -47,12 +52,12 @@ export class DriverLocationService {
   }
 
   /**
-   * Update driver location in Redis + store optional log in DB
+   * Update driver location in Redis + store log in DB
    */
   async updateDriverLocation(data: {
     driverId: string;
-    lat: number;
     lon: number;
+    lat: number;
     speed?: number;
     heading?: number;
   }): Promise<void> {
@@ -91,19 +96,17 @@ export class DriverLocationService {
       await pipeline.exec();
       // ✅ Emit online event to gateway if available
       if (this.onlineEmitter) {
-        this.onlineEmitter(data.driverId);
+        this.onlineEmitter(data.driverId, 'ONLINE');
       }
 
-      // // Optional: persist a location log (for history)
-      // await this.prisma.driverLocationLog.create({
-      //   data: {
-      //     driverId: data.driverId,
-      //     latitude: data.lat,
-      //     longitude: data.lon,
-      //     speed: data.speed ?? 0,
-      //     heading: data.heading ?? 0,
-      //   },
-      // });
+      // ✅ New: notify subscribed customers
+      this.mapGateway.emitDriverLocationToSubscribersPublic({
+        driverId: data.driverId,
+        lat: data.lat,
+        lon: data.lon,
+        speed: data.speed,
+        heading: data.heading,
+      });
     } catch (err) {
       this.logger.error(
         `Failed to update location for driver ${data.driverId}`,
@@ -112,7 +115,7 @@ export class DriverLocationService {
     }
   }
 
-  // Optional: provide a setter for the gateway to pass a callback
+  // provide a setter for the gateway to pass a callback
   onlineEmitter: (driverId: string, status?: 'ONLINE' | 'OFFLINE') => void;
 
   setOnlineEmitter(fn: (driverId: string) => void) {
@@ -122,8 +125,8 @@ export class DriverLocationService {
    * Find drivers near a coordinate (uses GEOSEARCH)
    */
   async findNearbyDrivers(
-    lat: number,
     lon: number,
+    lat: number,
     radiusKm: number,
   ): Promise<any[]> {
     const client = this.redisService.getClient();
@@ -152,11 +155,8 @@ export class DriverLocationService {
         lat: parseFloat(d[2][1]),
       },
     }));
-    console.log('Drivers found:', drivers);
 
-    // Get Postgres Driver info for status and actual Driver ID
     // ✅ Fetch real Driver records using userId
-    // Fetch Driver records with User relations
     const driverRecords = await this.prisma.driver.findMany({
       where: {
         userId: { in: drivers.map((d) => d.driverId) },
@@ -177,8 +177,6 @@ export class DriverLocationService {
         },
       },
     });
-
-    console.log('Filtered with check drivers : ', driverRecords);
 
     const rankedDrivers: RankedDriver[] = driverRecords.map((d) => {
       const geo = drivers.find((g) => g.driverId === d.userId)!;
@@ -207,10 +205,7 @@ export class DriverLocationService {
       };
     });
 
-    console.log('Drivers to be responsed : ', rankedDrivers);
-
     // Sort by score descending and take top N
-    //   return rankedDrivers.sort((a, b) => b.score - a.score).slice(0, limit);
     return rankedDrivers
       .sort((a, b) => b.score - a.score)
       .map((d) => ({
@@ -269,7 +264,6 @@ export class DriverLocationService {
       }
 
       // Persist location log every 2 minutes
-      // 2️⃣ Log historical location with correct driver.id
 
       const lastLog = await this.prisma.driverLocationLog.findFirst({
         where: { driverId: driver.id },
@@ -318,11 +312,12 @@ export class DriverLocationService {
         where: { userId: { in: offlineDriverIds } },
         data: { status: 'OFFLINE', updatedAt: new Date() },
       });
-
       // Emit offline events
       offlineDriverIds.forEach((driverId) => {
         if (this.onlineEmitter) this.onlineEmitter(driverId, 'OFFLINE');
       });
+
+      console.log('Emited offline envents : ');
 
       this.logger.log(`✅ Marked ${offlineDriverIds.length} drivers OFFLINE`);
     } catch (err) {
@@ -330,6 +325,11 @@ export class DriverLocationService {
     }
   }
 
+  /**
+   * Marks a driver as offline in Redis and Prisma DB.
+   * Also emits an offline event to the gateway callback if available.
+   * @param driverId - The userId of the driver to mark as offline.
+   */
   async markOfflineByDriverId(driverId: string) {
     // Update Redis
     const client = this.redisService.getClient();
@@ -343,7 +343,7 @@ export class DriverLocationService {
 
     // Emit via gateway callback
     if (this.onlineEmitter) {
-      this.onlineEmitter(driverId); // gateway decides offline/online
+      this.onlineEmitter(driverId, 'OFFLINE'); // gateway decides offline/online
     }
   }
 }
