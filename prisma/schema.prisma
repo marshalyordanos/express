@@ -238,6 +238,15 @@ model Order {
   validatedAt       DateTime?
   validatedNotes    String?
 
+  // Analaytics
+  pickupAssignedBy      String?   
+  pickupAssignedAt      DateTime? 
+  deliveryAssignedBy    String?   
+  deliveryAssignedAt    DateTime? 
+  estimatedDeliveryAt   DateTime? 
+  estimatedPickupAt   DateTime? 
+  actualDeliveryAt      DateTime? 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   batchId   String?
@@ -263,8 +272,8 @@ model Order {
   pickupAddress   Address? @relation("PickupAddress", fields: [pickupAddressId], references: [id])
   deliveryAddress Address? @relation("DeliveryAddress", fields: [deliveryAddressId], references: [id])
 
-pickupDriver    User?  @relation("PickupDriverOrders", fields: [pickupDriverId], references: [id])
-deliveryDriver  User?  @relation("DeliveryDriverOrders", fields: [deliveryDriverId], references: [id])
+  pickupDriver    User?  @relation("PickupDriverOrders", fields: [pickupDriverId], references: [id])
+  deliveryDriver  User?  @relation("DeliveryDriverOrders", fields: [deliveryDriverId], references: [id])
 
   optimizationJob OptimizationJob?      @relation("OptimizationJobOrders", fields: [optimizationJobId], references: [id])
  // driver          User?                 @relation("DriverOrders", fields: [driverId], references: [id], map: "Order_driver_fk_user")

@@ -20,12 +20,14 @@ import {
 import { RpcException } from '@nestjs/microservices';
 import { IPagination, IResponse } from '../../common/types';
 import { ListQueryDto } from '../../common/query/query.dto';
+import { MapsService } from '../maps/maps.service';
 // import { MapsService } from '../maps/maps.usecase.impl';
 
 @Injectable()
 export class OrderUseCasesImpl implements OrderUseCases {
   constructor(
     private readonly orderRepo: OrderRepository,
+    private readonly mapsService: MapsService,
     // private readonly mapsService: MapsService,
   ) {}
   //Customer order creating API: For customer to create for it self and staff/Admin to create for customer
@@ -56,11 +58,23 @@ export class OrderUseCasesImpl implements OrderUseCases {
     const username = customer.name.substring(0, 3).toUpperCase();
     const trackingCode = this.generateTrackingCode(username);
 
+    let pickupAddress: any;
+
+    if(data.fulfillmentType === 'PICKUP'){
+       pickupAddress= await this.mapsService.reverseGeocode(data.pickupAddress.lat, data.pickupAddress.long);
+    }
+    // console.log("Repository inside creation order for addresses pickup :::::: ", pickupAddress);
+
+    const deliveryAddress= await this.mapsService.reverseGeocode(data.deliveryAddress.lat, data.deliveryAddress.long);
+    // console.log("Repository inside creation order for addresses delivery :::::: ", deliveryAddress);
+
     // 🔹 Delegate entire order creation + addresses + tracking + distance to repository
     const order = await this.orderRepo.createOrderWithAddresses(
       data,
       customer.id,
       trackingCode,
+      pickupAddress,
+      deliveryAddress
     );
 
     return order;

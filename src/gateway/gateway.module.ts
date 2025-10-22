@@ -19,6 +19,7 @@ import { RedisService } from '../redis/redis.service';
 import { WebSocketModule } from '../websocket/socket.module';
 // import { DriverLocationService } from '../fulfillment/maps/driver-location.service';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
+import { ReportGatewayController } from './report.gateway.controller';
 
 
 @Module({
@@ -57,6 +58,7 @@ import { FulfillmentModule } from '../fulfillment/fulfillment.module';
     DispatchGatewayController,
     PricingGatewayController,
     MapGatewayController,
+    ReportGatewayController,
   ],
 })
 export class GatewayModule {}

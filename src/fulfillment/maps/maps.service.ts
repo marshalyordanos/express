@@ -17,6 +17,9 @@ export class MapsService {
     address?: string;
     city?: string;
     country?: string;
+    postalCode?: string;
+    addressLine?: string;
+    state?: string;
   }> {
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
@@ -29,6 +32,10 @@ export class MapsService {
       const data = response.data || {};
       const address = data.address || {};
 
+      console.log("Data for address to be created inside mapservice for data:::::", data);
+      console.log("Data for address to be created inside mapservice for address:::::", address);
+
+      
       // Use the best available fields
       return {
         name: data.name || address.road || undefined,
@@ -43,6 +50,9 @@ export class MapsService {
           address.county ||
           undefined,
         country: address.country || undefined,
+        postalCode: address.postcode || undefined,
+        addressLine: address.road || undefined,
+        state: address.state || undefined
       };
     } catch (err) {
       this.logger.warn(

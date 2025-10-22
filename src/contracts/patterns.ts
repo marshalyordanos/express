@@ -153,7 +153,6 @@ export const PATTERNS = {
   DISPATCH_CREATE_DRIVER: 'dispatch.createDriver',
   DISPATCH_FIND_DRIVER: 'dispatch.findDriver',
 
-
   MAP_GET_ROUTE: 'map.getRoute',
   MAP_MARK_STOP_VISITED: 'map.markStopVisited',
   MAP_GET_CURRENT_ROUTE_STATUS: 'map.getCurrentRouteStatus',
@@ -212,5 +211,26 @@ export const PATTERNS = {
   PRICE_CALCULATE: 'price.calculate',
   PRICE_CALCULATION_LOG_FIND_ALL: 'price.calculationLog.findAll',
   PRICE_CALCULATION_LOG_FIND_BY_ID: 'price.calculationLog.findById',
+
+  //Reports and analytics
+  REPORT_DASHBOARD_OVERVIEW: 'report.dashboardOverview',
+  REPORT_DASHBOARD_SHIPMENT_PERFORMANCE: 'report.dashboardShipmentPerformance',
+  REPORT_DASHBOARD_REVENUE_TRENDS: 'report.dashboardRevenueTrends',
+  REPORT_DASHBOARD_BRANCH_PERFORMANCE: 'report.dashboardBranchPerformance',
+  REPORT_DASHBOARD_DRIVER_PERFORMANCE: 'report.dashboardDriverPerformance',
+
+  REPORT_SHIPMENT_SUMMARY: 'report.shipmentSummary',
+  REPORT_SHIPMENT_STATUS_BREAKDOWN: 'report.shipmentStatusBreakdown',
+  REPORT_SHIPMENT_BY_TYPE: 'report.shipmentByType',
+  REPORT_SHIPMENT_BY_CUSTOMER: 'report.shipmentByCustomer',
+  REPORT_SHIPMENT_DELAYED: 'report.shipmentDelayed',
+
+  REPORT_PERFORMANCE_BRANCH_OVERVIEW: 'report.performanceBranchOverview',
+  REPORT_PERFORMANCE_BRANCH_DETAILS: 'report.performanceBranchDetails',
+  REPORT_PERFORMANCE_DRIVER_OVERVIEW: 'report.performanceDriverOverview',
+  REPORT_PERFORMANCE_DRIVER_DETAILS: 'report.performanceDriverDetails',
+  REPORT_PERFORMANCE_TOP_BRANCHES: 'report.performanceTopBranches',
+  REPORT_PERFORMANCE_TOP_DRIVERS: 'report.performanceTopDrivers',
+  REPORT_PERFORMANCE_TOP_SHIPMENTS: 'report.performanceTopShipments',
 
 } as const;

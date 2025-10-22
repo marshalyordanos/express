@@ -41,8 +41,6 @@ export class RoleGatewayController {
     @Body() dto: RoleUpdateDto,
     @Req() req,
   ) {
-    console.log('data: ', dto);
-    console.log('id: ', id);
     
     const authHeader = req.headers['authorization'] || null;
     return this.roleClient.send(PATTERNS.ROLE_UPDATE, {

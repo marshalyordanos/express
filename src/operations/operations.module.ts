@@ -20,6 +20,11 @@ import { FleetMessageController } from './fleet/fleet.controller';
 import { AccessControlMessageController } from './acl/access_control.controller';
 import { AccessControlUsecaseImpl } from './acl/access_control.usecase.impl';
 import { AccessControlRepository } from './acl/access_control.repository';
+import { AnalyticsController } from './report/controllers/analytics.controller';
+import { DashboardReportMessageController } from './report/controllers/dashboard.controller';
+import { ReportMessageController } from './report/controllers/report.controller';
+import { DashboardReportService } from './report/services/dashboard.service';
+import { DashboardReportRepository } from './report/repositories/dashboard.repository';
 
 @Module({
   imports: [
@@ -36,6 +41,9 @@ import { AccessControlRepository } from './acl/access_control.repository';
     StaffMessageController,
     FleetMessageController,
     AccessControlMessageController,
+    AnalyticsController,
+    DashboardReportMessageController,
+    ReportMessageController,
   ],
   providers: [
     UserUseCasesImp,
@@ -49,6 +57,10 @@ import { AccessControlRepository } from './acl/access_control.repository';
     StaffRepository,
     AccessControlUsecaseImpl,
     AccessControlRepository,
+    RoleUseCaseImpl,
+    RoleRepository,
+    DashboardReportService,
+    DashboardReportRepository,
   ],
   exports: [
     UserUseCasesImp,
@@ -56,6 +68,7 @@ import { AccessControlRepository } from './acl/access_control.repository';
     FleetUseCasesImp,
     StaffUseCasesImpl,
     AccessControlUsecaseImpl,
+    DashboardReportService,
   ],
 })
 export class OperationsModule {}

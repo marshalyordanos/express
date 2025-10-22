@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, forwardRef, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  forwardRef,
+  Inject,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateOrderDto,
@@ -167,129 +172,175 @@ export class OrderRepository {
     });
   }
 
-async createOrderWithAddresses(
-  data: any,
-  customerId: string,
-  trackingCode: string,
-): Promise<Order> {
-  // 1️⃣ Create addresses and order in a short Prisma transaction
-  const order = await this.prisma.$transaction(async (tx) => {
-    // Create pickup address if provided
-    let pickupAddress: Address | null = null;
-    if (data.pickupAddress) {
-      pickupAddress = await tx.address.create({
-        data: {
-          addressLine: data.pickupAddress.addressLine,
-          label: data.pickupAddress.label,
-          lat: data.pickupAddress.lat,
-          long: data.pickupAddress.long,
-          city: data.pickupAddress.city,
-          state: data.pickupAddress.state,
-          country: data.pickupAddress.country,
-          postalCode: data.pickupAddress.postalCode,
-          purpose: 'ORDER_PICKUP',
-          user: { connect: { id: customerId } },
-        },
-      });
+  async createOrderWithAddresses(
+    data: any,
+    customerId: string,
+    trackingCode: string,
+    pickupAddress: any,
+    deliveryAddress: any,
+  ): Promise<Order> {
+    console.log(
+      'Repository inside creation order for addresses pickup and delivery :::::: ',
+      pickupAddress,
+      deliveryAddress,
+    );
+
+    // 1️⃣ Create addresses and order in a short Prisma transaction
+    const order = await this.prisma.$transaction(
+      async (tx) => {
+        console.log('Pickup address is :::::: ', data.pickupAddress);
+
+        // Create pickup address if provided
+        let pickupAddressRecord: Address | null = null;
+        if (data.pickupAddress) {
+          // Try to find an existing address with the same lat & long
+          pickupAddressRecord = await tx.address.findFirst({
+            where: {
+              lat: data.pickupAddress.lat,
+              long: data.pickupAddress.long,
+              purpose: 'ORDER_PICKUP',
+              userId: customerId,
+            },
+          });
+
+          // If not found, create a new one
+          if (!pickupAddressRecord) {
+            pickupAddressRecord = await tx.address.create({
+              data: {
+                addressLine: pickupAddress.addressLine ?? 'Unknown',
+                label: pickupAddress.label ?? 'Unknown Home or Office',
+                lat: data.pickupAddress.lat,
+                long: data.pickupAddress.long,
+                city: pickupAddress.city ?? 'Unknown',
+                state: pickupAddress.state ?? 'Unknown',
+                country: pickupAddress.country ?? 'Unknown',
+                postalCode: pickupAddress.postalCode ?? 'Unknown',
+                purpose: 'ORDER_PICKUP',
+                user: { connect: { id: customerId } },
+              },
+            });
+          }
+        }
+
+        // console.log('Pickup address ready:', pickupAddressRecord);
+
+        // Delivery address (similar logic)
+        let deliveryAddressRecord: Address | null = null;
+        if (data.deliveryAddress) {
+          deliveryAddressRecord = await tx.address.findFirst({
+            where: {
+              lat: data.deliveryAddress.lat,
+              long: data.deliveryAddress.long,
+              purpose: 'ORDER_DELIVERY',
+              userId: customerId,
+            },
+          });
+
+          if (!deliveryAddressRecord) {
+            deliveryAddressRecord = await tx.address.create({
+              data: {
+                addressLine: deliveryAddress.addressLine ?? 'Unknown',
+                label: deliveryAddress.label ?? 'Unknown Home or Office',
+                lat: data.deliveryAddress.lat,
+                long: data.deliveryAddress.long,
+                city: deliveryAddress.city ?? 'Unknown',
+                state: deliveryAddress.state ?? 'Unknown',
+                country: deliveryAddress.country ?? 'Unknown',
+                postalCode: deliveryAddress.postalCode ?? 'Unknown',
+                purpose: 'ORDER_DELIVERY',
+                user: { connect: { id: customerId } },
+              },
+            });
+          }
+        }
+
+        // console.log('Delivery address ready:', deliveryAddressRecord);
+
+        console.log('Delivery created:: ');
+
+        // Prepare order data
+        const orderData: any = {
+          trackingCode: trackingCode,
+          status: OrderStatus.CREATED,
+          serviceType: data.serviceType,
+          fulfillmentType: data.fulfillmentType,
+          weight: data.weight,
+          height: data.height,
+          width: data.width,
+          length: data.length,
+          category: data.category,
+          isFragile: data.isFragile,
+          shipmentType: data.shipmentType,
+          shippingScope: data.shippingScope,
+          pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
+          deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
+          cost: data.cost,
+          customerId: customerId,
+          // customer: { connect: { id: customerId } },
+          branchId: data.branchId ? data.branchId : null,
+          // branch: data.branchId ? { connect: { id: data.branchId } } : undefined,
+          pickupAddressId: pickupAddressRecord?.id ?? null,
+          // pickupAddress: pickupAddress ? { connect: { id: pickupAddress.id } } : undefined,
+          deliveryAddressId: deliveryAddressRecord.id,
+          // deliveryAddress: { connect: { id: deliveryAddress.id } },
+        };
+
+        // Create order
+        const order = await tx.order.create({
+          data: orderData,
+          include: { pickupAddress: true, deliveryAddress: true },
+        });
+
+        console.log('Order created:: ');
+
+        // Create order tracking record
+        await tx.orderTracking.create({
+          data: {
+            orderId: order.id,
+            status: 'CREATED',
+            location: pickupAddress?.addressLine ?? 'Customer Home',
+            updatedBy: customerId,
+            notes: 'Order Created.',
+          },
+        });
+
+        console.log('Log created:: ');
+
+        return order;
+      },
+      { timeout: 60000 },
+    );
+
+    // 2️⃣ Trigger async distance & pricing calculation outside transaction
+    let origin: { lat: number; lon: number };
+    if (order.pickupAddress) {
+      origin = {
+        lat: Number(order.pickupAddress.lat),
+        lon: Number(order.pickupAddress.long),
+      };
+    } else {
+      origin = (await this.getBranchCoordinates(data.branchId)) as any;
     }
-    console.log("Pick up created:: ");
-    
 
-    // Create delivery address
-    const deliveryAddress = await tx.address.create({
-      data: {
-        addressLine: data.deliveryAddress.addressLine,
-        label: data.deliveryAddress.label,
-        lat: data.deliveryAddress.lat,
-        long: data.deliveryAddress.long,
-        city: data.deliveryAddress.city,
-        state: data.deliveryAddress.state,
-        country: data.deliveryAddress.country,
-        postalCode: data.deliveryAddress.postalCode,
-        purpose: 'ORDER_DELIVERY',
-        user: { connect: { id: customerId } },
-      },
-    });
-    console.log("Delivery created:: ");
-
-    // Prepare order data
-    const orderData: any = {
-      trackingCode: trackingCode,
-      status: OrderStatus.CREATED,
-      serviceType: data.serviceType,
-      fulfillmentType: data.fulfillmentType,
-      weight: data.weight,
-      height: data.height,
-      width: data.width,
-      length: data.length,
-      category: data.category,
-      isFragile: data.isFragile,
-      shipmentType: data.shipmentType,
-      shippingScope: data.shippingScope,
-      pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
-      deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
-      cost: data.cost,
-      customerId: customerId,
-      // customer: { connect: { id: customerId } },
-      branchId: data.branchId ? data.branchId : null,
-      // branch: data.branchId ? { connect: { id: data.branchId } } : undefined,
-      pickupAddressId: pickupAddress?.id ?? null,
-      // pickupAddress: pickupAddress ? { connect: { id: pickupAddress.id } } : undefined,
-      deliveryAddressId: deliveryAddress.id,
-      // deliveryAddress: { connect: { id: deliveryAddress.id } },
+    const destination = {
+      lat: Number(order.deliveryAddress.lat),
+      lon: Number(order.deliveryAddress.long),
     };
 
-    // Create order
-    const order = await tx.order.create({
-      data: orderData,
-      include: { pickupAddress: true, deliveryAddress: true },
-    });
+    console.log('before calculating : ', origin, destination);
 
-    console.log("Order created:: ");
-    
-    // Create order tracking record
-    await tx.orderTracking.create({
-      data: {
-        orderId: order.id,
-        status: 'CREATED',
-        location: pickupAddress?.addressLine ?? 'Customer Home',
-        updatedBy: customerId,
-        notes: 'Order Created.',
-      },
-    });
+    // Emit WebSocket or background job for async processing
+    this.websocketService.emitOrderDistanceCalculation(
+      order.id,
+      origin,
+      destination,
+    );
 
-    console.log("Log created:: ");
+    console.log('Distance and price calculated:: ');
 
+    // 3️⃣ Return immediately, transaction is complete
     return order;
-  }, { timeout: 60000 });
-
-  // 2️⃣ Trigger async distance & pricing calculation outside transaction
-  let origin: { lat: number; lon: number };
-  if (order.pickupAddress) {
-    origin = {
-      lat: Number(order.pickupAddress.lat),
-      lon: Number(order.pickupAddress.long),
-    };
-  } else {
-    origin = await this.getBranchCoordinates(data.branchId) as any;
   }
-
-  const destination = {
-    lat: Number(order.deliveryAddress.lat),
-    lon: Number(order.deliveryAddress.long),
-  };
-
-  console.log("before calculating : ", origin, destination);
-  
-  // Emit WebSocket or background job for async processing
-  this.websocketService.emitOrderDistanceCalculation(order.id, origin, destination);
-
-    console.log("Distance and price calculated:: ");
-
-  // 3️⃣ Return immediately, transaction is complete
-  return order;
-}
-
 
   async updateOrderDistance(orderId: string, distance: number) {
     try {
