@@ -1,9 +1,7 @@
-import { Controller, Get, Inject, Param, Query, Req } from "@nestjs/common";
-import { ClientProxy } from "@nestjs/microservices";
-import { ServiceType } from "@prisma/client";
-import { PATTERNS } from "../contracts";
-
-
+import { Controller, Get, Inject, Param, Query, Req } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { ServiceType } from '@prisma/client';
+import { PATTERNS } from '../contracts';
 
 @Controller('report')
 export class ReportGatewayController {
@@ -11,9 +9,8 @@ export class ReportGatewayController {
     @Inject('USER_SERVICE') private readonly reportClient: ClientProxy,
   ) {}
 
-
   @Get('dashboard/overview')
- async getOverview(@Req() req) {
+  async getOverview(@Req() req) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.reportClient.send(PATTERNS.REPORT_DASHBOARD_OVERVIEW, {
@@ -22,16 +19,19 @@ export class ReportGatewayController {
   }
 
   @Get('dashboard/shipment-performance')
- async getShipmentPerformance(@Req() req) {
+  async getShipmentPerformance(@Req() req) {
     const authHeader = req.headers['authorization'] || null;
 
-    return this.reportClient.send(PATTERNS.REPORT_DASHBOARD_SHIPMENT_PERFORMANCE, {
-      headers: { authorization: authHeader },
-    });
+    return this.reportClient.send(
+      PATTERNS.REPORT_DASHBOARD_SHIPMENT_PERFORMANCE,
+      {
+        headers: { authorization: authHeader },
+      },
+    );
   }
 
   @Get('dashboard/revenue-trends')
- async getRevenueTrends(@Query('period') period: string, @Req() req) {
+  async getRevenueTrends(@Query('period') period: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.reportClient.send(PATTERNS.REPORT_DASHBOARD_REVENUE_TRENDS, {
@@ -41,28 +41,74 @@ export class ReportGatewayController {
   }
 
   @Get('dashboard/branch-performance')
- async getBranchPerformance(@Query('metric') metric: string, @Req() req) {
+  async getBranchPerformance(@Query('metric') metric: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
 
-    return this.reportClient.send(PATTERNS.REPORT_DASHBOARD_BRANCH_PERFORMANCE, {
-      metric,
-      headers: { authorization: authHeader },
-    });
+    return this.reportClient.send(
+      PATTERNS.REPORT_DASHBOARD_BRANCH_PERFORMANCE,
+      {
+        metric,
+        headers: { authorization: authHeader },
+      },
+    );
   }
 
   @Get('dashboard/driver-performance')
- async getDriverPerformance(@Query('region') regionId: string, @Req() req) {
+  async getDriverPerformance(@Query('region') regionId: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
 
-    return this.reportClient.send(PATTERNS.REPORT_DASHBOARD_DRIVER_PERFORMANCE, {
+    return this.reportClient.send(
+      PATTERNS.REPORT_DASHBOARD_DRIVER_PERFORMANCE,
+      {
+        regionId,
+        headers: { authorization: authHeader },
+      },
+    );
+  }
+
+  @Get('dashboard/branch-summary')
+  async getBranchDashboardSummary(
+    @Query('region') regionId: string,
+    @Req() req,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+
+    return this.reportClient.send(PATTERNS.REPORT_DASHBOARD_BRANCH_SUMMARY, {
       regionId,
       headers: { authorization: authHeader },
     });
-    
+  }
+  @Get('dashboard/staff-summary')
+  async getStaffDashboardSummary(
+    @Query('region') regionId: string,
+    @Req() req,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+
+    return this.reportClient.send(PATTERNS.REPORT_DASHBOARD_STAFF_SUMMARY, {
+      regionId,
+      headers: { authorization: authHeader },
+    });
+  }
+  @Get('dashboard/order-summary')
+  async getOrderDashboardSummary(@Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+
+    return this.reportClient.send(PATTERNS.REPORT_DASHBOARD_ORDER_SUMMARY, {
+      headers: { authorization: authHeader },
+    });
+  }
+  @Get('dashboard/customer-summary')
+  async getCustomerDashboardSummary(@Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+
+    return this.reportClient.send(PATTERNS.REPORT_DASHBOARD_CUSTOMER_SUMMARY, {
+      headers: { authorization: authHeader },
+    });
   }
 
-   @Get('shipment/summary')
- async getShipmentSummary(@Req() req) {
+  @Get('shipment/summary')
+  async getShipmentSummary(@Req() req) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.reportClient.send(PATTERNS.REPORT_SHIPMENT_SUMMARY, {
@@ -71,7 +117,7 @@ export class ReportGatewayController {
   }
 
   @Get('shipment/status')
- async getShipmentStatusBreakdown(@Req() req) {
+  async getShipmentStatusBreakdown(@Req() req) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.reportClient.send(PATTERNS.REPORT_SHIPMENT_STATUS_BREAKDOWN, {
@@ -80,7 +126,10 @@ export class ReportGatewayController {
   }
 
   @Get('shipment/by-type')
- async getShipmentByType(@Query('serviceType') serviceType: ServiceType, @Req() req) {
+  async getShipmentByType(
+    @Query('serviceType') serviceType: ServiceType,
+    @Req() req,
+  ) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.reportClient.send(PATTERNS.REPORT_SHIPMENT_BY_TYPE, {
@@ -90,7 +139,10 @@ export class ReportGatewayController {
   }
 
   @Get('shipment/by-customer/:customerId')
- async getShipmentByCustomer(@Param('customerId') customerId: string, @Req() req) {
+  async getShipmentByCustomer(
+    @Param('customerId') customerId: string,
+    @Req() req,
+  ) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.reportClient.send(PATTERNS.REPORT_SHIPMENT_BY_CUSTOMER, {
@@ -108,8 +160,7 @@ export class ReportGatewayController {
     });
   }
 
-
-   @Get('performance/branch-overview')
+  @Get('performance/branch-overview')
   async getBranchOverview(@Req() req) {
     const authHeader = req.headers['authorization'] || null;
 
@@ -138,7 +189,7 @@ export class ReportGatewayController {
   }
 
   @Get('performance/driver/:driverId/details')
- async getDriverDetails(@Param('driverId') driverId: string, @Req() req) {
+  async getDriverDetails(@Param('driverId') driverId: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.reportClient.send(PATTERNS.REPORT_PERFORMANCE_DRIVER_DETAILS, {
@@ -148,7 +199,7 @@ export class ReportGatewayController {
   }
 
   @Get('performance/top-branches')
-  async getTopBranches(@Query('metric') metric: string, @Req() req ) {
+  async getTopBranches(@Query('metric') metric: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.reportClient.send(PATTERNS.REPORT_PERFORMANCE_TOP_BRANCHES, {
@@ -158,7 +209,7 @@ export class ReportGatewayController {
   }
 
   @Get('performance/top-drivers')
- async getTopDrivers(@Query('metric') metric: string , @Req() req) {
+  async getTopDrivers(@Query('metric') metric: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
 
     return this.reportClient.send(PATTERNS.REPORT_PERFORMANCE_TOP_DRIVERS, {

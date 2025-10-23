@@ -218,6 +218,10 @@ export const PATTERNS = {
   REPORT_DASHBOARD_REVENUE_TRENDS: 'report.dashboardRevenueTrends',
   REPORT_DASHBOARD_BRANCH_PERFORMANCE: 'report.dashboardBranchPerformance',
   REPORT_DASHBOARD_DRIVER_PERFORMANCE: 'report.dashboardDriverPerformance',
+  REPORT_DASHBOARD_BRANCH_SUMMARY: 'report.dashboardBranchSummary',
+  REPORT_DASHBOARD_STAFF_SUMMARY: 'report.dashboardStaffSummary',
+  REPORT_DASHBOARD_ORDER_SUMMARY: 'report.dashboardOrderSummary',
+  REPORT_DASHBOARD_CUSTOMER_SUMMARY: 'report.dashboardCustomerSummary',
 
   REPORT_SHIPMENT_SUMMARY: 'report.shipmentSummary',
   REPORT_SHIPMENT_STATUS_BREAKDOWN: 'report.shipmentStatusBreakdown',

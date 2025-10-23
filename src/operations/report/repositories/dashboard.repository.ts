@@ -56,7 +56,7 @@ export class DashboardReportRepository {
       this.prisma.branch.count(),
     ]);
 
-    // ✅ Compute average delivery time (in hours)
+    // Compute average delivery time (in hours)
     const deliveredOrdersData = await this.prisma.order.findMany({
       select: { pickupDate: true, deliveryDate: true },
       where: {
@@ -72,7 +72,7 @@ export class DashboardReportRepository {
             const durationMs =
               new Date(o.deliveryDate).getTime() -
               new Date(o.pickupDate).getTime();
-            return sum + durationMs / (1000 * 60 * 60); // convert to hours
+            return sum + durationMs / (1000 * 60 * 60);
           }, 0) / deliveredOrdersData.length
         : 0;
 
@@ -100,11 +100,11 @@ export class DashboardReportRepository {
       this.prisma.order.count({ where: { status: 'EXCEPTION' } }),
     ]);
 
-    // ✅ Calculate rates (percentages)
+    // Calculate rates (percentages)
     const rate = (count: number) =>
       total > 0 ? Number(((count / total) * 100).toFixed(2)) : 0;
 
-    // ✅ Calculate average delivery time for delivered shipments
+    // Calculate average delivery time for delivered shipments
     const deliveredOrders = await this.prisma.order.findMany({
       select: { pickupDate: true, deliveryDate: true },
       where: {
@@ -120,11 +120,11 @@ export class DashboardReportRepository {
             const diffMs =
               new Date(o.deliveryDate).getTime() -
               new Date(o.pickupDate).getTime();
-            return sum + diffMs / (1000 * 60 * 60); // convert to hours
+            return sum + diffMs / (1000 * 60 * 60);
           }, 0) / deliveredOrders.length
         : 0;
 
-    // ✅ Build performance summary
+    // Build performance summary
     return {
       totalShipments: total,
       deliveredShipments: delivered,
@@ -164,7 +164,7 @@ export class DashboardReportRepository {
           break;
         case 'weekly': {
           const year = date.getUTCFullYear();
-          const week = getWeekNumber(date); // helper function
+          const week = getWeekNumber(date);
           key = `${year}-W${week}`;
           break;
         }
@@ -190,12 +190,12 @@ export class DashboardReportRepository {
   }
 
   async getBranchPerformance() {
-    // 1️⃣ Fetch all branches (cached in memory)
+    // Fetch all branches and their names
     const branches = await this.prisma.branch.findMany({
       select: { id: true, name: true },
     });
 
-    // 2️⃣ Group orders by branch and status (fewer DB calls)
+    // Group orders by branch and status and count
     const orderStats = await this.prisma.order.groupBy({
       by: ['branchId', 'status'],
       _count: { id: true },
@@ -205,7 +205,7 @@ export class DashboardReportRepository {
       },
     });
 
-    // 3️⃣ Get all active orders in one query (status filtering)
+    // Get all active orders in one query
     const activeOrders = await this.prisma.order.findMany({
       where: {
         branchId: { in: branches.map((b) => b.id) },
@@ -218,7 +218,7 @@ export class DashboardReportRepository {
       select: { branchId: true },
     });
 
-    // 4️⃣ Aggregate completed payments joined with orders
+    // Aggregate completed payments joined with orders
     const payments = await this.prisma.payment.findMany({
       where: {
         status: 'COMPLETED',
@@ -230,7 +230,7 @@ export class DashboardReportRepository {
       },
     });
 
-    // 5️⃣ Compute revenue by branch
+    // Compute revenue by branch
     const revenueByBranch = payments.reduce(
       (acc, p) => {
         const branchId = p.order?.branchId;
@@ -240,7 +240,7 @@ export class DashboardReportRepository {
       {} as Record<string, number>,
     );
 
-    // 6️⃣ Merge results per branch
+    // Merge results per branch
     const result = branches.map((branch) => {
       const stats = orderStats.filter((o) => o.branchId === branch.id);
 
@@ -278,7 +278,7 @@ export class DashboardReportRepository {
       };
     });
 
-    // 7️⃣ Sort by revenue (descending)
+    // Sort by revenue (descending)
     result.sort((a, b) => b.revenue - a.revenue);
 
     return { data: result };
@@ -291,83 +291,158 @@ export class DashboardReportRepository {
   }
 
   async getDriverPerformance(branchId?: string) {
-    return this.prisma.$transaction(async (tx) => {
-      // 🧠 Get all drivers who have handled orders
-      const drivers = await tx.driver.findMany({
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-              addresses: true,
-            },
-          },
+    // Fetch all drivers (optionally by branch)
+    const drivers = await this.prisma.user.findMany({
+      where: {
+        driver: { isNot: null },
+        ...(branchId && { branchId }),
+      },
+      select: {
+        id: true,
+        name: true,
+        branch: { select: { name: true } },
+      },
+    });
+
+    if (drivers.length === 0) return [];
+
+    // Initialize stats for each driver
+    const driverStats = new Map<
+      string,
+      {
+        driverId: string;
+        handledOrders: number;
+        completedOrders: number;
+        failedOrders: number;
+        onTimeCount: number;
+        totalMinutes: number;
+        totalDistance: number;
+        pickupHandled: number;
+        deliveryHandled: number;
+      }
+    >();
+
+    for (const driver of drivers) {
+      driverStats.set(driver.id, {
+        driverId: driver.id,
+        handledOrders: 0,
+        completedOrders: 0,
+        failedOrders: 0,
+        onTimeCount: 0,
+        totalMinutes: 0,
+        totalDistance: 0,
+        pickupHandled: 0,
+        deliveryHandled: 0,
+      });
+
+      // Fetch orders assigned to this driver for pickup or delivery
+      const orders = await this.prisma.order.findMany({
+        where: {
+          OR: [{ pickupDriverId: driver.id }, { deliveryDriverId: driver.id }],
+          ...(branchId && { branchId }),
+        },
+        select: {
+          id: true,
+          pickupDriverId: true,
+          deliveryDriverId: true,
+          pickupConfirmed: true,
+          dropoffConfirmed: true,
+          status: true,
+          actualPickupDate: true,
+          actualDeliveryAt: true,
+          pickupDate: true,
+          estimatedDeliveryAt: true,
+          distance: true,
         },
       });
 
-      // 🧮 For each driver, fetch their orders
-      const results = await Promise.all(
-        drivers.map(async (driver) => {
-          const orders = await tx.order.findMany({
-            where: {
-              OR: [
-                { pickupDriverId: driver.userId },
-                { deliveryDriverId: driver.userId },
-              ],
-              ...(branchId ? { branchId } : {}),
-            },
-            select: {
-              status: true,
-              createdAt: true,
-              deliveryDate: true,
-              updatedAt: true,
-              // expectedDeliveryAt: true,
-            },
-          });
+      if (orders.length === 0) continue;
 
-          const totalOrders = orders.length;
-          const completedOrders = orders.filter(
-            (o) => o.status === 'DELIVERED' || o.status === 'SUCCESS',
-          );
-          const failedOrders = totalOrders - completedOrders.length;
+      const stat = driverStats.get(driver.id)!;
 
-          // Calculate Avg. Delivery Time in minutes
-          const avgDeliveryTime =
-            completedOrders.length > 0
-              ? completedOrders.reduce((sum, o) => {
-                  const time =
-                    o.deliveryDate && o.createdAt
-                      ? (o.deliveryDate.getTime() - o.createdAt.getTime()) /
-                        60000
-                      : 0;
-                  return sum + time;
-                }, 0) / completedOrders.length
-              : 0;
+      for (const order of orders) {
+        stat.handledOrders++;
 
-          // Calculate On-Time Delivery %
-          const onTimeDeliveries = completedOrders.filter((o) =>
-            o.updatedAt && o.deliveryDate
-              ? o.updatedAt <= o.deliveryDate
-              : false,
-          ).length;
-          const onTimePercent = totalOrders
-            ? (onTimeDeliveries / totalOrders) * 100
-            : 0;
+        // Pickup handling
+        if (order.pickupDriverId === driver.id) {
+          stat.pickupHandled++;
 
-          return {
-            agentId: driver.userId,
-            region: driver.user?.addresses[0]?.state || 'N/A',
-            avgDeliveryTime: `${Math.round(avgDeliveryTime)} min`,
-            status: failedOrders > 0 ? 'Failed' : 'Completed',
-            onTimePercent: `${Math.round(onTimePercent)}%`,
-          };
-        }),
-      );
+          const pickupOnTime =
+            order.actualPickupDate &&
+            order.pickupDate &&
+            order.actualPickupDate <= order.pickupDate;
 
-      return results;
+          if (pickupOnTime) stat.onTimeCount++;
+
+          if (order.pickupConfirmed) stat.completedOrders++;
+          else stat.failedOrders++;
+        }
+
+        // Delivery handling
+        if (order.deliveryDriverId === driver.id) {
+          stat.deliveryHandled++;
+          stat.totalDistance += order.distance ?? 0;
+
+          if (order.actualPickupDate && order.actualDeliveryAt) {
+            const duration =
+              (new Date(order.actualDeliveryAt).getTime() -
+                new Date(order.actualPickupDate).getTime()) /
+              60000;
+            stat.totalMinutes += duration;
+
+            const deliveryOnTime =
+              order.actualDeliveryAt &&
+              order.estimatedDeliveryAt &&
+              order.actualDeliveryAt <= order.estimatedDeliveryAt;
+            if (deliveryOnTime) stat.onTimeCount++;
+          }
+
+          if (['PICKED_UP', 'DELIVERED'].includes(order.status))
+            stat.completedOrders++;
+          else stat.failedOrders++;
+        }
+      }
+
+      driverStats.set(driver.id, stat);
+    }
+
+    // Build performance report
+    const report = drivers.map((driver) => {
+      const stat = driverStats.get(driver.id)!;
+
+      const avgTime =
+        stat.totalMinutes && stat.totalDistance
+          ? Number((stat.totalMinutes / stat.totalDistance).toFixed(2))
+          : 0;
+
+      const onTimePercent = stat.handledOrders
+        ? Number(((stat.onTimeCount / stat.handledOrders) * 100).toFixed(2))
+        : 0;
+
+      const status =
+        stat.failedOrders > stat.completedOrders ? 'Underperforming' : 'Good';
+
+      return {
+        driverId: driver.id,
+        driverName: driver.name ?? 'Unknown',
+        branch: driver.branch?.name ?? 'Unknown',
+        handledOrders: stat.handledOrders,
+        pickupHandled: stat.pickupHandled,
+        deliveryHandled: stat.deliveryHandled,
+        completedOrders: stat.completedOrders,
+        failedOrders: stat.failedOrders,
+        avgTimePerKm: avgTime,
+        onTimePercent,
+        performanceStatus: status,
+      };
     });
+
+    //  Sort by best performers
+    return report.sort(
+      (a, b) =>
+        b.completedOrders - a.completedOrders ||
+        b.onTimePercent - a.onTimePercent,
+    );
   }
 
   async getDriverSuccessRate(driverUserId: string) {
@@ -386,7 +461,7 @@ export class DashboardReportRepository {
           { pickupDriverId: driverUserId },
           { deliveryDriverId: driverUserId },
         ],
-        status: { in: ['DELIVERED', 'SUCCESS'] },
+        status: { in: ['DELIVERED', 'PICKED_UP'] },
       },
     });
 
@@ -396,6 +471,283 @@ export class DashboardReportRepository {
       deliveredOrders,
       successRate: totalOrders ? (deliveredOrders / totalOrders) * 100 : 0,
     };
+  }
+
+  async getBranchDashboardSummary() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    // Branch stats
+    const [totalBranches, newBranchesThisMonth] = await Promise.all([
+      this.prisma.branch.count(),
+      this.prisma.branch.count({ where: { createdAt: { gte: startOfMonth } } }),
+    ]);
+
+    // Active orders this month & last month
+    const [activeOrdersThisMonth, activeOrdersLastMonth] = await Promise.all([
+      this.prisma.order.count({
+        where: {
+          createdAt: { gte: startOfMonth },
+          status: {
+            notIn: ['CANCELED', 'DELIVERED', 'FAILED', 'EXCEPTION', 'REJECTED'],
+          },
+        },
+      }),
+      this.prisma.order.count({
+        where: {
+          createdAt: { gte: startOfLastMonth, lt: startOfMonth },
+          status: {
+            notIn: ['CANCELED', 'DELIVERED', 'FAILED', 'EXCEPTION', 'REJECTED'],
+          },
+        },
+      }),
+    ]);
+
+    const activeOrdersPercentChange = activeOrdersLastMonth
+      ? Math.round(
+          ((activeOrdersThisMonth - activeOrdersLastMonth) /
+            activeOrdersLastMonth) *
+            100,
+        )
+      : 0;
+
+    //  Staff stats
+    const [totalStaff, newStaffThisMonth] = await Promise.all([
+      this.prisma.user.count({ where: { isStaff: true } }),
+      this.prisma.user.count({
+        where: { isStaff: true, createdAt: { gte: startOfMonth } },
+      }),
+    ]);
+
+    //  Manager vacancies: branches without assigned manager
+    const managerVacancies = await this.prisma.branch.count({
+      where: { managerId: null },
+    });
+
+    return {
+      totalBranches: {
+        value: totalBranches,
+        newThisMonth: newBranchesThisMonth,
+      },
+      activeOrders: {
+        value: activeOrdersThisMonth,
+        percentChange: activeOrdersPercentChange,
+      },
+      totalStaff: { value: totalStaff, newThisMonth: newStaffThisMonth },
+      managerVacancies: { value: managerVacancies, note: 'Need assignment' },
+    };
+  }
+
+  async getStaffDashboardSummary() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastWeek = new Date(now);
+    startOfLastWeek.setDate(now.getDate() - 7);
+
+    //  Total staff & new hires this month
+    const [totalStaff, newStaffThisMonth] = await Promise.all([
+      this.prisma.user.count({ where: { isStaff: true } }),
+      this.prisma.user.count({
+        where: { isStaff: true, createdAt: { gte: startOfMonth } },
+      }),
+    ]);
+
+    // Active staff: users who logged in within last 7 days
+    const activeStaffRecords = await this.prisma.refreshToken.findMany({
+      where: {
+        createdAt: { gte: startOfLastWeek },
+        user: { isStaff: true },
+      },
+      select: { userId: true },
+      distinct: ['userId'],
+    });
+    const activeStaff = activeStaffRecords.length;
+
+    //  Active staff last week
+    const lastWeekRecords = await this.prisma.refreshToken.findMany({
+      where: {
+        createdAt: {
+          gte: new Date(startOfLastWeek.getTime() - 7 * 24 * 60 * 60 * 1000),
+          lt: startOfLastWeek,
+        },
+        user: { isStaff: true },
+      },
+      select: { userId: true },
+      distinct: ['userId'],
+    });
+    const lastWeekActive = lastWeekRecords.length;
+
+    const activeRate = totalStaff
+      ? Math.round((activeStaff / totalStaff) * 100)
+      : 0;
+    const onLeaveChange = lastWeekActive ? lastWeekActive - activeStaff : 0;
+
+    //  Staff on leave
+    const onLeave = totalStaff - activeStaff;
+
+    //  Branches covered (branches with at least one staff assigned)
+    const branchesCovered = await this.prisma.branch.count({
+      where: {
+        staff: { some: { isStaff: true } },
+      },
+    });
+
+    return {
+      totalStaff: { value: totalStaff, newThisMonth: newStaffThisMonth },
+      activeStaff: { value: activeStaff, activeRate },
+      onLeave: { value: onLeave, changeFromLastWeek: onLeaveChange },
+      branchesCovered: {
+        value: branchesCovered,
+        note: branchesCovered === totalStaff ? 'All branches staffed' : '',
+      },
+    };
+  }
+
+  async getTotalOrders() {
+    return this.prisma.order.count();
+  }
+
+  async getOrderCountBetween(start: Date, end: Date) {
+    return this.prisma.order.count({
+      where: { createdAt: { gte: start, lt: end } },
+    });
+  }
+
+  async getDeliveredOrders(start: Date, end: Date) {
+    return this.prisma.order.findMany({
+      where: { status: 'DELIVERED', actualDeliveryAt: { gte: start, lt: end } },
+      select: {
+        actualPickupDate: true,
+        actualDeliveryAt: true,
+        shippingScope: true,
+        serviceType: true,
+      },
+    });
+  }
+
+  async getOrderCounts(start: Date, end: Date) {
+    const [totalOrders, returnOrders, fulfilledOrders] = await Promise.all([
+      this.prisma.order.count({
+        where: { createdAt: { gte: start, lt: end } },
+      }),
+      this.prisma.order.count({
+        where: { status: 'CANCELED', createdAt: { gte: start, lt: end } },
+      }),
+      this.prisma.order.count({
+        where: { status: 'DELIVERED', createdAt: { gte: start, lt: end } },
+      }),
+    ]);
+
+    return { totalOrders, returnOrders, fulfilledOrders };
+  }
+
+  async getOrderCountsByPeriod() {
+    const now = new Date();
+    const startOfWeek = new Date();
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+    const startOfLastWeek = new Date(startOfWeek);
+    startOfLastWeek.setDate(startOfWeek.getDate() - 7);
+
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const totalOrders = await this.prisma.order.count();
+    const thisWeek = await this.prisma.order.count({
+      where: { createdAt: { gte: startOfWeek, lt: now } },
+    });
+    const lastWeek = await this.prisma.order.count({
+      where: { createdAt: { gte: startOfLastWeek, lt: startOfWeek } },
+    });
+    const thisMonth = await this.prisma.order.count({
+      where: { createdAt: { gte: startOfMonth, lt: now } },
+    });
+    const lastMonth = await this.prisma.order.count({
+      where: { createdAt: { gte: startOfLastMonth, lt: endOfLastMonth } },
+    });
+
+    return { totalOrders, thisWeek, lastWeek, thisMonth, lastMonth };
+  }
+
+  // Total customers
+  async getTotalCustomers() {
+    return this.prisma.user.count({
+      where: {
+        customerType: 'INDIVIDUAL',
+        isStaff: false,
+        isSuperAdmin: false,
+      },
+    });
+  }
+
+  // Customers created in a date range
+  async getNewCustomers(start: Date, end: Date) {
+    return this.prisma.user.count({
+      where: {
+        customerType: 'INDIVIDUAL',
+        isStaff: false,
+        isSuperAdmin: false,
+        createdAt: { gte: start, lt: end },
+      },
+    });
+  }
+
+  // Active customers in last 2 weeks
+  async getActiveCustomers(since: Date) {
+    const activeCustomers = await this.prisma.user.count({
+      where: {
+        isStaff: false,
+        isSuperAdmin: false,
+        customerType: { not: null },
+        orders: {
+          some: {
+            createdAt: { gte: since }, // At least one order in period
+          },
+        },
+      },
+    });
+
+    return activeCustomers;
+  }
+
+  // Corporate clients
+  async getCorporateClients() {
+    return this.prisma.user.count({
+      where: {
+        customerType: 'CORPORATE',
+        isStaff: false,
+        isSuperAdmin: false,
+        corporateInfo: { isNot: null },
+      },
+    });
+  }
+
+  async getNewCorporateClients(start: Date, end: Date) {
+    return this.prisma.user.count({
+      where: {
+        customerType: 'CORPORATE',
+        isStaff: false,
+        isSuperAdmin: false,
+        corporateInfo: { isNot: null },
+        createdAt: { gte: start, lt: end },
+      },
+    });
+  }
+
+  // Loyalty members (example: customers with >10 order)
+  async getLoyaltyMembers(minOrders = 10) {
+    const users = await this.prisma.user.findMany({
+      where: {
+        isStaff: false,
+        isSuperAdmin: false,
+        customerType: { not: null },
+      },
+      include: { orders: true },
+    });
+
+    const loyalUsers = users.filter((u) => u.orders.length >= minOrders);
+    return loyalUsers.length;
   }
 }
 

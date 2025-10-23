@@ -239,13 +239,12 @@ model Order {
   validatedNotes    String?
 
   // Analaytics
-  //pickupAssignedBy      String?   
-  //pickupAssignedAt      DateTime? 
-  //deliveryAssignedBy    String?   
- // deliveryAssignedAt    DateTime? 
-  //estimatedDeliveryAt   DateTime? 
-  //estimatedPickupAt   DateTime? 
-  //actualDeliveryAt      DateTime? 
+  pickupAssignedBy      String?   
+  pickupAssignedAt      DateTime? 
+  deliveryAssignedBy    String?   
+  deliveryAssignedAt    DateTime? 
+  estimatedDeliveryAt   DateTime?
+  actualDeliveryAt      DateTime? 
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

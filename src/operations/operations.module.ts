@@ -25,6 +25,7 @@ import { DashboardReportMessageController } from './report/controllers/dashboard
 import { ReportMessageController } from './report/controllers/report.controller';
 import { DashboardReportService } from './report/services/dashboard.service';
 import { DashboardReportRepository } from './report/repositories/dashboard.repository';
+import { RedisService } from '../redis/redis.service';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { DashboardReportRepository } from './report/repositories/dashboard.repos
     BranchUseCaseImpl,
     BranchRepository,
     PrismaService,
+    RedisService,
     VehicleRepository,
     FleetUseCasesImp,
     StaffUseCasesImpl,

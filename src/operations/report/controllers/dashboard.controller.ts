@@ -62,6 +62,53 @@ export class DashboardReportMessageController {
     },
   ) {
     const regionId = payload.regionId;
-    return this.reportsService.getDriverPerformance();
+    return this.reportsService.getDriverPerformance(regionId);
+  }
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @MessagePattern(PATTERNS.REPORT_DASHBOARD_BRANCH_SUMMARY)
+  async getBranchDashboardSummary(
+    @Payload()
+    payload: {
+      headers: { authorization: string };
+    },
+  ) {
+    return this.reportsService.getBranchDashboardSummary();
+  }
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @MessagePattern(PATTERNS.REPORT_DASHBOARD_STAFF_SUMMARY)
+  async getStaffDashboardSummary(
+    @Payload()
+    payload: {
+      headers: { authorization: string };
+    },
+  ) {
+    return this.reportsService.getStaffDashboardSummary();
+  }
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @MessagePattern(PATTERNS.REPORT_DASHBOARD_ORDER_SUMMARY)
+  async getOrderDashboardSummary(
+    @Payload()
+    payload: {
+      headers: { authorization: string };
+    },
+  ) {
+    return this.reportsService.getOrderDashboardSummary();
+  }
+
+  @UseGuards(PermissionGuard)
+  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @MessagePattern(PATTERNS.REPORT_DASHBOARD_CUSTOMER_SUMMARY)
+  async getCustomerDashboardSummary(
+    @Payload()
+    payload: {
+      headers: { authorization: string };
+    },
+  ) {
+    return this.reportsService.getCustomerAnalytics();
   }
 }
