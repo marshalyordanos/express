@@ -25,6 +25,7 @@ import { MapsService } from '../maps/maps.service';
 
 @Injectable()
 export class OrderUseCasesImpl implements OrderUseCases {
+
   constructor(
     private readonly orderRepo: OrderRepository,
     private readonly mapsService: MapsService,
@@ -410,6 +411,10 @@ export class OrderUseCasesImpl implements OrderUseCases {
 
     usedCodes.add(trackingCode);
     return trackingCode;
+  }
+
+   async getMyOrders(userId: string, query: ListQueryDto) {
+    return await this.orderRepo.getMyOrders(userId, query);
   }
 }
 

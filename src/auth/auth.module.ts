@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthUseCaseImpl } from './auth.usecase.impl';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthRepository } from './auth.repository';
+import { RedisService } from '../redis/redis.service';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { AuthRepository } from './auth.repository';
     }),
   ],
   controllers: [AuthMessageController],
-  providers: [AuthRepository, AuthUseCaseImpl, PrismaService],
+  providers: [AuthRepository, AuthUseCaseImpl, PrismaService, RedisService],
   exports: [AuthUseCaseImpl],
 })
 export class AuthModule {}

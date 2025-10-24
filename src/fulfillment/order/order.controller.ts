@@ -255,6 +255,24 @@ export class OrderMessageController {
   async trackOrder(@Payload() payload: { code: string }) {
     return this.orderUseCases.trackOrder(payload.code);
   }
+
+    @UseGuards(PermissionGuard)
+  @CheckPermission('Order', PermissionActions.READ)
+  // @Public()
+  @MessagePattern(PATTERNS.ORDER_FIND_MY_ORDERS)
+  async getMyOrders(@Payload() payload: { query: ListQueryDto, user: any }) {
+    const user = payload.user;
+    
+    console.log("User id is :::", user.sub);
+    const userId= user.sub;
+    const result = await this.orderUseCases.getMyOrders(userId, payload.query);
+    return IResponse.success(
+      'Orders fetched successfully',
+      result.orders,
+      result.pagination,
+    );
+    // return this.orderUseCases.trackOrder(payload.code);
+  }
 }
 
 //

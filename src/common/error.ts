@@ -30,18 +30,21 @@ export class AllExceptions implements ExceptionFilter {
 
     // Handle Prisma known errors
 
-    // Nest HTTP exceptions
+    // ------------------------
+    // HTTP Exceptions
+    // ------------------------
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       message = exception.message;
     }
 
-    // RpcException from @nestjs/microservices
+    // ------------------------
+    // RPC Exceptions
+    // ------------------------
     else if (exception instanceof RpcException) {
       const rpcError = exception.getError() as any;
-      console.log(rpcError);
-      status = rpcError.statusCode || status;
-      message = rpcError.message || message;
+      status = rpcError?.statusCode || status;
+      message = rpcError?.message || message;
     }
 
     // if (exception instanceof BadRequestException) {
@@ -59,21 +62,20 @@ export class AllExceptions implements ExceptionFilter {
       console.log('------------------------------', message);
     }
 
+    // ------------------------
+    // HTTP context: send response
+    // ------------------------
     if (ctxType === 'http') {
       const ctx = host.switchToHttp();
       const response = ctx.getResponse();
-      const request = ctx.getRequest();
 
-      const errorResponse = new IResponse(false, message, null, null);
-
-      response.status(status).json(errorResponse);
+      response.status(status).json(new IResponse(false, message, null, null));
     }
 
+    // ------------------------
+    // RPC context: rethrow exception
+    // ------------------------
     if (ctxType === 'rpc') {
-      // Wrap Prisma or other errors into RpcException if not already
-      if (!(exception instanceof RpcException)) {
-        throw new RpcException({ statusCode: status, message });
-      }
       throw exception;
     }
   }

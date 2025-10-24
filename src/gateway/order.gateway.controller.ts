@@ -220,6 +220,15 @@ export class OrderGatewayController {
     });
   }
 
+  @Get('/my-orders')
+  async getMyOrders(@Req() req, @Query() query: ListQueryDto) {
+    const authHeader = req.headers['authorization'] || null;
+    return this.orderClient.send(PATTERNS.ORDER_FIND_MY_ORDERS, {
+      headers: { authorization: authHeader },
+      query,
+    });
+  }
+
   @Get(':id')
   async getOrder(@Param('id') id: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;

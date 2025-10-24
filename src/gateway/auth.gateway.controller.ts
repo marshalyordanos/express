@@ -12,21 +12,31 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, catchError, throwError } from 'rxjs';
 import { PATTERNS } from '../contracts';
 import { MicroserviceClientsModule } from './clients.module';
+import { Request } from 'express';
 import {
   AuthChangePasswordDto,
   AuthLoginDto,
   AuthLoginMobileDto,
   AuthRegisterDto,
 } from '../auth/auth.entity';
+import * as jwt from 'jsonwebtoken';
+import { JwtService } from '@nestjs/jwt';
 @Controller('auth')
 export class AuthGatewayController {
   constructor(
     @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
+      // private readonly jwtService: JwtService,
   ) {}
 
   @Post('register')
   async register(@Body() dto: AuthRegisterDto) {
-    return this.authClient.send(PATTERNS.AUTH_REGISTER, dto);
+    try {
+      return this.authClient.send(PATTERNS.AUTH_REGISTER, dto);
+    } catch (error) {
+      const err = error as any;
+      const status = err?.statusCode || 500;
+      throw new HttpException(err?.message || 'Internal server error', status);
+    }
   }
 
   @Post('login')
@@ -44,14 +54,19 @@ export class AuthGatewayController {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
 
-    return this.authClient.send(
-      PATTERNS.AUTH_REFRESH_TOKEN,
-
-      {
-        refreshToken: token,
-        headers: { authorization: authHeader },
-      },
-    );
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || "yourSecret");
+      // decodedUser = this.jwtService.verify(token); 
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.authClient.send(PATTERNS.AUTH_REFRESH_TOKEN, {
+      refreshToken: token,
+      user: decodedUser, // ✅ send user info
+      ip: req.ip,
+      headers: { authorization: authHeader },
+    });
   }
 
   @Post('change-password')
@@ -60,11 +75,18 @@ export class AuthGatewayController {
     @Body() body: AuthChangePasswordDto,
   ) {
     const authHeader = req.headers['authorization'] || null;
-
     return this.authClient.send(PATTERNS.AUTH_CHANGE_PASSWORD, {
       headers: { authorization: authHeader },
-
       body,
+    });
+  }
+
+  @Get('user')
+  async getAuthenticatedUser(@Req() req: Request) {
+    const authHeader = req.headers['authorization'] || null;
+
+    return this.authClient.send(PATTERNS.AUTH_FIND_AUTHENTICATED_USER, {
+      headers: { authorization: authHeader },
     });
   }
 
@@ -73,3 +95,4 @@ export class AuthGatewayController {
     return this.authClient.send('SUPPER_ADDMIN', {});
   }
 }
+

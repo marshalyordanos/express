@@ -5,6 +5,7 @@ import { createClient, RedisClientType } from 'redis';
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: RedisClientType;
+  public client2: RedisClientType;
 
   async onModuleInit() {
     this.client = createClient({
@@ -23,7 +24,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.client.connect();
   }
 
-    async set(key: string, value: string, options?: { EX?: number }) {
+  async set(key: string, value: string, options?: { EX?: number }) {
     if (options?.EX) {
       return this.client.set(key, value, { EX: options.EX });
     }
@@ -34,6 +35,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.client.get(key);
   }
 
+  async gets(key: string): Promise<string | null> {
+    const result = await this.client.get(key);
+    return typeof result === 'string' ? result : null; // ensure string or null
+  }
   async del(key: string) {
     return this.client.del(key);
   }

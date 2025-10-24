@@ -17,6 +17,10 @@ export class PermissionBootstrapper {
     { resource: 'Branch', description: 'Branch registration and logistics coordination' },
     { resource: 'Price', description: 'Pricing, discount, and tariff structure management' },
     { resource: 'Fleet', description: 'Fleet management, vehicle operations, and analytics' },
+    { resource: 'Dashboard-Report', description: 'Branch registration and logistics coordination' },
+    { resource: 'Price', description: 'Pricing, discount, and tariff structure management' },
+    { resource: 'Fleet', description: 'Fleet management, vehicle operations, and analytics' },
+    { resource: 'Auth', description: 'User authentication, authorization, and session management' },
   ];
 
   async run() {

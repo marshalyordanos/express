@@ -4,6 +4,7 @@ export const PATTERNS = {
   AUTH_LOGIN_MOBILE: 'auth.login_mobile',
   AUTH_REFRESH_TOKEN: 'auth.refresh_token',
   AUTH_CHANGE_PASSWORD: 'auth.change_password',
+  AUTH_FIND_AUTHENTICATED_USER: 'auth.find_authenticated_user',
 
   USER_CREATE: 'user.create',
   USER_FIND_BY_ID: 'user.findById',
@@ -120,6 +121,7 @@ export const PATTERNS = {
   ORDER_ADD_EXCEPTION: 'order.addException',
   ORDER_FIND_EXCEPTIONS: 'order.getExceptions',
   ORDER_REMOVE_EXCEPTION: 'order.removeException',
+  ORDER_FIND_MY_ORDERS: 'order.findMyOrders',
 
   //Dispatch Management System
   DISPATCH_CREATE: 'dispatch.create',

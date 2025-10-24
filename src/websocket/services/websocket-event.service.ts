@@ -1,12 +1,15 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { Server } from 'socket.io';
 import { MapLocationGateway } from '../gateways/map-location.gateway';
+import { OrderDistanceWsService } from './order-distance.ws.service';
 
 @Injectable()
 export class WebSocketEventService {
   constructor(
     @Inject(forwardRef(() => MapLocationGateway))
     private readonly mapLocationGateway: MapLocationGateway,
+       @Inject(forwardRef(() => OrderDistanceWsService))
+    private readonly orderDistanceWs: OrderDistanceWsService,
   ) {}
 
   emitDriverStatus(
@@ -88,11 +91,16 @@ export class WebSocketEventService {
   ) {
     console.log('Inside event');
 
-    this.mapLocationGateway.server.emit('order:distance:calculate', {
+    this.orderDistanceWs.calculateDistanceAndPrice({
       orderId,
       origin,
       destination,
-    });
+    })
+    // this.mapLocationGateway.server.emit('order:distance:calculate', {
+    //   orderId,
+    //   origin,
+    //   destination,
+    // });
   }
 
   emitDriverLocationUpdate(

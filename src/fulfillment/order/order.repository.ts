@@ -649,6 +649,43 @@ export class OrderRepository {
       pagination: feature.getPagination(total),
     };
   }
+
+  async getMyOrders(userId: string, payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['status', 'reason'],
+    });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const where = {
+      AND: [
+        query.where || {}, // existing filters (search, etc.)
+        { customerId: userId },
+      ],
+    };
+    const results = await Promise.all([
+      await this.prisma.order.findMany({
+        ...query,
+        where,
+      }),
+      await this.prisma.order.count({
+        where,
+      }),
+    ]);
+
+    const orders = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      orders,
+      pagination: feature.getPagination(total),
+    };
+  }
   async getOrderById(id: string): Promise<any> {
     return this.prisma.order.findUnique({
       where: { id },

@@ -8,6 +8,7 @@ import { AuthRegisterDto } from './auth.entity';
 
 @Injectable()
 export class AuthRepository {
+
   constructor(private readonly prisma: PrismaService) {}
 
   // ----------------- User Queries -----------------
@@ -255,6 +256,12 @@ export class AuthRepository {
           },
         },
       },
+    });
+  }
+
+   async invalidateRefreshToken(userId: string) {
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId },
     });
   }
 }

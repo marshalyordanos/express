@@ -1,5 +1,9 @@
 // auth.usecase.impl.ts
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthUseCase } from './auth.usecase';
 import { AuthRepository } from './auth.repository';
 import { User } from '@prisma/client';
@@ -19,6 +23,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
 import { IResponse } from '../common/types';
+import { PasswordValidator } from '../common/password-validator';
 
 @Injectable()
 export class AuthUseCaseImpl implements AuthUseCase {
@@ -32,17 +37,23 @@ export class AuthUseCaseImpl implements AuthUseCase {
     const roleId = data.role;
     const role = await this.authRepository.findRoleById(roleId);
     if (!role) {
-      throw new RpcException(`Invalid role`);
+      throw new RpcException({ statusCode: 400, message: 'Invalid role' });
     }
-    if (role.name == 'CUSTOMUR' || role.name == 'DRIVER') {
-      const existingUser = await this.authRepository.findByPhone(data.email);
+    if (role.name == 'CUSTOMER' || role.name == 'DRIVER') {
+      const existingUser = await this.authRepository.findByPhone(data.phone);
       if (existingUser) {
-        throw new RpcException('Phone already in use');
+        throw new RpcException({
+          statusCode: 409,
+          message: 'Phone already in use',
+        });
       }
     } else {
       const existingUser = await this.authRepository.findByEmail(data.email);
       if (existingUser) {
-        throw new RpcException('Email already in use');
+        throw new RpcException({
+          statusCode: 409,
+          message: 'Email already in use',
+        });
       }
     }
     // Hash password
@@ -52,7 +63,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
     const user = await this.authRepository.createUser(data, hashedPassword);
 
     // Send verification email (optional, implement in repository/service)
-    if (role.name == 'CUSTOMUR' || role.name == 'DRIVER') {
+    if (role.name == 'CUSTOMER' || role.name == 'DRIVER') {
       await this.authRepository.sendVerificationPhone(user.id, user.email);
     } else {
       await this.authRepository.sendVerificationEmail(user.id, user.email);
@@ -72,7 +83,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
       console.log('=========================: 22', user);
 
       throw new RpcException({
-        statusCode: 400,
+        statusCode: 401,
         message: 'Invalid credentials',
       });
     }
@@ -81,7 +92,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
     const isPasswordValid = await bcrypt.compare(data.password, user.password);
     if (!isPasswordValid) {
       throw new RpcException({
-        statusCode: 404,
+        statusCode: 401,
         message: 'Invalid credentials',
       });
     }
@@ -107,7 +118,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
       console.log('=========================: 22', user);
 
       throw new RpcException({
-        statusCode: 400,
+        statusCode: 401,
         message: 'Invalid credentials',
       });
     }
@@ -116,7 +127,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
     const isPasswordValid = await bcrypt.compare(data.password, user.password);
     if (!isPasswordValid) {
       throw new RpcException({
-        statusCode: 404,
+        statusCode: 401,
         message: 'Invalid credentials',
       });
     }
@@ -145,11 +156,15 @@ export class AuthUseCaseImpl implements AuthUseCase {
     );
     console.log('sessions: ', session);
     if (!session) {
-      throw new RpcException('Invalid refresh token');
+      throw new RpcException({
+        statusCode: 401,
+        message: 'Invalid refresh token',
+      });
     }
 
     const user = await this.authRepository.findById(session.userId);
-    if (!user) throw new RpcException('User not found');
+    if (!user)
+      throw new RpcException({ statusCode: 401, message: 'User not found' });
 
     const tokens = await this.generateTokens(user);
     await this.authRepository.updateRefreshToken(
@@ -167,17 +182,31 @@ export class AuthUseCaseImpl implements AuthUseCase {
     data: AuthChangePasswordDto,
   ): Promise<any> {
     const user = await this.authRepository.findById(userId);
-    if (!user) throw new RpcException('User not found');
+    if (!user)
+      throw new RpcException({ statusCode: 400, message: 'Invalid request' });
+    // throw new RpcException({ statusCode: 404, message: 'User not found' });
 
     const isOldPasswordValid = await bcrypt.compare(
       data.oldPassword,
       user.password,
     );
     if (!isOldPasswordValid)
-      throw new RpcException('Old password is incorrect');
+      throw new RpcException({
+        statusCode: 401,
+        message: 'Old password is incorrect',
+      });
+
+    const valid = PasswordValidator.validate(
+      data.newPassword,
+      data.oldPassword,
+    );
+    if (!valid.isValid) {
+      throw new BadRequestException(valid.message);
+    }
 
     const hashedPassword = await bcrypt.hash(data.newPassword, 10);
     await this.authRepository.updatePassword(userId, hashedPassword);
+    await this.authRepository.invalidateRefreshToken(userId);
     // { message: 'Password changed successfully' }; // ✅ return success info
   }
 
@@ -192,9 +221,16 @@ export class AuthUseCaseImpl implements AuthUseCase {
     await this.authRepository.sendResetPasswordEmail(user.email, resetToken);
   }
 
+  async getAuthenticatedUser(sub: any) {
+    return this.authRepository.findById(sub);
+  }
   async resetPassword(data: AuthResetPasswordDto): Promise<void> {
     const userId = await this.authRepository.verifyResetToken(data.token);
-    if (!userId) throw new RpcException('Invalid or expired token');
+    if (!userId)
+      throw new RpcException({
+        statusCode: 401,
+        message: 'Invalid or expired token',
+      });
 
     const hashedPassword = await bcrypt.hash(data.newPassword, 10);
     await this.authRepository.updatePassword(userId, hashedPassword);
@@ -205,7 +241,11 @@ export class AuthUseCaseImpl implements AuthUseCase {
   // ----------------- Email Verification -----------------
   async verifyEmail(data: AuthVerifyEmailDto): Promise<void> {
     const userId = await this.authRepository.verifyEmailToken(data.token);
-    if (!userId) throw new RpcException('Invalid verification token');
+    if (!userId)
+      throw new RpcException({
+        statusCode: 401,
+        message: 'Invalid verification token',
+      });
 
     await this.authRepository.markEmailAsVerified(userId);
   }

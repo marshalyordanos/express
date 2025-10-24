@@ -13,6 +13,7 @@ import { WebSocketEventService } from '../../websocket/services/websocket-event.
 import { Inject, forwardRef } from '@nestjs/common';
 import { NavigationWsService } from '../services/navigation.ws.service';
 import { RouteCache } from '../../fulfillment/maps/maps.entity';
+import { log } from 'node:console';
 
 // interface RouteCache {
 //   optimizationJobId: string;
@@ -232,6 +233,8 @@ export class MapLocationGateway implements OnGatewayInit {
     @MessageBody() payload: any,
     @ConnectedSocket() client: Socket,
   ) {
+    console.log("Calculating price and distance");
+    
     const { distance, priceData } =
       await this.orderWs.calculateDistanceAndPrice(payload);
     this.wsEvent.emitOrderDistance(this.server, {
@@ -242,6 +245,9 @@ export class MapLocationGateway implements OnGatewayInit {
       orderId: payload.orderId,
       ...priceData,
     });
+    console.log("Data for distance : ", distance);
+    console.log("Data for price : ", priceData);
+    
     client.emit('order:price:result', {
       orderId: payload.orderId,
       ...priceData,
