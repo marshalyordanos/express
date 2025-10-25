@@ -5,9 +5,10 @@ import { AllExceptions } from '../common/error';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { PermissionBootstrapper } from './Permission.Bootstrapper';
 import { Logger } from 'nestjs-pino';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(GatewayModule,{
+  const app = await NestFactory.create<NestExpressApplication>(GatewayModule,{
     bufferLogs: true
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
@@ -30,6 +31,7 @@ async function bootstrap() {
     credentials: false,
   });
   
+  app.set('trust proxy', true);
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
   // ----------------------

@@ -41,14 +41,46 @@ export class AuthGatewayController {
 
   @Post('login')
   async login(@Body() dto: AuthLoginDto, @Req() req: Request) {
-    return this.authClient.send(PATTERNS.AUTH_LOGIN, { dto, ip: req.ip });
+        const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    console.log('Forwarded ip address ::', forwarded);
+
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    console.log('Forwarded ip address second ::', ip);
+    const secIp: string = forwarded.split(',')[0] || '';
+    const secondIp: string = forwarded.split(',')[1] || '';
+    const thirdIp: string = forwarded.split(',')[2] || '';
+    const jjip= req.ip;
+    const lll= req.socket.remoteAddress;
+    console.log('Forwarded ip address 1 ::', ip);
+    console.log('Forwarded ip address 2 ::', secIp);
+    console.log('Forwarded ip address 3 ::', secondIp);
+    console.log('Forwarded ip address 4 ::', thirdIp);
+    console.log('Forwarded ip address 5 ::', jjip);
+    console.log('Forwarded ip address 6 ::', lll);
+    return this.authClient.send(PATTERNS.AUTH_LOGIN, { dto, ip });
   }
 
   @Post('login-mobile')
   async loginMobile(@Body() dto: AuthLoginMobileDto, @Req() req: Request) {
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    console.log('Forwarded ip address ::', forwarded);
+
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    const secIp: string = forwarded.split(',')[0] || '';
+    const secondIp: string = forwarded.split(',')[1] || '';
+    const thirdIp: string = forwarded.split(',')[2] || '';
+    const jjip= req.ip;
+    const lll= req.socket.remoteAddress;
+    console.log('Forwarded ip address 1 ::', ip);
+    console.log('Forwarded ip address 2 ::', secIp);
+    console.log('Forwarded ip address 3 ::', secondIp);
+    console.log('Forwarded ip address 4 ::', thirdIp);
+    console.log('Forwarded ip address 5 ::', jjip);
+    console.log('Forwarded ip address 6 ::', lll);
+
     return this.authClient.send(PATTERNS.AUTH_LOGIN_MOBILE, {
       dto,
-      ip: req.ip,
+      ip,
     });
   }
 
