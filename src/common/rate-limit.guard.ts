@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { RpcException } from '@nestjs/microservices';
+import { log } from 'node:console';
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
@@ -20,6 +21,7 @@ export class RateLimitGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     let userId = 'anon:unknown';
+    let email = 'unknown';
     let ipAddress = 'unknown';
     let resource = 'unknown';
 
@@ -32,13 +34,17 @@ export class RateLimitGuard implements CanActivate {
       resource = `${req.method} ${req.originalUrl}`;
     } else if (ctxType === 'rpc') {
       const rpcCtx = context.switchToRpc();
-      const payload = rpcCtx.getContext?.()?.getArgs?.()?.[0] || rpcCtx.getData?.() || {};
-      userId = payload?.user?.sub || `anon:${payload?.ip || 'unknown'}`;
-      ipAddress = payload?.ip || 'unknown';
+      const data = rpcCtx.getData(); 
+
+      userId = data?.user?.sub || `anon:${data?.ip || 'unknown'}`;
+      email = data?.user?.email || 'unknown';
+      ipAddress = data?.ip || 'unknown';
       resource = rpcCtx.getContext?.().getPattern?.() || 'unknown';
     }
 
-    this.logger.log(`User ${userId} accessing ${resource} from IP ${ipAddress}`);
+    this.logger.log(
+      `User with Email: [${email}] with ID: [${userId}] accessing resource: [${resource}] from IP: [${ipAddress}].`,
+    );
 
     const now = Date.now();
     const rateKey = `rate:${userId}:${resource}`;
@@ -49,7 +55,10 @@ export class RateLimitGuard implements CanActivate {
     // 2️⃣ Check temporary block
     const isBlocked = await this.redisService.get(blockKey);
     if (isBlocked) {
-      this.throwLimitException(ctxType, `Too many requests to ${resource}. Try again later.`);
+      this.throwLimitException(
+        ctxType,
+        `Too many requests to ${resource}. Try again later.`,
+      );
     }
 
     // 3️⃣ Fetch request timestamps from Redis
@@ -65,7 +74,9 @@ export class RateLimitGuard implements CanActivate {
     }
 
     // 4️⃣ Sliding window: remove old timestamps
-    const recentTimestamps = timestamps.filter((ts) => now - ts < this.windowMs);
+    const recentTimestamps = timestamps.filter(
+      (ts) => now - ts < this.windowMs,
+    );
 
     // 5️⃣ Add current timestamp
     recentTimestamps.push(now);
@@ -83,9 +94,12 @@ export class RateLimitGuard implements CanActivate {
     if (recentTimestamps.length > this.limit) {
       await this.redisService.set(blockKey, '1', { EX: this.blockDuration });
       this.logger.warn(
-        `User ${userId} exceeded rate limit for ${resource}. Temporarily blocked.`,
+        `User with Email: [${email}] with ID: [${userId}] exceeded rate limit for resource: [${resource}]. Temporarily blocked.`,
       );
-      this.throwLimitException(ctxType, `Too many requests to ${resource}. Try again later.`);
+      this.throwLimitException(
+        ctxType,
+        `Too many requests to ${resource}. Try again later.`,
+      );
     }
 
     return true;
@@ -96,8 +110,6 @@ export class RateLimitGuard implements CanActivate {
     else throw new HttpException(message, HttpStatus.TOO_MANY_REQUESTS);
   }
 }
-
-
 
 // // guards/rate-limit.guard.ts
 // import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';

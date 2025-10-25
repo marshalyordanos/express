@@ -15,8 +15,6 @@ import {
 } from './auth.entity';
 import { Public } from '../common/decorator/public.decorator';
 import { IResponse } from '../common/types';
-import { Prisma } from '@prisma/client';
-import { getPrismaErrorMessage } from '../common/prismaError';
 import { handleCatch } from '../common/handleCatch';
 import { CheckPermission } from '../common/decorator/check-permission.decorator';
 import { PermissionGuard } from '../common/permission.guard';
@@ -40,9 +38,11 @@ export class AuthMessageController {
   }
 
   @Public()
+  @UseGuards(RateLimitGuard)
   @MessagePattern(PATTERNS.AUTH_LOGIN)
-  async login(@Payload() dto: AuthLoginDto) {
+  async login(@Payload() payload: {dto: AuthLoginDto}) {
     try {
+      const { dto } = payload;
       console.log('data: ', dto);
 
       const data = await this.usecases.login(dto);
@@ -53,9 +53,11 @@ export class AuthMessageController {
   }
 
   @Public()
+  @UseGuards(RateLimitGuard)
   @MessagePattern(PATTERNS.AUTH_LOGIN_MOBILE)
-  async loginMobile(@Payload() dto: AuthLoginMobileDto) {
+  async loginMobile(@Payload() payload: {dto: AuthLoginMobileDto}) {
     try {
+      const { dto } = payload;
       console.log('data: ', dto);
 
       const data = await this.usecases.loginMobile(dto);

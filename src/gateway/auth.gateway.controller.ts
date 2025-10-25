@@ -25,7 +25,7 @@ import { JwtService } from '@nestjs/jwt';
 export class AuthGatewayController {
   constructor(
     @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
-      // private readonly jwtService: JwtService,
+    // private readonly jwtService: JwtService,
   ) {}
 
   @Post('register')
@@ -40,13 +40,16 @@ export class AuthGatewayController {
   }
 
   @Post('login')
-  async login(@Body() dto: AuthLoginDto) {
-    return this.authClient.send(PATTERNS.AUTH_LOGIN, dto);
+  async login(@Body() dto: AuthLoginDto, @Req() req: Request) {
+    return this.authClient.send(PATTERNS.AUTH_LOGIN, { dto, ip: req.ip });
   }
 
   @Post('login-mobile')
-  async loginMobile(@Body() dto: AuthLoginMobileDto) {
-    return this.authClient.send(PATTERNS.AUTH_LOGIN_MOBILE, dto);
+  async loginMobile(@Body() dto: AuthLoginMobileDto, @Req() req: Request) {
+    return this.authClient.send(PATTERNS.AUTH_LOGIN_MOBILE, {
+      dto,
+      ip: req.ip,
+    });
   }
 
   @Get('refresh')
@@ -56,8 +59,8 @@ export class AuthGatewayController {
 
     let decodedUser = null;
     try {
-      decodedUser = jwt.verify(token, process.env.JWT_SECRET || "yourSecret");
-      // decodedUser = this.jwtService.verify(token); 
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
     } catch (err) {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
@@ -75,8 +78,19 @@ export class AuthGatewayController {
     @Body() body: AuthChangePasswordDto,
   ) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.authClient.send(PATTERNS.AUTH_CHANGE_PASSWORD, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip: req.ip,
       body,
     });
   }
@@ -85,8 +99,19 @@ export class AuthGatewayController {
   async getAuthenticatedUser(@Req() req: Request) {
     const authHeader = req.headers['authorization'] || null;
 
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.authClient.send(PATTERNS.AUTH_FIND_AUTHENTICATED_USER, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip: req.ip,
     });
   }
 
@@ -95,4 +120,3 @@ export class AuthGatewayController {
     return this.authClient.send('SUPPER_ADDMIN', {});
   }
 }
-
