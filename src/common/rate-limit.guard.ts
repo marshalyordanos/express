@@ -8,16 +8,21 @@ import {
 } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { RpcException } from '@nestjs/microservices';
-import { log } from 'node:console';
+import { AppLogger } from './app-logger.service';
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
   private readonly limit = 5; // max requests per window
   private readonly windowMs = 60 * 1000; // 1 minute
   private readonly blockDuration = 5 * 60; // 5 minutes block
-  private readonly logger = new Logger('RateLimitGuard');
+  // private readonly logger = new Logger('RateLimitGuard');
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly logger: AppLogger,
+  ) {
+    this.logger.setContext('Security', 'RateLimitGuard');
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     let userId = 'anon:unknown';
@@ -34,7 +39,7 @@ export class RateLimitGuard implements CanActivate {
       resource = `${req.method} ${req.originalUrl}`;
     } else if (ctxType === 'rpc') {
       const rpcCtx = context.switchToRpc();
-      const data = rpcCtx.getData(); 
+      const data = rpcCtx.getData();
 
       userId = data?.user?.sub || `anon:${data?.ip || 'unknown'}`;
       email = data?.user?.email || 'unknown';

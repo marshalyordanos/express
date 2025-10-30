@@ -1,6 +1,4 @@
-// src/utils/qr-code.helper.ts
 import {
-  Order,
   ServiceType,
   ShipmentType,
   ShippingScope,

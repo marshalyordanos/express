@@ -1,8 +1,6 @@
-import { IPagination } from 'src/common/types';
 import {
   BranchCreateDto,
   BranchUpdateDto,
-  BranchResponseDto,
 } from './branch.entity';
 import { Branch } from '@prisma/client';
 import { ListQueryDto } from '../../common/query/query.dto';

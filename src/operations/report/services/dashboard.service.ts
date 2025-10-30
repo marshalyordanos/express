@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DashboardReportRepository } from '../repositories/dashboard.repository';
 import { RedisService } from '../../../redis/redis.service';
-import Redis from 'ioredis';
 
 @Injectable()
 export class DashboardReportService {
@@ -297,6 +296,104 @@ export class DashboardReportService {
     };
   }
 
+
+    private parseJsonArray(jsonArray: any[]): number {
+    if (!jsonArray || !Array.isArray(jsonArray)) return 0;
+    return jsonArray.reduce((sum, item) => sum + (item.amount ?? item.value ?? 0), 0);
+  }
+
+  private sumMetrics(logs: any[]) {
+    let totalRevenue = 0;
+    let totalProfit = 0;
+    let totalSurcharge = 0;
+    let totalDiscount = 0;
+    let totalMiscFees = 0;
+    let totalAirportFee = 0;
+
+    logs.forEach(log => {
+      totalRevenue += log.finalPrice;
+      totalProfit += log.profit?.total ?? 0;
+      totalSurcharge += this.parseJsonArray(log.surcharges);
+      totalDiscount += this.parseJsonArray(log.discounts);
+      totalMiscFees += this.parseJsonArray(log.miscFees);
+      totalAirportFee += log.airportFee?.total ?? 0;
+    });
+
+    const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+    return {
+      totalRevenue,
+      totalProfit,
+      profitMargin,
+      totalSurcharge,
+      totalDiscount,
+      totalMiscFees,
+      totalAirportFee,
+    };
+  }
+
+  async getReportOverview() {
+    this.logger.log('Fetching price & revenue report overview...');
+
+    const cacheKey = 'dashboard:price-revenue-overview';
+
+    // Try Redis cache first
+    const cached = await this.redis.get(cacheKey);
+    if (cached) {
+      this.logger.log('✅ Returning cached price & revenue overview');
+      return JSON.parse(cached as string);
+    }
+
+    const now = new Date();
+    const startOfDay = new Date(now); startOfDay.setHours(0,0,0,0);
+    const startOfPrevDay = new Date(startOfDay); startOfPrevDay.setDate(startOfDay.getDate() - 1);
+
+    const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+    const startOfPrevWeek = new Date(startOfWeek); startOfPrevWeek.setDate(startOfWeek.getDate() - 7);
+
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const [
+      todayLogs,
+      prevDayLogs,
+      thisWeekLogs,
+      prevWeekLogs,
+      thisMonthLogs,
+      prevMonthLogs,
+    ] = await Promise.all([
+      this.dashboardRepo.getLogsBetween(startOfDay, now),
+      this.dashboardRepo.getLogsBetween(startOfPrevDay, startOfDay),
+      this.dashboardRepo.getLogsBetween(startOfWeek, now),
+      this.dashboardRepo.getLogsBetween(startOfPrevWeek, startOfWeek),
+      this.dashboardRepo.getLogsBetween(startOfMonth, now),
+      this.dashboardRepo.getLogsBetween(startOfPrevMonth, endOfPrevMonth),
+    ]);
+
+    const report = {
+      day: {
+        current: this.sumMetrics(todayLogs),
+        previous: this.sumMetrics(prevDayLogs),
+      },
+      week: {
+        current: this.sumMetrics(thisWeekLogs),
+        previous: this.sumMetrics(prevWeekLogs),
+      },
+      month: {
+        current: this.sumMetrics(thisMonthLogs),
+        previous: this.sumMetrics(prevMonthLogs),
+      },
+      meta: {
+        generatedAt: new Date().toISOString(),
+      },
+    };
+
+    // Cache for 5 minutes
+    await this.redis.set(cacheKey, JSON.stringify(report), { EX: 300 });
+
+    return report;
+  }
   // Redis cache wrapper
   private async cacheWrap<T>(
     key: string,

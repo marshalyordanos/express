@@ -9,9 +9,7 @@ import {
   Get,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout, catchError, throwError } from 'rxjs';
 import { PATTERNS } from '../contracts';
-import { MicroserviceClientsModule } from './clients.module';
 import { Request } from 'express';
 import {
   AuthChangePasswordDto,
@@ -20,7 +18,7 @@ import {
   AuthRegisterDto,
 } from '../auth/auth.entity';
 import * as jwt from 'jsonwebtoken';
-import { JwtService } from '@nestjs/jwt';
+
 @Controller('auth')
 export class AuthGatewayController {
   constructor(
@@ -41,43 +39,15 @@ export class AuthGatewayController {
 
   @Post('login')
   async login(@Body() dto: AuthLoginDto, @Req() req: Request) {
-        const forwarded = (req.headers['x-forwarded-for'] as string) || '';
-    console.log('Forwarded ip address ::', forwarded);
-
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
     const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
-    console.log('Forwarded ip address second ::', ip);
-    const secIp: string = forwarded.split(',')[0] || '';
-    const secondIp: string = forwarded.split(',')[1] || '';
-    const thirdIp: string = forwarded.split(',')[2] || '';
-    const jjip= req.ip;
-    const lll= req.socket.remoteAddress;
-    console.log('Forwarded ip address 1 ::', ip);
-    console.log('Forwarded ip address 2 ::', secIp);
-    console.log('Forwarded ip address 3 ::', secondIp);
-    console.log('Forwarded ip address 4 ::', thirdIp);
-    console.log('Forwarded ip address 5 ::', jjip);
-    console.log('Forwarded ip address 6 ::', lll);
     return this.authClient.send(PATTERNS.AUTH_LOGIN, { dto, ip });
   }
 
   @Post('login-mobile')
   async loginMobile(@Body() dto: AuthLoginMobileDto, @Req() req: Request) {
     const forwarded = (req.headers['x-forwarded-for'] as string) || '';
-    console.log('Forwarded ip address ::', forwarded);
-
     const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
-    const secIp: string = forwarded.split(',')[0] || '';
-    const secondIp: string = forwarded.split(',')[1] || '';
-    const thirdIp: string = forwarded.split(',')[2] || '';
-    const jjip= req.ip;
-    const lll= req.socket.remoteAddress;
-    console.log('Forwarded ip address 1 ::', ip);
-    console.log('Forwarded ip address 2 ::', secIp);
-    console.log('Forwarded ip address 3 ::', secondIp);
-    console.log('Forwarded ip address 4 ::', thirdIp);
-    console.log('Forwarded ip address 5 ::', jjip);
-    console.log('Forwarded ip address 6 ::', lll);
-
     return this.authClient.send(PATTERNS.AUTH_LOGIN_MOBILE, {
       dto,
       ip,
@@ -88,7 +58,8 @@ export class AuthGatewayController {
   async refreshToken(@Req() req: Request) {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
-
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
     let decodedUser = null;
     try {
       decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
@@ -99,7 +70,7 @@ export class AuthGatewayController {
     return this.authClient.send(PATTERNS.AUTH_REFRESH_TOKEN, {
       refreshToken: token,
       user: decodedUser, // ✅ send user info
-      ip: req.ip,
+      ip,
       headers: { authorization: authHeader },
     });
   }
@@ -111,7 +82,8 @@ export class AuthGatewayController {
   ) {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
-
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
     let decodedUser = null;
     try {
       decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
@@ -122,7 +94,7 @@ export class AuthGatewayController {
     return this.authClient.send(PATTERNS.AUTH_CHANGE_PASSWORD, {
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
-      ip: req.ip,
+      ip,
       body,
     });
   }
@@ -133,6 +105,8 @@ export class AuthGatewayController {
 
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
 
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
     let decodedUser = null;
     try {
       decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
@@ -143,7 +117,7 @@ export class AuthGatewayController {
     return this.authClient.send(PATTERNS.AUTH_FIND_AUTHENTICATED_USER, {
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
-      ip: req.ip,
+      ip,
     });
   }
 

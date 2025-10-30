@@ -1,5 +1,3 @@
-import { Prisma } from '@prisma/client';
-
 interface QueryOptions {
   search?: string;
   filter?: string;

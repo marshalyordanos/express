@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
+  HttpStatus,
   Inject,
   Param,
   Patch,
@@ -24,8 +26,9 @@ import {
   LastMileDeliveryDto,
   OrderScanTokenDto,
 } from '../fulfillment/dispatch/dispatch.entity';
-import { DispatchStatus, ShippingScope, ServiceType } from '@prisma/client';
 import { ListQueryDto } from '../common/query/query.dto';
+import * as jwt from 'jsonwebtoken';
+import { SanitizePipe } from '../common/sanitize.pipe';
 
 @Controller('dispatch')
 export class DispatchGatewayController {
@@ -44,9 +47,25 @@ export class DispatchGatewayController {
   ): Promise<any> {
     console.log('data: ', data);
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(
       PATTERNS.DISPATCH_ASSIGN_DRIVER_FOR_PICKUP,
-      { data, headers: { authorization: authHeader } },
+      {
+        data,
+        headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+      },
     );
   }
 
@@ -57,9 +76,22 @@ export class DispatchGatewayController {
     @Req() req,
   ): Promise<any> {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(PATTERNS.DISPATCH_ASSIGN_OFFICER_TO_BATCH, {
       data,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -70,9 +102,25 @@ export class DispatchGatewayController {
     @Req() req,
   ): Promise<any> {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(
       PATTERNS.DISPATCH_COLLECT_BATCH_BY_CARGO_OFFICER,
-      { data, headers: { authorization: authHeader } },
+      {
+        data,
+        headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+      },
     );
   }
 
@@ -83,9 +131,25 @@ export class DispatchGatewayController {
     @Req() req,
   ): Promise<any> {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(
       PATTERNS.DISPATCH_HAND_OVER_BATCHES_TO_AIRPORT,
-      { data, headers: { authorization: authHeader } },
+      {
+        data,
+        headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+      },
     );
   }
 
@@ -96,9 +160,22 @@ export class DispatchGatewayController {
     @Req() req,
   ): Promise<any> {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(PATTERNS.DISPATCH_COLLECT_FROM_AIRPORT, {
       data,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -108,9 +185,22 @@ export class DispatchGatewayController {
     @Req() req,
   ): Promise<any> {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(PATTERNS.DISPATCH_COMPARE_SCANNED_ORDERS, {
       officerId,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -120,11 +210,24 @@ export class DispatchGatewayController {
     @Req() req,
   ): Promise<any> {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(
       PATTERNS.DISPATCH_CONFIRM_ARRIVAL_AND_HANDOVER,
       {
         data,
         headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
       },
     );
   }
@@ -136,10 +239,23 @@ export class DispatchGatewayController {
     @Req() req,
   ): Promise<any> {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     console.log('data: ', data);
     return this.dispatchClient.send(PATTERNS.DISPATCH_APPROVE_CATEGORIZATION, {
       data,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -150,9 +266,25 @@ export class DispatchGatewayController {
     @Req() req,
   ): Promise<any> {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(
       PATTERNS.DISPATCH_ASSIGN_DRIVER_FOR_DELIVERY,
-      { data, headers: { authorization: authHeader } },
+      {
+        data,
+        headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+      },
     );
   }
 
@@ -162,9 +294,25 @@ export class DispatchGatewayController {
     @Req() req,
   ): Promise<any> {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(
       PATTERNS.DISPATCH_ACCEPT_LAST_MILE_DELIVERY,
-      { data, headers: { authorization: authHeader } },
+      {
+        data,
+        headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+      },
     );
   }
 
@@ -174,9 +322,22 @@ export class DispatchGatewayController {
     @Req() req,
   ): Promise<any> {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(PATTERNS.DISPATCH_COMPLETE_DELIVERY, {
       data,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -187,9 +348,22 @@ export class DispatchGatewayController {
     @Req() req,
   ): Promise<any> {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(PATTERNS.DISPATCH_CHANGE_DRIVER_FOR_ORDER, {
       data,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -200,23 +374,54 @@ export class DispatchGatewayController {
     @Req() req,
   ): Promise<any> {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(
       PATTERNS.DISPATCH_REMOVE_DRIVER_FROM_ORDER,
-      { orderId, headers: { authorization: authHeader } },
+      {
+        orderId,
+        headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+      },
     );
   }
 
+  
   //Controller used for getting all batch dispatches with filters and pagination
   @Get()
   async getAllDispatches(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
 
     return this.dispatchClient.send(PATTERNS.DISPATCH_FIND_ALL, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
       query,
     });
   }
 
+  //Need Sanitization
   //Controller used for adding new orders to the batches. this happened when new orders came and it can be categoriezed with existing batch dispatch or may be new order's service type is sameday and used to send it with in existing dispatched orders
   @Patch('/add-order/:batchId')
   async addOrderToBatch(
@@ -225,46 +430,98 @@ export class DispatchGatewayController {
     @Req() req,
   ) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(PATTERNS.DISPATCH_ADD_ORDERS_TO_BATCH, {
       batchId,
       newOrderIds: data.orders,
       // updateData: body.updateData
       data,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
   @Post('/qr-generate')
   async generateQrCode(@Body() data: GenerateQrDto, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.dispatchClient.send(PATTERNS.DISPATCH_GENERATE_QR_CODE, {
       data,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
   @Post('/driver')
   async createDriver(@Body() data: CreateDriver, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
-    console.log("Create driver datas : ", data);
-    
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    console.log('Create driver datas : ', data);
+
     return this.dispatchClient.send(PATTERNS.DISPATCH_CREATE_DRIVER, {
       data,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
-    @Get('/driver')
+  
+  @Get('/driver')
   async findDriver(@Query() query: ListQueryDto, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
-    console.log("FInd driver querys: ", query);
-    
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    console.log('FInd driver querys: ', query);
+
     return this.dispatchClient.send(PATTERNS.DISPATCH_FIND_DRIVER, {
       query,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
-
 
   @Get(':id')
   async getDispatchById() {}

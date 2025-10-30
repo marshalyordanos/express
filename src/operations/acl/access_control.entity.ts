@@ -1,13 +1,13 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsNotEmpty,
   IsOptional,
   IsString,
   IsArray,
-  ArrayNotEmpty,
   IsBoolean,
   ValidateNested,
 } from 'class-validator';
+import { escape } from 'lodash';
 
 export class PermissionDto {
   @IsString()
@@ -53,7 +53,13 @@ export class PermissionActionDto {
   @IsOptional()
   @IsBoolean()
   deleteAction?: boolean;
+
+  @IsArray()
+  @IsOptional()
+  scopes?: string[];
 }
+
+
 export class ChangeRolePermissionDto {
   @IsString()
   @IsNotEmpty({ message: 'Role ID is required' })
@@ -63,6 +69,13 @@ export class ChangeRolePermissionDto {
   @ValidateNested({ each: true }) // important for arrays of objects
   @Type(() => PermissionActionDto) // tells class-transformer how to transform nested objects
   permissions?: PermissionActionDto[];
+}
+
+export class RemovePermissionDto {
+  @IsNotEmpty({ message: 'permissionId is required' })
+  @IsString()
+  @Transform(({ value }) => escape(value.trim()))
+  permissionId: string;
 }
 
 export class AssignUserRoleDto {

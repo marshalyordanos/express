@@ -1,31 +1,11 @@
-import {
-  Injectable,
-  BadRequestException,
-  forwardRef,
-  Inject,
-} from '@nestjs/common';
+import { Injectable, forwardRef, Inject } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import {
-  CreateOrderDto,
-  UpdateOrderDto,
-  ValidateOrderDto,
-} from './order.entity';
-import {
-  VehicleStatus,
-  OrderStatus,
-  ServiceType,
-  FulfillmentType,
-  Prisma,
-  AddressPurpose,
-  Address,
-  Order,
-} from '@prisma/client'; // assuming you use Prisma enums
+import { UpdateOrderDto } from './order.entity';
+import { OrderStatus, Address, Order, ApprovalStatus } from '@prisma/client'; // assuming you use Prisma enums
 import { ListQueryDto } from '../../common/query/query.dto';
 import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 import { RpcException } from '@nestjs/microservices';
-import { MapsService } from '../maps/maps.service';
 import { WebSocketEventService } from '../../websocket/services/websocket-event.service';
-// import { AddressDto } from 'src/operations/user/user.entity';
 
 @Injectable()
 export class OrderRepository {
@@ -44,6 +24,7 @@ export class OrderRepository {
     name: string;
     email: string;
     phone: string;
+    userId?: string;
   }) {
     return this.prisma.user.create({
       data: {
@@ -53,6 +34,7 @@ export class OrderRepository {
         password: '',
         isStaff: false,
         roleId: null,
+        createdBy: customerData.userId || 'system',
       },
     });
   }
@@ -113,14 +95,43 @@ export class OrderRepository {
       this.prisma.orderException.findMany({
         ...query,
         where: query.where || {},
-        include: {
+        select: {
+          id: true,
+          type: true,
+          reason: true,
           order: {
-            include: {
-              customer: true,
-              branch: true,
-              pickupDriver: true,
-              deliveryDriver: true,
-              payment: true,
+            select: {
+              id: true,
+              trackingCode: true,
+              serviceType: true,
+              fulfillmentType: true,
+              status: true,
+              category: true,
+              shipmentType: true,
+              shippingScope: true,
+              isFragile: true,
+              customer: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                },
+              },
+              receiver: {
+                select: {
+                  id: true,
+                  name: true,
+                  phone: true,
+                  email: true,
+                },
+              },
+              branch: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
             },
           },
         },
@@ -136,7 +147,11 @@ export class OrderRepository {
     };
   }
 
-  async solveException(orderId: string, data: UpdateOrderDto) {
+  async solveException(
+    orderId: string,
+    data: UpdateOrderDto,
+    updatedBy?: string,
+  ) {
     return this.prisma.$transaction(async (tx) => {
       // Clean incoming data (remove null/undefined)
       const cleanedData = Object.fromEntries(
@@ -163,7 +178,7 @@ export class OrderRepository {
         data: {
           orderId,
           status: updatedOrder.status, // log current status after update
-          // updatedBy,
+          updatedBy,
           notes: `Order resolved for exception `,
         },
       });
@@ -175,9 +190,11 @@ export class OrderRepository {
   async createOrderWithAddresses(
     data: any,
     customerId: string,
+    receiverId: string,
     trackingCode: string,
     pickupAddress: any,
     deliveryAddress: any,
+    userId?: string,
   ): Promise<Order> {
     console.log(
       'Repository inside creation order for addresses pickup and delivery :::::: ',
@@ -217,6 +234,7 @@ export class OrderRepository {
                 postalCode: pickupAddress.postalCode ?? 'Unknown',
                 purpose: 'ORDER_PICKUP',
                 user: { connect: { id: customerId } },
+                createdBy: userId ?? customerId,
               },
             });
           }
@@ -249,6 +267,7 @@ export class OrderRepository {
                 postalCode: deliveryAddress.postalCode ?? 'Unknown',
                 purpose: 'ORDER_DELIVERY',
                 user: { connect: { id: customerId } },
+                createdBy: userId ?? customerId,
               },
             });
           }
@@ -274,8 +293,10 @@ export class OrderRepository {
           shippingScope: data.shippingScope,
           pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
           deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
+          createdBy: userId ?? customerId,
           cost: data.cost,
           customerId: customerId,
+          receiverId: receiverId,
           // customer: { connect: { id: customerId } },
           branchId: data.branchId ? data.branchId : null,
           // branch: data.branchId ? { connect: { id: data.branchId } } : undefined,
@@ -299,7 +320,7 @@ export class OrderRepository {
             orderId: order.id,
             status: 'CREATED',
             location: pickupAddress?.addressLine ?? 'Customer Home',
-            updatedBy: customerId,
+            updatedBy: userId ?? customerId,
             notes: 'Order Created.',
           },
         });
@@ -366,7 +387,11 @@ export class OrderRepository {
     return { lat: branch.address.lat, lon: branch.address.long };
   }
 
-  async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
+  async updateOrder(
+    orderId: string,
+    data: UpdateOrderDto,
+    updatedBy?: string,
+  ): Promise<any> {
     return this.prisma.$transaction(async (tx) => {
       // remove undefined / null values so Prisma only updates what's present
       const cleanedData = Object.fromEntries(
@@ -386,7 +411,7 @@ export class OrderRepository {
         data: {
           orderId,
           status: updatedOrder.status, // log current status after update
-          // updatedBy,
+          updatedBy,
           notes: `Order updated with fields: ${Object.keys(cleanedData).join(', ')}`,
         },
       });
@@ -394,63 +419,6 @@ export class OrderRepository {
       return updatedOrder;
     });
   }
-
-  // async createOrderAndValidate(
-  //   data: ValidateOrderDto,
-  //   customerConnect: any,
-  //   branchConnect: any,
-  //   driverConnect: any,
-  //   paymentConnect: any,
-  //   trackingCode: string,
-  //   location: string,
-  //   updatedBy: string,
-  // ) {
-  //   console.log('Validator: ', data.validatedBy);
-
-  //   const order = await this.prisma.order.create({
-  //     data: {
-  //       trackingCode,
-  //       status: 'PENDING_APPROVAL',
-  //       serviceType: data.serviceType,
-  //       fulfillmentType: data.fulfillmentType,
-  //       weight: data.weight,
-  //       height: data.height,
-  //       width: data.width,
-  //       length: data.length,
-  //       category: data.category,
-  //       isFragile: data.isFragile,
-  //       shipmentType: data.shipmentType,
-  //       shippingScope: data.shippingScope,
-  //       pickupAddressId: data.pickupAddressId,
-  //       pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
-  //       deliveryAddressId: data.deliveryAddressId,
-  //       deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
-  //       cost: data.cost,
-  //       isUnusual: data.isUnusual ?? false,
-  //       unusualReason: data.unusualReason ?? null,
-  //       validator: { connect: { id: data.validatedBy } },
-  //       validatedAt: new Date(),
-  //       validatedNotes: data.validatedNotes ?? null,
-  //       actualDropoffDate: new Date(),
-  //       dropoffConfirmed: true,
-
-  //       customer: customerConnect,
-  //       ...(branchConnect && { branch: branchConnect }),
-  //       ...(driverConnect && { driver: driverConnect }),
-  //       ...(paymentConnect && { payment: paymentConnect }),
-  //     },
-  //   });
-
-  //   await this.logOrderStatus(
-  //     order.id,
-  //     'PENDING_APPROVAL',
-  //     location,
-  //     data.validatedBy,
-  //     'Order Created and validated.',
-  //   );
-
-  //   return order;
-  // }
 
   async confirmPickupOrder(
     orderId: string,
@@ -513,11 +481,20 @@ export class OrderRepository {
       await this.prisma.order.update({
         where: { id: orderId },
         data: {
-          ...data, // dynamic fields (weight, size, cost, etc.)
+          ...data,
           status: 'PENDING_APPROVAL',
           validatedBy: officerId,
           validatedAt: new Date(),
           updatedAt: new Date(),
+        },
+      }),
+      await this.prisma.parcelApproval.create({
+        data: {
+          orderId,
+          status: 'PENDING',
+          reason: data.reason,
+          decisionBy: officerId,
+          decidedAt: new Date(),
         },
       }),
       await this.logOrderStatus(
@@ -592,7 +569,7 @@ export class OrderRepository {
     const where = {
       AND: [
         query.where || {}, // existing filters (search, etc.)
-        { status: 'PENDING' }, // enforce pending status
+        { status: ApprovalStatus.PENDING }, // enforce pending status
       ],
     };
     const results = await Promise.all([
@@ -630,13 +607,48 @@ export class OrderRepository {
       this.prisma.order.findMany({
         ...query,
         where: query.where || {},
-        include: {
-          customer: true,
-          branch: true,
-          payment: true,
-          validator: true,
-          approvalRequest: true,
-          orderTracking: true,
+        select: {
+          id: true,
+          trackingCode: true,
+          serviceType: true,
+          fulfillmentType: true,
+          pickupDriverId: true,
+          deliveryDriverId: true,
+          status: true,
+          weight: true,
+          length: true,
+          width: true,
+          height: true,
+          category: true,
+          isFragile: true,
+          shipmentType: true,
+          shippingScope: true,
+          isUnusual: true,
+          unusualReason: true,
+          pickupAddressId: true,
+          pickupDate: true,
+          deliveryAddressId: true,
+          deliveryDate: true,
+          distance: true,
+          validatedBy: true,
+          validatedNotes: true,
+          estimatedDeliveryAt: true,
+          actualDeliveryAt: true,
+          batchId: true,
+          finalPrice: true,
+          currency: true,
+          customer: {
+            select: { id: true, name: true, phone: true, email: true },
+          },
+          receiver: {
+            select: { id: true, name: true, phone: true, email: true },
+          },
+          branch: {
+            select: { id: true, name: true },
+          },
+          payment: {
+            select: { id: true, amount: true, status: true },
+          },
         },
       }),
       this.prisma.order.count({ where: query.where || {} }),
@@ -695,14 +707,73 @@ export class OrderRepository {
     });
   }
 
-  async getOrderByTrackingCode(trackingCode: string): Promise<any> {
-    return this.prisma.order.findUnique({
-      where: { trackingCode: trackingCode },
-      include: {
-        customer: true,
-        branch: true,
-        payment: true,
-        pickupDriver: true,
+  async getOrderByTrackingCode(
+    trackingCode: string,
+    userId?: string,
+  ): Promise<any> {
+    return this.prisma.order.findFirst({
+      where: {
+        trackingCode,
+        ...(userId ? { customerId: userId } : {}), // only adds customerId if defined
+      },
+      select: {
+        id: true,
+        trackingCode: true,
+        serviceType: true,
+        fulfillmentType: true,
+        pickupDriverId: true,
+        deliveryDriverId: true,
+        status: true,
+        weight: true,
+        length: true,
+        width: true,
+        height: true,
+        category: true,
+        isFragile: true,
+        shipmentType: true,
+        shippingScope: true,
+        isUnusual: true,
+        unusualReason: true,
+        pickupAddressId: true,
+        pickupDate: true,
+        deliveryAddressId: true,
+        deliveryDate: true,
+        distance: true,
+        validatedBy: true,
+        validatedNotes: true,
+        estimatedDeliveryAt: true,
+        actualDeliveryAt: true,
+        batchId: true,
+        finalPrice: true,
+        currency: true,
+        customer: {
+          select: { id: true, name: true, phone: true, email: true },
+        },
+        receiver: {
+          select: { id: true, name: true, phone: true, email: true },
+        },
+        branch: {
+          select: { id: true, name: true },
+        },
+        payment: {
+          select: { id: true, amount: true, status: true },
+        },
+        pickupDriver: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+          },
+        },
+        deliveryDriver: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+          },
+        },
       },
     });
   }
@@ -754,6 +825,14 @@ export class OrderRepository {
             },
           },
           customer: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+            },
+          },
+          receiver: {
             select: {
               id: true,
               name: true,
@@ -893,6 +972,7 @@ export class OrderRepository {
           orderId,
           reason,
           type,
+          createdBy: userId || 'system',
         },
       });
 
@@ -907,7 +987,7 @@ export class OrderRepository {
         data: {
           orderId,
           status: 'EXCEPTION',
-          // updatedBy: userId || 'system',
+          updatedBy: userId || 'system',
           notes: `Exception: ${reason} (Type: ${type})`,
         },
       });
@@ -942,6 +1022,7 @@ export class OrderRepository {
           orderId,
           reason,
           type: 'CANCELLED',
+          createdBy: userId || 'system',
         },
       });
 
@@ -950,7 +1031,7 @@ export class OrderRepository {
         data: {
           orderId,
           status: OrderStatus.CANCELED,
-          // updatedBy: 'User',
+          updatedBy: userId,
           notes: 'Order canceled and removed from batch (if any).',
         },
       });
@@ -970,7 +1051,12 @@ export class OrderRepository {
     });
   }
 
-  async createAddress(data: any, customerId: string, tx?: any) {
+  async createAddress(
+    data: any,
+    customerId: string,
+    tx?: any,
+    userId?: string,
+  ) {
     const db = tx ?? this.prisma;
     return db.address.create({
       data: {
@@ -984,6 +1070,7 @@ export class OrderRepository {
         long: data.long,
         purpose: data.purpose ?? 'ORDER',
         user: { connect: { id: customerId } },
+        createdBy: userId || 'system',
       },
     });
   }

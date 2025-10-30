@@ -1,10 +1,8 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { Injectable, } from '@nestjs/common';
 import { User, Prisma, Role } from '@prisma/client';
-import { IPagination } from '../../common/types';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ChangeRoleDto, UserDto } from '../user/user.entity';
+import { UserDto } from '../user/user.entity';
 import { UpdateStaffDto } from './staff.entity';
-import { RpcException } from '@nestjs/microservices';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 

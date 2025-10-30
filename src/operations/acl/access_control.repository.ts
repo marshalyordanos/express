@@ -167,6 +167,7 @@ export class AccessControlRepository {
               readAction: p.readAction ?? false,
               updateAction: p.updateAction ?? false,
               deleteAction: p.deleteAction ?? false,
+              scope: p.scopes || [], 
             })),
             skipDuplicates: true, // prevent duplicates
           },
@@ -187,6 +188,7 @@ export class AccessControlRepository {
         readAction: data.readAction ?? false,
         updateAction: data.updateAction ?? false,
         deleteAction: data.deleteAction ?? false,
+        scope: data.scopes || [],
       },
     });
 

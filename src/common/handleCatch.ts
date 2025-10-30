@@ -8,7 +8,7 @@ export function handleCatch(error: any) {
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     message = getPrismaErrorMessage(error); // <-- friendly message
-    console.log('getPrismaErrorMessage: ', message);
+    // console.log('getPrismaErrorMessage: ', message);
   } else if (error instanceof Prisma.PrismaClientValidationError) {
     const msg = error.message;
     if (msg.includes('Argument')) {
@@ -17,8 +17,7 @@ export function handleCatch(error: any) {
       message = msg;
     }
   } else if (error instanceof Error) {
-    console.log('getPrismaErrorMessage2: ', error.message);
-
+    // console.log('getPrismaErrorMessage2: ', error.message);
     message = error.message;
   }
   // ✅ Preserve existing RpcException status & message
@@ -34,7 +33,7 @@ export function handleCatch(error: any) {
   // });
 
   // Do NOT log stack trace here — only minimal info
-  console.warn(`[ServiceError] ${message}`);
+  // console.warn(`[ServiceError] ${message}`);
 
   throw new RpcException({ statusCode, message });
 }

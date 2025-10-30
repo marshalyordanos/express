@@ -130,7 +130,6 @@ export class DriverLocationService {
     radiusKm: number,
   ): Promise<any[]> {
     const client = this.redisService.getClient();
-
     const rawDrivers = (await client.sendCommand([
       'GEOSEARCH',
       this.GEO_KEY,

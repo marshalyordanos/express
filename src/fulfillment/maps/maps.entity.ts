@@ -1,3 +1,5 @@
+import { IsNotEmpty, IsString } from "class-validator";
+
 export class NavigationUpdateDto {
   driverId: string;
   currentLat: number;
@@ -21,4 +23,10 @@ export interface RouteCache {
   totalDistance: number;
   totalDuration: number;
   lastUpdated: number;
+}
+
+export class OrderIdDto {
+  @IsNotEmpty({ message: 'orderId is required' })
+  @IsString({ message: 'orderId must be a string' })
+  orderId: string;
 }

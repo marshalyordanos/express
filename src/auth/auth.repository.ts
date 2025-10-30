@@ -1,14 +1,13 @@
 // auth.repository.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service'; // Adjust path to your Prisma service
-import { Prisma, Role, User } from '@prisma/client';
+import { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { AuthRegisterDto } from './auth.entity';
 
 @Injectable()
 export class AuthRepository {
-
   constructor(private readonly prisma: PrismaService) {}
 
   // ----------------- User Queries -----------------
@@ -81,6 +80,16 @@ export class AuthRepository {
       notes,
     } = data;
 
+    // Fetch the CustomerCategory based on customerType
+    let customerCategory = null;
+    if (customerType) {
+      customerCategory = await this.prisma.customerCategory.findFirst({
+        where: {
+          name: customerType === 'CORPORATE' ? 'CORPORATION' : 'INDIVIDUAL',
+        },
+      });
+    }
+
     return this.prisma.user.create({
       data: {
         name,
@@ -94,6 +103,10 @@ export class AuthRepository {
           : undefined,
         role: { connect: { id: role } },
         branch: branchId ? { connect: { id: branchId } } : undefined,
+        createdBy: 'system',
+        customerCategory: customerCategory
+          ? { connect: { id: customerCategory.id } }
+          : undefined,
 
         // Create CorporateInfo if corporate
         corporateInfo:
@@ -259,7 +272,7 @@ export class AuthRepository {
     });
   }
 
-   async invalidateRefreshToken(userId: string) {
+  async invalidateRefreshToken(userId: string) {
     await this.prisma.refreshToken.deleteMany({
       where: { userId },
     });

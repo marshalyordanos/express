@@ -26,9 +26,11 @@ import {
   UpdateSurchargeDto,
   UpdateTariffDto,
 } from './pricing.entity';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { ListQueryDto } from '../../common/query/query.dto';
+import { handleCatch } from '../../common/handleCatch';
+import { AppLogger } from '../../common/app-logger.service';
 
 interface OrderLike {
   id: string;
@@ -44,672 +46,1045 @@ interface FeeBreakdown {
 }
 @Injectable()
 export class PricingUseCasesImpl implements PricingUseCases {
-  constructor(private readonly pricingRepo: PricingRepository) {}
+  constructor(
+    private readonly pricingRepo: PricingRepository,
+    private readonly logger: AppLogger,
+  ) {
+    this.logger.setContext('FulfillmentService', 'PricingUsecaseImpl');
+  }
+
   //===============================================================================================TARIFF===========================================================================================================
   /**
    * Create tariff with full validation.
    * - Business checks live here (no throws in repo).
    */
   async createTariff(data: TariffDto) {
-    console.log('Tariff data  service : ', data);
-
-    if (data.customerCategoryId) {
-      const category = await this.pricingRepo.findCustomerCategoryById(
-        data.customerCategoryId,
-      );
-      if (!category) {
-        throw new RpcException(
-          `Customer Category with id ${data.customerCategoryId} not found.`,
+    this.logger.log(`Creating new tariff: ${data.name}`);
+    try {
+      // 1️⃣ Validate customer category
+      if (data.customerCategoryId) {
+        const category = await this.pricingRepo.findCustomerCategoryById(
+          data.customerCategoryId,
         );
+        if (!category) {
+          this.logger.warn(
+            `Customer category not found: ${data.customerCategoryId}`,
+          );
+          throw new RpcException({
+            statusCode: 404,
+            message: `Customer Category with id ${data.customerCategoryId} not found.`,
+          });
+        }
       }
-    }
-    // 1. basic presence checks (DTO + validation pipe should cover most)
-    if (!data.serviceType) {
-      throw new RpcException('serviceType is required');
-    }
 
-    if (data.baseFee == null || Number.isNaN(Number(data.baseFee))) {
-      throw new RpcException('baseFee must be a valid number');
-    }
+      // 2️⃣ Validate required fields
+      if (!data.serviceType)
+        throw new RpcException({
+          statusCode: 400,
+          message: 'serviceType is required',
+        });
+      if (data.baseFee == null || Number.isNaN(Number(data.baseFee)))
+        throw new RpcException({
+          statusCode: 400,
+          message: 'baseFee must be a valid number',
+        });
+      if (Number(data.baseFee) < 0)
+        throw new RpcException({
+          statusCode: 400,
+          message: 'baseFee must be >= 0',
+        });
+      if (data.perKgRate != null && Number(data.perKgRate) < 0)
+        throw new RpcException({
+          statusCode: 400,
+          message: 'perKgRate must be >= 0',
+        });
+      if (data.perKmRate != null && Number(data.perKmRate) < 0)
+        throw new RpcException({
+          statusCode: 400,
+          message: 'perKmRate must be >= 0',
+        });
+      if (!data.currency || typeof data.currency !== 'string')
+        throw new RpcException({
+          statusCode: 400,
+          message: 'currency is required',
+        });
 
-    // 2. numeric validations
-    if (Number(data.baseFee) < 0) {
-      throw new RpcException('baseFee must be >= 0');
-    }
-    if (data.perKgRate != null && Number(data.perKgRate) < 0) {
-      throw new RpcException('perKgRate must be >= 0');
-    }
-    if (data.perKmRate != null && Number(data.perKmRate) < 0) {
-      throw new RpcException('perKmRate must be >= 0');
-    }
+      const currency = data.currency.trim().toUpperCase();
+      if (currency.length < 2 || currency.length > 5)
+        throw new RpcException({
+          statusCode: 400,
+          message: 'currency must be 2-5 characters (e.g. ETB, USD)',
+        });
 
-    // 3. currency validation (basic)
-    if (!data.currency || typeof data.currency !== 'string') {
-      throw new RpcException('currency is required');
-    }
-    const currency = data.currency.trim().toUpperCase();
-    if (currency.length < 2 || currency.length > 5) {
-      throw new RpcException('currency must be 2-5 characters (e.g. ETB, USD)');
-    }
+      // 3️⃣ Validate dates
+      const effectiveFrom = new Date(data.effectiveFrom);
+      if (isNaN(effectiveFrom.getTime()))
+        throw new RpcException({
+          statusCode: 400,
+          message: 'effectiveFrom is not a valid ISO date',
+        });
 
-    // 4. date parsing & validation
-    const effectiveFrom = new Date(data.effectiveFrom);
-    if (isNaN(effectiveFrom.getTime())) {
-      throw new RpcException('effectiveFrom is not a valid ISO date');
-    }
-
-    let effectiveTo: Date | null = null;
-    if (data.effectiveTo) {
-      effectiveTo = new Date(data.effectiveTo);
-      if (isNaN(effectiveTo.getTime())) {
-        throw new RpcException('effectiveTo is not a valid ISO date');
+      let effectiveTo: Date | null = null;
+      if (data.effectiveTo) {
+        effectiveTo = new Date(data.effectiveTo);
+        if (isNaN(effectiveTo.getTime()))
+          throw new RpcException({
+            statusCode: 400,
+            message: 'effectiveTo is not a valid ISO date',
+          });
+        if (effectiveFrom > effectiveTo)
+          throw new RpcException({
+            statusCode: 400,
+            message: 'effectiveFrom must be on or before effectiveTo',
+          });
       }
-      if (effectiveFrom > effectiveTo) {
-        throw new RpcException(
-          'effectiveFrom must be on or before effectiveTo',
-        );
+
+      // 4️⃣ Check overlapping tariffs
+      const overlap = await this.pricingRepo.findOverlappingTariff(
+        data.serviceType as ServiceType,
+        effectiveFrom,
+        effectiveTo,
+        data.shippingScope as ShippingScope,
+      );
+      if (overlap)
+        throw new RpcException({
+          statusCode: 409,
+          message: `Overlapping tariff exists (id=${overlap.id}, name="${overlap.name}")`,
+        });
+
+      // 5️⃣ Avoid duplicate name + serviceType + shippingScope
+      const dup = await this.pricingRepo.findByNameAndServiceType(
+        data.name.trim(),
+        data.serviceType,
+        data.shippingScope,
+      );
+      if (dup)
+        throw new RpcException({
+          statusCode: 409,
+          message:
+            'A tariff with the same name and service type already exists',
+        });
+
+      // 6️⃣ Ensure at least one pricing driver exists
+      if (
+        (data.baseFee === 0 || data.baseFee == null) &&
+        (data.perKmRate == null || Number(data.perKmRate) === 0) &&
+        (data.perKgRate == null || Number(data.perKgRate) === 0)
+      ) {
+        throw new RpcException({
+          statusCode: 400,
+          message:
+            'Tariff must define at least one of baseFee, perKmRate or perKgRate with a positive value',
+        });
       }
-    }
 
-    // 5. business rule: avoid overlapping tariffs for same serviceType
-    const overlap = await this.pricingRepo.findOverlappingTariff(
-      data.serviceType as ServiceType,
-      effectiveFrom,
-      effectiveTo,
-      data.shippingScope as ShippingScope,
-    );
-    if (overlap) {
-      throw new RpcException(
-        `Overlapping tariff exists for this service type (id=${overlap.id}, name="${overlap.name}")`,
+      // 7️⃣ Prepare payload
+      const payload: any = {
+        name: data.name.trim(),
+        serviceType: data.serviceType,
+        shippingScope: data.shippingScope,
+        customerCategoryId: data.customerCategoryId,
+        baseFee: Number(data.baseFee),
+        perKmRate: data.perKmRate != null ? Number(data.perKmRate) : null,
+        perKgRate: data.perKgRate != null ? Number(data.perKgRate) : null,
+        currency,
+        effectiveFrom,
+        effectiveTo: effectiveTo ?? null,
+        isActive: true,
+      };
+      this.logger.verbose(
+        `Tariff payload prepared: ${JSON.stringify(payload)}`,
       );
+
+      // 8️⃣ Call repository
+      const created = await this.pricingRepo.createTariff(payload);
+      this.logger.log(`Tariff created successfully: ${created.id}`);
+      return created;
+    } catch (error) {
+      this.logger.error(`Failed to create tariff: ${error.message}`);
+      throw handleCatch(error);
     }
-
-    // 6. optional: avoid duplicate name + serviceType + shippingScope
-    const dup = await this.pricingRepo.findByNameAndServiceType(
-      data.name.trim(),
-      data.serviceType,
-      data.shippingScope,
-    );
-    if (dup) {
-      throw new RpcException(
-        'A tariff with the same name and service type already exists',
-      );
-    }
-
-    // 7. Ensure at least one pricing driver exists (baseFee, perKmRate, or perKgRate)
-    if (
-      (data.baseFee === 0 || data.baseFee == null) &&
-      (data.perKmRate == null || Number(data.perKmRate) === 0) &&
-      (data.perKgRate == null || Number(data.perKgRate) === 0)
-    ) {
-      throw new RpcException(
-        'Tariff must define at least one of baseFee, perKmRate or perKgRate with a positive value',
-      );
-    }
-
-    // 8. Prepare payload for repository (normalize types)
-    const payload: any = {
-      name: data.name.trim(),
-      serviceType: data.serviceType,
-      shippingScope: data.shippingScope,
-      customerCategoryId: data.customerCategoryId,
-      baseFee: Number(data.baseFee),
-      perKmRate: data.perKmRate != null ? Number(data.perKmRate) : null,
-      perKgRate: data.perKgRate != null ? Number(data.perKgRate) : null,
-      currency,
-      effectiveFrom,
-      effectiveTo: effectiveTo ?? null,
-      isActive: true,
-    };
-    console.log('Tariff payload : ', payload);
-
-    // 9. call repo (DB-only interaction)
-    const created = await this.pricingRepo.createTariff(payload);
-    console.log('Tariff created : ', created);
-
-    return created;
   }
 
   async findAllTariff(query: ListQueryDto): Promise<any> {
-    return await this.pricingRepo.findAllTariff(query);
-  }
-  async findTariffById(id: string): Promise<any> {
-    if (!id) throw new RpcException('Tariff ID is required');
-
-    const tariff = await this.pricingRepo.findTariffById(id);
-    if (!tariff) throw new RpcException('Tariff not found');
-
-    return tariff;
-  }
-  async updateTariff(id: string, data: Partial<UpdateTariffDto>): Promise<any> {
-    if (!id) throw new RpcException('Tariff ID is required');
-
-    // Validate numeric fields
-    if (data.baseFee !== undefined && data.baseFee < 0)
-      throw new RpcException('baseFee must be >= 0');
-    if (data.perKgRate !== undefined && data.perKgRate < 0)
-      throw new RpcException('perKgRate must be >= 0');
-    if (data.perKmRate !== undefined && data.perKmRate < 0)
-      throw new RpcException('perKmRate must be >= 0');
-
-    // Validate dates
-    if (data.effectiveFrom && data.effectiveTo) {
-      if (new Date(data.effectiveFrom) >= new Date(data.effectiveTo))
-        throw new RpcException('effectiveFrom must be before effectiveTo');
+    try {
+      return await this.pricingRepo.findAllTariff(query);
+    } catch (error) {
+      this.logger.error(`Failed to fetch tariffs: ${error.message}`);
+      throw handleCatch(error);
     }
-
-    // Validate serviceType
-    if (
-      data.serviceType &&
-      !Object.values(ServiceType).includes(data.serviceType)
-    )
-      throw new RpcException('Invalid serviceType');
-
-    return await this.pricingRepo.updateTariff(id, data);
   }
+
+  async findTariffById(id: string): Promise<any> {
+    this.logger.log(`Fetching tariff by id: ${id}`);
+    try {
+      if (!id)
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Tariff ID is required',
+        });
+      const tariff = await this.pricingRepo.findTariffById(id);
+      if (!tariff)
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Tariff not found',
+        });
+      return tariff;
+    } catch (error) {
+      this.logger.error(`Failed to fetch tariff ${id}: ${error.message}`);
+      throw handleCatch(error);
+    }
+  }
+
+  async updateTariff(id: string, data: Partial<UpdateTariffDto>): Promise<any> {
+    this.logger.log(`Updating tariff: ${id}`);
+    try {
+      if (!id)
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Tariff ID is required',
+        });
+
+      if (data.baseFee !== undefined && data.baseFee < 0)
+        throw new RpcException({
+          statusCode: 400,
+          message: 'baseFee must be >= 0',
+        });
+      if (data.perKgRate !== undefined && data.perKgRate < 0)
+        throw new RpcException({
+          statusCode: 400,
+          message: 'perKgRate must be >= 0',
+        });
+      if (data.perKmRate !== undefined && data.perKmRate < 0)
+        throw new RpcException({
+          statusCode: 400,
+          message: 'perKmRate must be >= 0',
+        });
+
+      if (data.effectiveFrom && data.effectiveTo) {
+        if (new Date(data.effectiveFrom) >= new Date(data.effectiveTo))
+          throw new RpcException({
+            statusCode: 400,
+            message: 'effectiveFrom must be before effectiveTo',
+          });
+      }
+
+      if (
+        data.serviceType &&
+        !Object.values(ServiceType).includes(data.serviceType)
+      )
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Invalid serviceType',
+        });
+
+      const updated = await this.pricingRepo.updateTariff(id, data);
+      this.logger.log(`Tariff updated successfully: ${id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(`Failed to update tariff ${id}: ${error.message}`);
+      throw handleCatch(error);
+    }
+  }
+
   async deleteTariff(id: string): Promise<any> {
-    if (!id) throw new RpcException('Tariff ID is required');
-
-    const tariff = await this.pricingRepo.findTariffById(id);
-    if (!tariff) throw new RpcException('Tariff not found');
-
-    return await this.pricingRepo.deleteTariff(id);
+    this.logger.log(`Deleting tariff: ${id}`);
+    try {
+      if (!id)
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Tariff ID is required',
+        });
+      const tariff = await this.pricingRepo.findTariffById(id);
+      if (!tariff)
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Tariff not found',
+        });
+      const deleted = await this.pricingRepo.deleteTariff(id);
+      this.logger.log(`Tariff deleted successfully: ${id}`);
+      return deleted;
+    } catch (error) {
+      this.logger.error(`Failed to delete tariff ${id}: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
+
   //===========================================================================================================================PROFIT MARGIN==============================================================================================================================
   async createProfitMargin(data: ProfitMarginDto) {
-    // 1️⃣ Check tariff exists
-    const tariff = await this.pricingRepo.findTariffById(data.tariffId);
-    if (!tariff) throw new RpcException('Tariff not found');
+    this.logger.log(`Creating profit margin for tariff: ${data.tariffId}`);
+    try {
+      // 1️⃣ Check tariff exists
+      const tariff = await this.pricingRepo.findTariffById(data.tariffId);
+      if (!tariff) {
+        this.logger.warn(`Tariff not found: ${data.tariffId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Tariff not found',
+        });
+      }
 
-    // 2️⃣ Validate min/max logic
-    if (data.minAmount && data.maxAmount && data.minAmount > data.maxAmount) {
-      throw new RpcException('minAmount cannot be greater than maxAmount');
+      // 2️⃣ Validate min/max logic
+      if (data.minAmount && data.maxAmount && data.minAmount > data.maxAmount) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'minAmount cannot be greater than maxAmount',
+        });
+      }
+
+      // 3️⃣ Validate percentage
+      if (data.percentage < 0 || data.percentage > 100) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'percentage must be between 0 and 100',
+        });
+      }
+
+      // 4️⃣ Ensure no existing profit margin for this tariff
+      const exists = await this.pricingRepo.findByTariffId(data.tariffId);
+      if (exists) {
+        throw new RpcException({
+          statusCode: 409,
+          message: 'Profit margin already exists for this tariff',
+        });
+      }
+
+      // ✅ Create
+      const created = await this.pricingRepo.createProfitMargin(data);
+      this.logger.log(
+        `Profit margin created successfully for tariff: ${data.tariffId}`,
+      );
+      return created;
+    } catch (error) {
+      this.logger.error(`Failed to create profit margin: ${error.message}`);
+      throw handleCatch(error);
     }
-
-    // 3️⃣ Validate percentage
-    if (data.percentage < 0 || data.percentage > 100) {
-      throw new RpcException('percentage must be between 0 and 100');
-    }
-
-    // 4️⃣ Ensure no existing profit margin for this tariff
-    const exists = await this.pricingRepo.findByTariffId(data.tariffId);
-    if (exists)
-      throw new RpcException('Profit margin already exists for this tariff');
-
-    // ✅ Create
-    return this.pricingRepo.createProfitMargin(data);
   }
 
   async findAllProfitMargins(query: ListQueryDto) {
-    return this.pricingRepo.findAll(query);
+    this.logger.log('Fetching all profit margins');
+    try {
+      return await this.pricingRepo.findAll(query);
+    } catch (error) {
+      this.logger.error(`Failed to fetch profit margins: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
   async findProfitMarginById(id: string) {
-    const pm = await this.pricingRepo.findProfitMarginById(id);
-    if (!pm) throw new RpcException('Profit margin not found');
-    return pm;
+    this.logger.log(`Fetching profit margin by ID: ${id}`);
+    try {
+      const pm = await this.pricingRepo.findProfitMarginById(id);
+      if (!pm)
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Profit margin not found',
+        });
+      return pm;
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch profit margin ${id}: ${error.message}`,
+      );
+      throw handleCatch(error);
+    }
   }
 
   async updateProfitMargin(id: string, data: UpdateProfitMarginDto) {
-    const pm = await this.pricingRepo.findProfitMarginById(id);
-    if (!pm) throw new RpcException('Profit margin not found');
+    this.logger.log(`Updating profit margin ID: ${id}`);
+    try {
+      const pm = await this.pricingRepo.findProfitMarginById(id);
+      if (!pm)
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Profit margin not found',
+        });
 
-    // Validate min/max if both present
-    if (data.minAmount && data.maxAmount && data.minAmount > data.maxAmount) {
-      throw new RpcException('minAmount cannot be greater than maxAmount');
-    }
+      // Validate min/max if both present
+      if (data.minAmount && data.maxAmount && data.minAmount > data.maxAmount) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'minAmount cannot be greater than maxAmount',
+        });
+      }
 
-    if (data.percentage && (data.percentage < 0 || data.percentage > 100)) {
-      throw new RpcException('percentage must be between 0 and 100');
+      if (data.percentage && (data.percentage < 0 || data.percentage > 100)) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'percentage must be between 0 and 100',
+        });
+      }
+
+      const updated = await this.pricingRepo.updateProfitMargin(id, data);
+      this.logger.log(`Profit margin updated successfully: ${id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(
+        `Failed to update profit margin ${id}: ${error.message}`,
+      );
+      throw handleCatch(error);
     }
-    return this.pricingRepo.updateProfitMargin(id, data);
   }
 
   async deleteProfitMargin(id: string) {
-    const pm = await this.pricingRepo.findProfitMarginById(id);
-    if (!pm) throw new RpcException('Profit margin not found');
+    this.logger.log(`Deleting profit margin ID: ${id}`);
+    try {
+      const pm = await this.pricingRepo.findProfitMarginById(id);
+      if (!pm)
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Profit margin not found',
+        });
 
-    return this.pricingRepo.deleteProfitMargin(id);
+      const deleted = await this.pricingRepo.deleteProfitMargin(id);
+      this.logger.log(`Profit margin deleted successfully: ${id}`);
+      return deleted;
+    } catch (error) {
+      this.logger.error(
+        `Failed to delete profit margin ${id}: ${error.message}`,
+      );
+      throw handleCatch(error);
+    }
   }
+
   //==================================================================================================================AIRPORT FEES==============================================================================================================================
   async createAirportFee(data: AirportFeeDto) {
-    // 1. Check Tariff exists
-    console.log('data.tariffId: ', data.tariffId);
+    this.logger.log(`Creating airport fee for tariff: ${data.tariffId}`);
+    try {
+      // 1️⃣ Check Tariff exists
+      const tariff = await this.pricingRepo.findTariffById(data.tariffId);
+      if (!tariff) {
+        this.logger.warn(`Tariff not found: ${data.tariffId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Tariff with id ${data.tariffId} does not exist`,
+        });
+      }
 
-    const tariff = await this.pricingRepo.findTariffById(data.tariffId);
-    if (!tariff)
-      throw new RpcException(`Tariff with id ${data.tariffId} does not exist`);
+      // 2️⃣ Validate fee type
+      if (!data.perKgRate && !data.flatFee) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Either perKgRate or flatFee must be provided',
+        });
+      }
 
-    // 2. Validate fee type
-    if (!data.perKgRate && !data.flatFee) {
-      throw new RpcException('Either perKgRate or flatFee must be provided');
-    }
+      // 3️⃣ Validate dates
+      const from = new Date(data.effectiveFrom);
+      const to = data.effectiveTo ? new Date(data.effectiveTo) : null;
+      if (to && from >= to) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'effectiveFrom must be earlier than effectiveTo',
+        });
+      }
 
-    // 3. Validate dates
-    const from = new Date(data.effectiveFrom);
-    const to = data.effectiveTo ? new Date(data.effectiveTo) : null;
-    if (to && from >= to) {
-      throw new RpcException('effectiveFrom must be earlier than effectiveTo');
-    }
-
-    // 4. Check for duplicate/overlap (same tariff + airport + serviceType)
-    const overlap = await this.pricingRepo.findOverlappingAirportFee(
-      data,
-      from,
-      to,
-    );
-    if (overlap) {
-      throw new RpcException(
-        `Overlapping airport fee already exists for ${data.airportCode} (${data.serviceType}) in this tariff`,
+      // 4️⃣ Check for duplicate/overlap
+      const overlap = await this.pricingRepo.findOverlappingAirportFee(
+        data,
+        from,
+        to,
       );
+      if (overlap) {
+        throw new RpcException({
+          statusCode: 409,
+          message: `Overlapping airport fee already exists for ${data.airportCode} (${data.serviceType}) in this tariff`,
+        });
+      }
+
+      // 5️⃣ Save
+      const created = await this.pricingRepo.createAirportFee(data);
+      this.logger.log(
+        `Airport fee created successfully for tariff: ${data.tariffId}`,
+      );
+      return created;
+    } catch (error) {
+      this.logger.error(`Failed to create airport fee: ${error.message}`);
+      throw handleCatch(error);
     }
-    // 5. If all good → save
-    return this.pricingRepo.createAirportFee(data);
   }
 
   async findAllAirportFees(query: ListQueryDto) {
-    return this.pricingRepo.findAllAirportFees(query);
+    this.logger.log('Fetching all airport fees');
+    try {
+      return await this.pricingRepo.findAllAirportFees(query);
+    } catch (error) {
+      this.logger.error(`Failed to fetch airport fees: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
   async findAirportFeeById(id: string) {
-    const fee = await this.pricingRepo.findAirportFeeById(id);
-    if (!fee) throw new RpcException(`AirportFee with id ${id} not found`);
-    return fee;
+    this.logger.log(`Fetching airport fee by ID: ${id}`);
+    try {
+      const fee = await this.pricingRepo.findAirportFeeById(id);
+      if (!fee)
+        throw new RpcException({
+          statusCode: 404,
+          message: `AirportFee with id ${id} not found`,
+        });
+      return fee;
+    } catch (error) {
+      this.logger.error(`Failed to fetch airport fee ${id}: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
   async updateAirportFee(id: string, data: Partial<UpdateAirportFeeDto>) {
-    // Validate dates
-    if (data.effectiveFrom && data.effectiveTo) {
-      const from = new Date(data.effectiveFrom);
-      const to = new Date(data.effectiveTo);
-      if (from >= to) {
-        throw new RpcException(
-          'effectiveFrom must be earlier than effectiveTo',
-        );
+    this.logger.log(`Updating airport fee ID: ${id}`);
+    try {
+      if (data.effectiveFrom && data.effectiveTo) {
+        const from = new Date(data.effectiveFrom);
+        const to = new Date(data.effectiveTo);
+        if (from >= to) {
+          throw new RpcException({
+            statusCode: 400,
+            message: 'effectiveFrom must be earlier than effectiveTo',
+          });
+        }
       }
+      const updated = await this.pricingRepo.updateAirportFee(id, data);
+      this.logger.log(`Airport fee updated successfully: ${id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(`Failed to update airport fee ${id}: ${error.message}`);
+      throw handleCatch(error);
     }
-    return this.pricingRepo.updateAirportFee(id, data);
   }
 
   async deleteAirportFee(id: string) {
-    return this.pricingRepo.deleteAirportFee(id);
+    this.logger.log(`Deleting airport fee ID: ${id}`);
+    try {
+      const deleted = await this.pricingRepo.deleteAirportFee(id);
+      this.logger.log(`Airport fee deleted successfully: ${id}`);
+      return deleted;
+    } catch (error) {
+      this.logger.error(`Failed to delete airport fee ${id}: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
+
   //==================================================================================================================MISCELLANEOUS FEES==============================================================================================================================
 
   async createMiscFee(data: MiscellaneousFeeDto) {
-    // 1. Check tariff exists
-    const tariff = await this.pricingRepo.findTariffById(data.tariffId);
-    if (!tariff)
-      throw new RpcException(`Tariff with id ${data.tariffId} does not exist`);
+    this.logger.log(`Creating miscellaneous fee for tariff: ${data.tariffId}`);
+    try {
+      // 1️⃣ Check tariff exists
+      const tariff = await this.pricingRepo.findTariffById(data.tariffId);
+      if (!tariff) {
+        this.logger.warn(`Tariff not found: ${data.tariffId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Tariff with id ${data.tariffId} does not exist`,
+        });
+      }
 
-    // 2. Amount validations
-    if (data.amount <= 0)
-      throw new RpcException('Amount must be greater than 0');
-    if (
-      data.feeType === FeeType.PERCENTAGE &&
-      (data.amount <= 0 || data.amount > 100)
-    ) {
-      throw new RpcException('Percentage fee must be between 0 and 100');
-    }
-
-    // 3. Date validations
-    const from = new Date(data.effectiveFrom);
-    const to = data.effectiveTo ? new Date(data.effectiveTo) : null;
-    if (to && from >= to)
-      throw new RpcException('effectiveFrom must be earlier than effectiveTo');
-    // // 4. Prevent duplicate overlapping fees for same name + tariff
-    // const overlap = await this.pricingRepo.findOverlappingMiscellaneousFee(data, from, to);
-    // if (overlap) {
-    //   throw new RpcException(`Overlapping misc fee with name "${data.name}" already exists for this tariff`);
-    // }
-
-    // 5. Save
-    return this.pricingRepo.createMiscFee(data);
-  }
-
-  // ✅ Get all
-  async findAllMiscFees(query: ListQueryDto) {
-    return this.pricingRepo.findAllMiscFees(query);
-  }
-
-  // ✅ Get by ID
-  async findMiscFeeById(id: string) {
-    const fee = await this.pricingRepo.findMiscFeeById(id);
-    if (!fee) throw new RpcException(`MiscFee with id ${id} not found`);
-    return fee;
-  }
-  // ✅ Update with validations
-  async updateMiscFee(id: string, data: Partial<UpdateMiscellaneousFeeDto>) {
-    // Validate amount if provided
-    if (data.amount !== undefined) {
-      if (data.amount <= 0)
-        throw new RpcException('Amount must be greater than 0');
+      // 2️⃣ Amount validations
+      if (data.amount <= 0) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Amount must be greater than 0',
+        });
+      }
       if (
         data.feeType === FeeType.PERCENTAGE &&
         (data.amount <= 0 || data.amount > 100)
       ) {
-        throw new RpcException('Percentage fee must be between 0 and 100');
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Percentage fee must be between 0 and 100',
+        });
       }
-    }
-    // Validate dates if provided
-    if (data.effectiveFrom && data.effectiveTo) {
+
+      // 3️⃣ Date validations
       const from = new Date(data.effectiveFrom);
-      const to = new Date(data.effectiveTo);
-      if (from >= to)
-        throw new RpcException(
-          'effectiveFrom must be earlier than effectiveTo',
-        );
+      const to = data.effectiveTo ? new Date(data.effectiveTo) : null;
+      if (to && from >= to) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'effectiveFrom must be earlier than effectiveTo',
+        });
+      }
+
+      // 4️⃣ Save
+      const created = await this.pricingRepo.createMiscFee(data);
+      this.logger.log(
+        `Miscellaneous fee created successfully for tariff: ${data.tariffId}`,
+      );
+      return created;
+    } catch (error) {
+      this.logger.error(`Failed to create miscellaneous fee: ${error.message}`);
+      throw handleCatch(error);
     }
-    return this.pricingRepo.updateMiscFee(id, data);
   }
 
-  // ✅ Delete
-  async deleteMiscFee(id: string) {
-    return this.pricingRepo.deleteMiscFee(id);
+  async findAllMiscFees(query: ListQueryDto) {
+    this.logger.log('Fetching all miscellaneous fees');
+    try {
+      return await this.pricingRepo.findAllMiscFees(query);
+    } catch (error) {
+      this.logger.error(`Failed to fetch miscellaneous fees: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
+
+  async findMiscFeeById(id: string) {
+    this.logger.log(`Fetching miscellaneous fee by ID: ${id}`);
+    try {
+      const fee = await this.pricingRepo.findMiscFeeById(id);
+      if (!fee)
+        throw new RpcException({
+          statusCode: 404,
+          message: `MiscFee with id ${id} not found`,
+        });
+      return fee;
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch miscellaneous fee ${id}: ${error.message}`,
+      );
+      throw handleCatch(error);
+    }
+  }
+
+  async updateMiscFee(id: string, data: Partial<UpdateMiscellaneousFeeDto>) {
+    this.logger.log(`Updating miscellaneous fee ID: ${id}`);
+    try {
+      // Validate amount if provided
+      if (data.amount !== undefined) {
+        if (data.amount <= 0)
+          throw new RpcException({
+            statusCode: 400,
+            message: 'Amount must be greater than 0',
+          });
+        if (
+          data.feeType === FeeType.PERCENTAGE &&
+          (data.amount <= 0 || data.amount > 100)
+        ) {
+          throw new RpcException({
+            statusCode: 400,
+            message: 'Percentage fee must be between 0 and 100',
+          });
+        }
+      }
+      // Validate dates if provided
+      if (data.effectiveFrom && data.effectiveTo) {
+        const from = new Date(data.effectiveFrom);
+        const to = new Date(data.effectiveTo);
+        if (from >= to)
+          throw new RpcException({
+            statusCode: 400,
+            message: 'effectiveFrom must be earlier than effectiveTo',
+          });
+      }
+
+      const updated = await this.pricingRepo.updateMiscFee(id, data);
+      this.logger.log(`Miscellaneous fee updated successfully: ${id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(
+        `Failed to update miscellaneous fee ${id}: ${error.message}`,
+      );
+      throw handleCatch(error);
+    }
+  }
+
+  async deleteMiscFee(id: string) {
+    this.logger.log(`Deleting miscellaneous fee ID: ${id}`);
+    try {
+      const deleted = await this.pricingRepo.deleteMiscFee(id);
+      this.logger.log(`Miscellaneous fee deleted successfully: ${id}`);
+      return deleted;
+    } catch (error) {
+      this.logger.error(
+        `Failed to delete miscellaneous fee ${id}: ${error.message}`,
+      );
+      throw handleCatch(error);
+    }
+  }
+
   //===========================================================================================================================SURCHARGE==============================================================================================================================
 
   // ── CREATE ──
   async createSurcharge(data: SurchargeDto) {
-    // 1️⃣ Validate tariff existence
-    const tariff = await this.pricingRepo.findTariffById(data.tariffId);
-    if (!tariff) {
-      throw new RpcException({
-        code: 404,
-        message: `Tariff with id ${data.tariffId} not found`,
-      });
+    this.logger.log(`Creating surcharge for tariff: ${data.tariffId}`);
+    try {
+      // 1️⃣ Validate tariff existence
+      const tariff = await this.pricingRepo.findTariffById(data.tariffId);
+      if (!tariff) {
+        this.logger.warn(`Tariff not found: ${data.tariffId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Tariff with id ${data.tariffId} not found`,
+        });
+      }
+
+      // 2️⃣ Validate type
+      if (!['percentage', 'fixed'].includes(data.type.toLowerCase())) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Invalid type "${data.type}". Allowed: "percentage" or "fixed"`,
+        });
+      }
+
+      // 3️⃣ Validate value
+      if (data.value < 0) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Surcharge value cannot be negative`,
+        });
+      }
+
+      // 4️⃣ Optional: validate serviceType
+      if (
+        data.serviceType &&
+        !Object.values(ServiceType).includes(data.serviceType)
+      ) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Invalid serviceType "${data.serviceType}"`,
+        });
+      }
+
+      // 5️⃣ Optional: validate shippingScope
+      if (
+        data.shippingScope &&
+        !Object.values(ShippingScope).includes(data.shippingScope)
+      ) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Invalid shippingScope "${data.shippingScope}"`,
+        });
+      }
+
+      const created = await this.pricingRepo.createSurcharge(data);
+      this.logger.log(
+        `Surcharge created successfully for tariff: ${data.tariffId}`,
+      );
+      return created;
+    } catch (error) {
+      this.logger.error(`Failed to create surcharge: ${error.message}`);
+      throw handleCatch(error);
     }
-    // 2️⃣ Validate type
-    if (!['percentage', 'fixed'].includes(data.type.toLowerCase())) {
-      throw new RpcException({
-        code: 400,
-        message: `Invalid type "${data.type}". Allowed: "percentage" or "fixed"`,
-      });
-    }
-    // 3️⃣ Validate value
-    if (data.value < 0) {
-      throw new RpcException({
-        code: 400,
-        message: `Surcharge value cannot be negative`,
-      });
-    }
-    // 4️⃣ Optional: validate serviceType if provided
-    if (
-      data.serviceType &&
-      !Object.values(ServiceType).includes(data.serviceType)
-    ) {
-      throw new RpcException({
-        code: 400,
-        message: `Invalid serviceType "${data.serviceType}"`,
-      });
-    }
-    // 5️⃣ Optional: validate shippingScope if provided
-    if (
-      data.shippingScope &&
-      !Object.values(ShippingScope).includes(data.shippingScope)
-    ) {
-      throw new RpcException({
-        code: 400,
-        message: `Invalid shippingScope "${data.shippingScope}"`,
-      });
-    }
-    // ✅ Create surcharge
-    return await this.pricingRepo.createSurcharge(data);
   }
 
-  // ── UPDATE ──
   async updateSurcharge(id: string, data: Partial<UpdateSurchargeDto>) {
-    const existing = await this.pricingRepo.findSurchargeById(id);
-    if (!existing) {
-      throw new RpcException({
-        code: 404,
-        message: `Surcharge with id ${id} not found`,
-      });
-    }
+    this.logger.log(`Updating surcharge ID: ${id}`);
+    try {
+      const existing = await this.pricingRepo.findSurchargeById(id);
+      if (!existing)
+        throw new RpcException({
+          statusCode: 404,
+          message: `Surcharge with id ${id} not found`,
+        });
 
-    // 1️⃣ Validate type if updated
-    if (
-      data.type &&
-      !['percentage', 'fixed'].includes(data.type.toLowerCase())
-    ) {
-      throw new RpcException({
-        code: 400,
-        message: `Invalid type "${data.type}". Allowed: "percentage" or "fixed"`,
-      });
-    }
+      if (
+        data.type &&
+        !['percentage', 'fixed'].includes(data.type.toLowerCase())
+      ) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Invalid type "${data.type}". Allowed: "percentage" or "fixed"`,
+        });
+      }
+      if (data.value !== undefined && data.value < 0) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Surcharge value cannot be negative`,
+        });
+      }
+      if (
+        data.serviceType &&
+        !Object.values(ServiceType).includes(data.serviceType)
+      ) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Invalid serviceType "${data.serviceType}"`,
+        });
+      }
+      if (
+        data.shippingScope &&
+        !Object.values(ShippingScope).includes(data.shippingScope)
+      ) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Invalid shippingScope "${data.shippingScope}"`,
+        });
+      }
 
-    // 2️⃣ Validate value if updated
-    if (data.value !== undefined && data.value < 0) {
-      throw new RpcException({
-        code: 400,
-        message: `Surcharge value cannot be negative`,
-      });
+      const updated = await this.pricingRepo.updateSurcharge(id, data);
+      this.logger.log(`Surcharge updated successfully: ${id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(`Failed to update surcharge ${id}: ${error.message}`);
+      throw handleCatch(error);
     }
-
-    // 3️⃣ Optional: validate serviceType if provided
-    if (
-      data.serviceType &&
-      !Object.values(ServiceType).includes(data.serviceType)
-    ) {
-      throw new RpcException({
-        code: 400,
-        message: `Invalid serviceType "${data.serviceType}"`,
-      });
-    }
-
-    // 4️⃣ Optional: validate shippingScope if provided
-    if (
-      data.shippingScope &&
-      !Object.values(ShippingScope).includes(data.shippingScope)
-    ) {
-      throw new RpcException({
-        code: 400,
-        message: `Invalid shippingScope "${data.shippingScope}"`,
-      });
-    }
-    return await this.pricingRepo.updateSurcharge(id, data);
   }
 
-  // ── GET ALL ──
   async findAllSurcharge(query: ListQueryDto) {
-    return await this.pricingRepo.findAllSurcharge(query);
+    this.logger.log('Fetching all surcharges');
+    try {
+      return await this.pricingRepo.findAllSurcharge(query);
+    } catch (error) {
+      this.logger.error(`Failed to fetch surcharges: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
-  // ── GET BY ID ──
   async findSurchargeById(id: string) {
-    const surcharge = await this.pricingRepo.findSurchargeById(id);
-    if (!surcharge)
-      throw new RpcException({
-        code: 404,
-        message: `Surcharge with id ${id} not found`,
-      });
-    return surcharge;
+    this.logger.log(`Fetching surcharge by ID: ${id}`);
+    try {
+      const surcharge = await this.pricingRepo.findSurchargeById(id);
+      if (!surcharge)
+        throw new RpcException({
+          statusCode: 404,
+          message: `Surcharge with id ${id} not found`,
+        });
+      return surcharge;
+    } catch (error) {
+      this.logger.error(`Failed to fetch surcharge ${id}: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
-  // ── DELETE ──
   async deleteSurcharge(id: string) {
-    const existing = await this.pricingRepo.findSurchargeById(id);
-    if (!existing)
-      throw new RpcException({
-        code: 404,
-        message: `Surcharge with id ${id} not found`,
-      });
-    return await this.pricingRepo.deleteSurcharge(id);
+    this.logger.log(`Deleting surcharge ID: ${id}`);
+    try {
+      const existing = await this.pricingRepo.findSurchargeById(id);
+      if (!existing)
+        throw new RpcException({
+          statusCode: 404,
+          message: `Surcharge with id ${id} not found`,
+        });
+
+      const deleted = await this.pricingRepo.deleteSurcharge(id);
+      this.logger.log(`Surcharge deleted successfully: ${id}`);
+      return deleted;
+    } catch (error) {
+      this.logger.error(`Failed to delete surcharge ${id}: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
+
   //============================================================================================================================================DISCOUNT================================================================================================================================
 
   // ── CREATE ──
   async createDiscount(data: DiscountDto) {
-    // 1️⃣ Validate tariff
-    const tariff = await this.pricingRepo.findTariffById(data.tariffId);
-    if (!tariff)
-      throw new RpcException({
-        code: 404,
-        message: `Tariff with id ${data.tariffId} not found`,
-      });
-
-    // 2️⃣ Validate type
-    if (!['percentage', 'fixed'].includes(data.type.toLowerCase()))
-      throw new RpcException({
-        code: 400,
-        message: `Invalid type "${data.type}". Allowed: percentage or fixed`,
-      });
-
-    // 3️⃣ Validate value
-    if (data.value < 0)
-      throw new RpcException({
-        code: 400,
-        message: `Discount value cannot be negative`,
-      });
-
-    // 4️⃣ Validate customer category (optional)
-    if (data.customerCategoryId) {
-      const category = await this.pricingRepo.findCustomerCategoryById(
-        data.customerCategoryId,
-      );
-      if (!category)
+    this.logger.log(`Creating discount for tariff: ${data.tariffId}`);
+    try {
+      // 1️⃣ Validate tariff
+      const tariff = await this.pricingRepo.findTariffById(data.tariffId);
+      if (!tariff) {
+        this.logger.warn(`Tariff not found: ${data.tariffId}`);
         throw new RpcException({
-          code: 404,
-          message: `Customer category not found`,
+          statusCode: 404,
+          message: `Tariff with id ${data.tariffId} not found`,
         });
-    }
+      }
 
-    // 5️⃣ Validate dates
-    const validFrom = new Date(data.validFrom);
-    const validTo = data.validTo ? new Date(data.validTo) : null;
-    if (validTo && validFrom > validTo)
-      throw new RpcException({
-        code: 400,
-        message: `validFrom cannot be after validTo`,
+      // 2️⃣ Validate type
+      if (!['percentage', 'fixed'].includes(data.type.toLowerCase())) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Invalid type "${data.type}". Allowed: percentage or fixed`,
+        });
+      }
+
+      // 3️⃣ Validate value
+      if (data.value < 0) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Discount value cannot be negative`,
+        });
+      }
+
+      // 4️⃣ Validate customer category (optional)
+      if (data.customerCategoryId) {
+        const category = await this.pricingRepo.findCustomerCategoryById(
+          data.customerCategoryId,
+        );
+        if (!category) {
+          throw new RpcException({
+            statusCode: 404,
+            message: `Customer category not found`,
+          });
+        }
+      }
+
+      // 5️⃣ Validate dates
+      const validFrom = new Date(data.validFrom);
+      const validTo = data.validTo ? new Date(data.validTo) : null;
+      if (validTo && validFrom > validTo) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `validFrom cannot be after validTo`,
+        });
+      }
+
+      const created = await this.pricingRepo.createDiscount({
+        ...data,
+        validFrom,
+        validTo,
       });
-
-    return await this.pricingRepo.createDiscount({
-      ...data,
-      validFrom,
-      validTo,
-    });
+      this.logger.log(
+        `Discount created successfully for tariff: ${data.tariffId}`,
+      );
+      return created;
+    } catch (error) {
+      this.logger.error(`Failed to create discount: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
   // ── UPDATE ──
   async updateDiscount(id: string, data: Partial<UpdateDiscountDto>) {
-    const existing = await this.pricingRepo.findDiscountById(id);
-    if (!existing)
-      throw new RpcException({
-        code: 404,
-        message: `Discount with id ${id} not found`,
-      });
-
-    if (data.type && !['percentage', 'fixed'].includes(data.type.toLowerCase()))
-      throw new RpcException({
-        code: 400,
-        message: `Invalid type "${data.type}"`,
-      });
-
-    if (data.value !== undefined && data.value < 0)
-      throw new RpcException({
-        code: 400,
-        message: `Discount value cannot be negative`,
-      });
-
-    if (data.customerCategoryId) {
-      const category = await this.pricingRepo.findCustomerCategoryById(
-        data.customerCategoryId,
-      );
-      if (!category)
+    this.logger.log(`Updating discount ID: ${id}`);
+    try {
+      const existing = await this.pricingRepo.findDiscountById(id);
+      if (!existing)
         throw new RpcException({
-          code: 404,
-          message: `Customer category not found`,
+          statusCode: 404,
+          message: `Discount with id ${id} not found`,
         });
-    }
-    // 4. date parsing & validation
-    const validFrom = new Date(data.validTo);
-    if (isNaN(validFrom.getTime())) {
-      throw new RpcException('Valid From is not a valid ISO date.');
-    }
 
-    let validTo: Date | null = null;
-    if (data.validFrom) {
-      validTo = new Date(data.validTo);
-      if (isNaN(validTo.getTime())) {
-        throw new RpcException('Valid To is not a valid ISO date.');
+      if (
+        data.type &&
+        !['percentage', 'fixed'].includes(data.type.toLowerCase())
+      ) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Invalid type "${data.type}"`,
+        });
       }
-      if (validFrom > validTo) {
-        throw new RpcException('Valid From must be on or before Valid To.');
+
+      if (data.value !== undefined && data.value < 0) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Discount value cannot be negative`,
+        });
       }
+
+      if (data.customerCategoryId) {
+        const category = await this.pricingRepo.findCustomerCategoryById(
+          data.customerCategoryId,
+        );
+        if (!category)
+          throw new RpcException({
+            statusCode: 404,
+            message: `Customer category not found`,
+          });
+      }
+
+      // Date parsing & validation
+      const validFrom = data.validFrom ? new Date(data.validFrom) : undefined;
+      const validTo = data.validTo ? new Date(data.validTo) : undefined;
+      if (validFrom && validTo && validFrom > validTo) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `validFrom cannot be after validTo`,
+        });
+      }
+
+      const updated = await this.pricingRepo.updateDiscount(
+        id,
+        { ...data },
+        validFrom,
+        validTo,
+      );
+      this.logger.log(`Discount updated successfully: ${id}`);
+      return updated;
+    } catch (error) {
+      this.logger.error(`Failed to update discount ${id}: ${error.message}`);
+      throw handleCatch(error);
     }
-
-    // const validFrom = data.validFrom ? new Date(data.validFrom) : undefined;
-    // const validTo = data.validTo ? new Date(data.validTo) : undefined;
-    // if (validFrom && validTo && validFrom > validTo)
-    //   throw new RpcException({ code: 400, message: `validFrom cannot be after validTo` });
-
-    return await this.pricingRepo.updateDiscount(
-      id,
-      { ...data },
-      validFrom,
-      validTo,
-    );
   }
 
   // ── GET ALL ──
   async findAllDiscount(query: ListQueryDto) {
-    return await this.pricingRepo.findAllDiscount(query);
+    this.logger.log('Fetching all discounts');
+    try {
+      return await this.pricingRepo.findAllDiscount(query);
+    } catch (error) {
+      this.logger.error(`Failed to fetch discounts: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
   // ── GET BY ID ──
   async findDiscountById(id: string) {
-    const discount = await this.pricingRepo.findDiscountById(id);
-    if (!discount)
-      throw new RpcException({
-        code: 404,
-        message: `Discount with id ${id} not found`,
-      });
-    return discount;
+    this.logger.log(`Fetching discount by ID: ${id}`);
+    try {
+      const discount = await this.pricingRepo.findDiscountById(id);
+      if (!discount)
+        throw new RpcException({
+          statusCode: 404,
+          message: `Discount with id ${id} not found`,
+        });
+      return discount;
+    } catch (error) {
+      this.logger.error(`Failed to fetch discount ${id}: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
   // ── DELETE ──
   async deleteDiscount(id: string) {
-    const existing = await this.pricingRepo.findDiscountById(id);
-    if (!existing)
-      throw new RpcException({
-        code: 404,
-        message: `Discount with id ${id} not found`,
-      });
-    return await this.pricingRepo.deleteDiscount(id);
+    this.logger.log(`Deleting discount ID: ${id}`);
+    try {
+      const existing = await this.pricingRepo.findDiscountById(id);
+      if (!existing)
+        throw new RpcException({
+          statusCode: 404,
+          message: `Discount with id ${id} not found`,
+        });
+
+      const deleted = await this.pricingRepo.deleteDiscount(id);
+      this.logger.log(`Discount deleted successfully: ${id}`);
+      return deleted;
+    } catch (error) {
+      this.logger.error(`Failed to delete discount ${id}: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
+
   //==============================================================================================================================CUSTOMER CATEGORY============================================================================================================================================
+  // ── CUSTOMER CATEGORY ──
   async createCustomerCategory(data: CustomerCategoryDto) {
-    // Check for duplicate name
+    this.logger.log(`Creating customer category: ${data.name}`);
     const exists = await this.pricingRepo.findCustomerCategoryByName(data.name);
-    if (exists)
+    if (exists) {
       throw new RpcException({
         code: 400,
         message: `Customer category "${data.name}" already exists.`,
       });
+    }
     return await this.pricingRepo.createCustomerCategory(data);
   }
 
   async findAllCustomerCategory(query: ListQueryDto) {
+    this.logger.log('Fetching all customer categories');
     return await this.pricingRepo.findAllCustomerCategory(query);
   }
 
   async findCustomerCategoryById(id: string) {
+    this.logger.log(`Fetching customer category by ID: ${id}`);
     const category = await this.pricingRepo.findCustomerCategoryById(id);
-    if (!category)
+    if (!category) {
       throw new RpcException({
         code: 404,
         message: `Customer category with id ${id} not found.`,
       });
+    }
     return category;
   }
 
   async updateCustomerCategory(id: string, data: UpdateCustomerCategoryDto) {
+    this.logger.log(`Updating customer category ID: ${id}`);
     const category = await this.pricingRepo.findCustomerCategoryById(id);
-    if (!category)
+    if (!category) {
       throw new RpcException({
         code: 404,
         message: `Customer category with id ${id} not found.`,
       });
+    }
 
     if (data.name) {
       const exists = await this.pricingRepo.findCustomerCategoryByName(
@@ -722,31 +1097,58 @@ export class PricingUseCasesImpl implements PricingUseCases {
         });
       }
     }
+
     return await this.pricingRepo.updateCustomerCategory(id, data);
   }
 
   async deleteCustomerCategory(id: string) {
+    this.logger.log(`Deleting customer category ID: ${id}`);
     const category = await this.pricingRepo.findCustomerCategoryById(id);
-    if (!category)
+    if (!category) {
       throw new RpcException({
         code: 404,
         message: `Customer category with id ${id} not found.`,
       });
+    }
     return await this.pricingRepo.deleteCustomerCategory(id);
   }
+
   //==================================================================================================================================================================PRICE CALCULATION LOG=============================================================================================================================================
+  // ── PRICE CALCULATION LOG ──
   async createPriceCalculationLog(data: any): Promise<any> {
+    this.logger.log('Creating price calculation log');
     return await this.pricingRepo.createPriceCalculationLog(data);
   }
+
   async findAllPriceCalculationLog(query: ListQueryDto): Promise<any> {
+    this.logger.log('Fetching all price calculation logs');
     return await this.pricingRepo.findAllPriceCalculationLog(query);
   }
+
   async findPriceCalculationLogById(id: string): Promise<any> {
-    return await this.pricingRepo.findPriceCalculationLogById(id);
+    this.logger.log(`Fetching price calculation log by ID: ${id}`);
+    const log = await this.pricingRepo.findPriceCalculationLogById(id);
+    if (!log) {
+      throw new RpcException({
+        code: 404,
+        message: `Price calculation log with id ${id} not found.`,
+      });
+    }
+    return log;
   }
+
   async deletePriceCalculationLog(id: string): Promise<any> {
+    this.logger.log(`Deleting price calculation log ID: ${id}`);
+    const log = await this.pricingRepo.findPriceCalculationLogById(id);
+    if (!log) {
+      throw new RpcException({
+        code: 404,
+        message: `Price calculation log with id ${id} not found.`,
+      });
+    }
     return await this.pricingRepo.deletePriceCalculationLog(id);
   }
+
   //=====================================================================================================PRICE CALCULATION=============================================================================================================================
   // async calculatePrice({
   //   orderId,
@@ -755,8 +1157,8 @@ export class PricingUseCasesImpl implements PricingUseCases {
   //   orderId: string;
   //   userId?: string;
   // }) {
-  //   console.log('Order calculate price : ', orderId);
-  //   console.log('User calculate price : ', userId);
+  //   this.logger.log('Order calculate price : ', orderId);
+  //   this.logger.log('User calculate price : ', userId);
 
   //   // 1️⃣ Get order and customer
   //   const order = await this.pricingRepo.getOrderById(orderId, {
@@ -952,8 +1354,150 @@ export class PricingUseCasesImpl implements PricingUseCases {
   //   return { finalPrice, currency: tariff.currency || 'ETB', breakdown };
   // }
 
+  // async calculatePrice(orderId: string, userId?: string) {
+  //   this.logger.log(
+  //     `🔹 Calculating price for Order ID: ${orderId}, User ID: ${userId || 'N/A'}`,
+  //   );
+
+  //   // 1️⃣ Fetch order & optional customer concurrently
+  //   const [order, customer] = await Promise.all([
+  //     this.pricingRepo.getOrderById(orderId, { includeCustomer: true }),
+  //     userId
+  //       ? this.pricingRepo.findCustomerById(userId)
+  //       : Promise.resolve(null),
+  //   ]);
+
+  //   if (!order) {
+  //     return { result: null, error: `Order ${orderId} not found` };
+  //   }
+
+  //   this.logger.log(
+  //     `Order found: ${order.id}, Customer: ${order.customer?.name || 'N/A'}`,
+  //   );
+
+  //   // 2️⃣ Resolve customer category if exists
+  //   const category = customer?.customerCategoryId
+  //     ? await this.pricingRepo.findCustomerCategoryById(
+  //         customer.customerCategoryId,
+  //       )
+  //     : null;
+
+  //   if (category)
+  //     this.logger.log(`🔹 Customer Category: ${category.name} (${category.id})`);
+
+  //   // 3️⃣ Fetch tariff
+  //   const tariff =
+  //     await this.pricingRepo.findTariffByScopeAndServiceTypeAndCustomerCategory(
+  //       order.shippingScope,
+  //       order.serviceType,
+  //       category?.id,
+  //     );
+
+  //   if (!tariff) {
+  //     return {
+  //       result: null,
+  //       error: `Tariff not found for ${order.shippingScope}/${order.serviceType}/${category?.name || 'None'}`,
+  //     };
+  //   }
+
+  //   this.logger.log(`Tariff found: ${tariff.name} (${tariff.id})`);
+
+  //   const { weight = 0, distance = 0 } = order;
+  //   const breakdown: any = {};
+
+  //   // 4️⃣ Base price calculation
+  //   const basePrice =
+  //     tariff.baseFee +
+  //     (tariff.perKgRate || 0) * weight +
+  //     (tariff.perKmRate || 0) * distance;
+  //   breakdown.basePrice = basePrice;
+
+  //   this.logger.log('Calculating additional fees...');
+
+  //   // 5️⃣ Compute all additional fees in parallel
+  //   const [miscTotal, miscFees] = this.calculateMiscFees(
+  //     tariff.miscFees,
+  //     order,
+  //     basePrice,
+  //     weight,
+  //     distance,
+  //   );
+  //   const [airportFeeTotal, airportFees] = this.calculateAirportFees(
+  //     tariff.airportFees,
+  //     order,
+  //     weight,
+  //   );
+  //   const [surchargeTotal, surcharges] = this.calculateSurcharges(
+  //     tariff.surcharges,
+  //     order,
+  //     basePrice,
+  //     miscTotal,
+  //     airportFeeTotal,
+  //   );
+  //   const [discountTotal, discounts] = category
+  //     ? await this.calculateDiscounts(
+  //         tariff.id,
+  //         category.id,
+  //         basePrice,
+  //         miscTotal,
+  //         airportFeeTotal,
+  //         surchargeTotal,
+  //       )
+  //     : [0, []];
+  //   const [profitTotal, profitMargins] = this.calculateProfitMargins(
+  //     tariff.profitMargins,
+  //     order,
+  //     basePrice,
+  //     miscTotal,
+  //     airportFeeTotal,
+  //     surchargeTotal,
+  //     discountTotal,
+  //   );
+
+  //   // 🔟 Final price calculation
+  //   const finalPrice =
+  //     basePrice +
+  //     miscTotal +
+  //     airportFeeTotal +
+  //     surchargeTotal -
+  //     discountTotal +
+  //     profitTotal;
+  //   breakdown.finalPrice = finalPrice;
+
+  //   breakdown.miscFees = miscFees;
+  //   breakdown.airportFees = airportFees;
+  //   breakdown.surcharges = surcharges;
+  //   breakdown.discounts = discounts;
+  //   breakdown.profitMargins = profitMargins;
+
+  //   this.logger.log('🔹 Price breakdown:', JSON.stringify(breakdown, null, 2));
+
+  //   // 1️⃣1️⃣ Log price calculation and update order (background)
+  //   this.pricingRepo
+  //     .logPriceCalculationAndUpdateOrder({
+  //       orderId: order.id,
+  //       weight,
+  //       distance,
+  //       baseRate: basePrice,
+  //       appliedRate: basePrice + miscTotal + airportFeeTotal + surchargeTotal,
+  //       surcharges,
+  //       discounts,
+  //       miscFees,
+  //       profit: { total: profitTotal },
+  //       airportFee: { total: airportFeeTotal },
+  //       finalPrice,
+  //       currency: tariff.currency || 'ETB',
+  //     })
+  //     .catch((err) => this.logger.error('Failed to log price calculation:', err));
+
+  //   return {
+  //     result: { finalPrice, currency: tariff.currency || 'ETB', breakdown },
+  //     error: null,
+  //   };
+  // }
+
   async calculatePrice(orderId: string, userId?: string) {
-    console.log(
+    this.logger.log(
       `🔹 Calculating price for Order ID: ${orderId}, User ID: ${userId || 'N/A'}`,
     );
 
@@ -964,35 +1508,35 @@ export class PricingUseCasesImpl implements PricingUseCases {
         ? this.pricingRepo.findCustomerById(userId)
         : Promise.resolve(null),
     ]);
-    // if (!order)
-    // throw new RpcException({
-    //   code: 404,
-    //   message: `Order ${orderId} not found`,
-    // });
+
     if (!order) {
       return { result: null, error: `Order ${orderId} not found` };
     }
 
-    // 2️⃣ Resolve customer category (if exists)
-    const categoryPromise = customer?.customerCategoryId
-      ? this.pricingRepo.findCustomerCategoryById(customer.customerCategoryId)
-      : Promise.resolve(null);
-    const category = await categoryPromise;
-    if (category)
-      console.log(`🔹 Customer Category: ${category.name} (${category.id})`);
+    this.logger.log(
+      `🔹 Order found: ${order.id}, Customer: ${order.customer?.name || 'N/A'}`,
+    );
 
-    // 3️⃣ Fetch tariff
+    // 2️⃣ Fetch customer category if available
+    const category = customer?.customerCategoryId
+      ? await this.pricingRepo.findCustomerCategoryById(
+          customer.customerCategoryId,
+        )
+      : null;
+
+    if (category)
+      this.logger.log(
+        `🔹 Customer Category: ${category.name} (${category.id})`,
+      );
+
+    // 3️⃣ Fetch applicable tariff
     const tariff =
       await this.pricingRepo.findTariffByScopeAndServiceTypeAndCustomerCategory(
         order.shippingScope,
         order.serviceType,
         category?.id,
       );
-    // if (!tariff)
-    //   throw new RpcException({
-    //     code: 404,
-    //     message: `Tariff not found for ${order.shippingScope}/${order.serviceType}/${category?.name || 'None'}`,
-    //   });
+
     if (!tariff) {
       return {
         result: null,
@@ -1000,52 +1544,61 @@ export class PricingUseCasesImpl implements PricingUseCases {
       };
     }
 
-    const { weight = 0, distance = 0 } = order;
+    const weight = order.weight || 0;
+    const distance = order.distance || 0;
     const breakdown: any = {};
 
-    // 4️⃣ Base price
+    // 4️⃣ Base price calculation
     const basePrice =
-      tariff.baseFee +
+      (tariff.baseFee || 0) +
       (tariff.perKgRate || 0) * weight +
       (tariff.perKmRate || 0) * distance;
     breakdown.basePrice = basePrice;
 
-    // 5️⃣ Compute all other fees in parallel
+    // 5️⃣ Calculate misc fees
     const [miscTotal, miscFees] = this.calculateMiscFees(
-      tariff.miscFees,
+      tariff.miscFees || [],
       order,
       basePrice,
       weight,
       distance,
     );
-    const [airportFeeTotal, airportFees] = this.calculateAirportFees(
-      tariff.airportFees,
+
+    // 6️⃣ Calculate airport fees
+    const [airportTotal, airportFees] = this.calculateAirportFees(
+      tariff.airportFees || [],
       order,
       weight,
     );
+
+    // 7️⃣ Calculate surcharges
     const [surchargeTotal, surcharges] = this.calculateSurcharges(
-      tariff.surcharges,
+      tariff.surcharges || [],
       order,
       basePrice,
       miscTotal,
-      airportFeeTotal,
+      airportTotal,
     );
+
+    // 8️⃣ Calculate discounts
     const [discountTotal, discounts] = category
       ? await this.calculateDiscounts(
           tariff.id,
           category.id,
           basePrice,
           miscTotal,
-          airportFeeTotal,
+          airportTotal,
           surchargeTotal,
         )
       : [0, []];
+
+    // 9️⃣ Calculate profit margins
     const [profitTotal, profitMargins] = this.calculateProfitMargins(
-      tariff.profitMargins,
+      tariff.profitMargins || [],
       order,
       basePrice,
       miscTotal,
-      airportFeeTotal,
+      airportTotal,
       surchargeTotal,
       discountTotal,
     );
@@ -1054,19 +1607,18 @@ export class PricingUseCasesImpl implements PricingUseCases {
     const finalPrice =
       basePrice +
       miscTotal +
-      airportFeeTotal +
+      airportTotal +
       surchargeTotal -
       discountTotal +
       profitTotal;
     breakdown.finalPrice = finalPrice;
-
     breakdown.miscFees = miscFees;
     breakdown.airportFees = airportFees;
     breakdown.surcharges = surcharges;
     breakdown.discounts = discounts;
     breakdown.profitMargins = profitMargins;
 
-    console.log('🔹 Price breakdown:', JSON.stringify(breakdown, null, 2));
+    this.logger.log('🔹 Price breakdown:', JSON.stringify(breakdown, null, 2));
 
     // 1️⃣1️⃣ Save calculation & update order in background
     await this.pricingRepo.logPriceCalculationAndUpdateOrder({
@@ -1074,21 +1626,24 @@ export class PricingUseCasesImpl implements PricingUseCases {
       weight,
       distance,
       baseRate: basePrice,
-      appliedRate: basePrice + miscTotal + airportFeeTotal + surchargeTotal,
+      appliedRate: basePrice + miscTotal + airportTotal + surchargeTotal,
       surcharges,
       discounts,
       miscFees,
       profit: { total: profitTotal },
-      airportFee: { total: airportFeeTotal },
+      airportFee: { total: airportTotal },
       finalPrice,
       currency: tariff.currency || 'ETB',
     });
 
     return {
-      result: { finalPrice, currency: tariff.currency || 'ETB', breakdown },
+      result: {
+        finalPrice,
+        currency: tariff.currency || 'ETB',
+        breakdown,
+      },
       error: null,
     };
-    // return { finalPrice, currency: tariff.currency || 'ETB', breakdown };
   }
 
   //===========================================================HELPER METHODS===========================================================================================================
@@ -1107,12 +1662,9 @@ export class PricingUseCasesImpl implements PricingUseCases {
     const list: FeeBreakdown[] = [];
 
     for (const fee of fees) {
-      // Match by service type if defined
       if (fee.serviceType && fee.serviceType !== order.serviceType) continue;
 
       let apply = true;
-
-      // Check dynamic JSON conditions
       if (fee.condition) {
         const condition = fee.condition as Record<string, any>;
         for (const [key, val] of Object.entries(condition)) {
@@ -1123,7 +1675,6 @@ export class PricingUseCasesImpl implements PricingUseCases {
           } else if (orderVal !== val) apply = false;
         }
       }
-
       if (!apply) continue;
 
       let amount = 0;
@@ -1137,9 +1688,8 @@ export class PricingUseCasesImpl implements PricingUseCases {
         case 'PER_KM':
           amount = fee.amount * distance;
           break;
-        default:
-          amount = fee.amount; // FLAT
-          break;
+        default: // FLAT
+          amount = fee.amount;
       }
 
       total += amount;
@@ -1149,9 +1699,6 @@ export class PricingUseCasesImpl implements PricingUseCases {
     return [total, list];
   }
 
-  /**
-   * Calculate airport-related fees.
-   */
   private calculateAirportFees(
     fees: AirportFee[],
     order: OrderLike,
@@ -1171,9 +1718,6 @@ export class PricingUseCasesImpl implements PricingUseCases {
     return [total, list];
   }
 
-  /**
-   * Calculate surcharges like fuel or service markup.
-   */
   private calculateSurcharges(
     fees: Surcharge[],
     order: OrderLike,
@@ -1199,9 +1743,6 @@ export class PricingUseCasesImpl implements PricingUseCases {
     return [total, list];
   }
 
-  /**
-   * Calculate applicable discounts.
-   */
   private async calculateDiscounts(
     tariffId: string,
     categoryId: string,
@@ -1229,9 +1770,6 @@ export class PricingUseCasesImpl implements PricingUseCases {
     return [total, list];
   }
 
-  /**
-   * Calculate profit margins (percentage or min/max capped).
-   */
   private calculateProfitMargins(
     fees: ProfitMargin[],
     order: OrderLike,

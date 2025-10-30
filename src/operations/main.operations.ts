@@ -4,11 +4,13 @@ import { OperationsModule } from './operations.module';
 import { ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from '../common/auth.guard';
+import { NestSystemLogger } from '../common/nest-system-logger.util';
 
 async function bootstrap() {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     OperationsModule,
     {
+      logger: new NestSystemLogger('OperationsService', 'System'),
       transport: Transport.TCP,
       options: {
         host: '0.0.0.0',

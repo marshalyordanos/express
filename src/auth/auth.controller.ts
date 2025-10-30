@@ -4,7 +4,7 @@ import {
   Logger,
   UseGuards,
 } from '@nestjs/common';
-import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
+import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PATTERNS } from '../contracts';
 import { AuthUseCaseImpl } from './auth.usecase.impl';
 import {
@@ -29,127 +29,75 @@ export class AuthMessageController {
   @Public()
   @MessagePattern(PATTERNS.AUTH_REGISTER)
   async register(@Payload() dto: AuthRegisterDto) {
-    try {
-      const user = await this.usecases.register(dto);
-      return new IResponse(true, 'User is registered Succuessfuly', user);
-    } catch (error) {
-      handleCatch(error);
-    }
+    const user = await this.usecases.register(dto);
+    return new IResponse(true, 'User is registered Succuessfuly', user);
   }
 
   @Public()
   @UseGuards(RateLimitGuard)
   @MessagePattern(PATTERNS.AUTH_LOGIN)
-  async login(@Payload() payload: {dto: AuthLoginDto}) {
-    try {
-      const { dto } = payload;
-      console.log('data: ', dto);
-
-      const data = await this.usecases.login(dto);
-      return new IResponse(true, 'User is logged in Succuessfuly', data);
-    } catch (error) {
-      handleCatch(error);
-    }
+  async login(@Payload() payload: { dto: AuthLoginDto }) {
+    const { dto } = payload;
+    const data = await this.usecases.login(dto);
+    return new IResponse(true, 'User is logged in Succuessfuly', data);
   }
 
   @Public()
   @UseGuards(RateLimitGuard)
   @MessagePattern(PATTERNS.AUTH_LOGIN_MOBILE)
-  async loginMobile(@Payload() payload: {dto: AuthLoginMobileDto}) {
-    try {
-      const { dto } = payload;
-      console.log('data: ', dto);
-
-      const data = await this.usecases.loginMobile(dto);
-      return new IResponse(true, 'User is logged in Succuessfuly', data);
-    } catch (error) {
-      handleCatch(error);
-    }
+  async loginMobile(@Payload() payload: { dto: AuthLoginMobileDto }) {
+    const { dto } = payload;
+    const data = await this.usecases.loginMobile(dto);
+    return new IResponse(true, 'User is logged in Succuessfuly', data);
   }
 
-  @UseGuards(PermissionGuard,RateLimitGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Auth', PermissionActions.READ)
   @MessagePattern(PATTERNS.AUTH_REFRESH_TOKEN)
   async refreshToken(@Payload() data: any) {
-    try {
-      const user = data.user; // decoded JWT
-      console.log('Current user:', user);
-
-      // Object-level authorization: always match user from token
-      if (!user?.sub) throw new ForbiddenException('Unauthorized');
-      console.log('Current user sub :', user?.sub);
-      console.log('Refresh token :', data.refreshToken);
-
-      const tokens = await this.usecases.refreshToken(
-        user?.sub,
-        data.refreshToken,
-      );
-
-      this.logger.log(`Token refreshed for userId=${user.sub}`);
-      return new IResponse(true, 'Token has been refreshed!', tokens);
-    } catch (error) {
-      this.logger.error(`Refresh token failed: ${error.message} ;;;`);
-      handleCatch(error);
-    }
+    const user = data.user; // decoded JWT
+    // Object-level authorization: always match user from token
+    if (!user?.sub) throw new ForbiddenException('Unauthorized');
+    const tokens = await this.usecases.refreshToken(
+      user?.sub,
+      data.refreshToken,
+    );
+    return new IResponse(true, 'Token has been refreshed!', tokens);
   }
 
-  @UseGuards(PermissionGuard,RateLimitGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Auth', PermissionActions.READ)
   @MessagePattern(PATTERNS.AUTH_FIND_AUTHENTICATED_USER)
   async getAuthenticatedUser(@Payload() data: any) {
-    try {
-      const user = data.user; // decoded JWT
-      console.log('Current user:', user);
-
-      // Object-level authorization: always match user from token
-      if (!user?.sub) throw new ForbiddenException('Unauthorized');
-      console.log('Current user sub :', user?.sub);
-
-     const userData= await this.usecases.getAuthenticatedUser(user?.sub);
-
-      this.logger.log(`User fetched for userId=${user.sub}`);
-      return new IResponse(true, 'User Fetched successfully!', userData);
-    } catch (error) {
-      this.logger.error(`User fetch failed: ${error.message}`, error.stack);
-      handleCatch(error);
-    }
+    const user = data.user; // decoded JWT
+    // Object-level authorization: always match user from token
+    if (!user?.sub) throw new ForbiddenException('Unauthorized');
+    const userData = await this.usecases.getAuthenticatedUser(user?.sub);
+    return new IResponse(true, 'User Fetched successfully!', userData);
   }
-  
+
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Auth', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.AUTH_CHANGE_PASSWORD)
   async changePassword(
     @Payload() data: { user: any; body: AuthChangePasswordDto },
   ) {
-    try {
-      const user = data.user; // decoded JWT
-      const body = data.body;
-      console.log('Current user:', user, body);
-      // Object-level authorization
-      if (!user?.sub) throw new ForbiddenException('Unauthorized');
-      console.log('Current user sub:', user?.sub);
-
-      await this.usecases.changePassword(user?.sub, body);
-      this.logger.log(`Password changed successfully for userId=${user.sub}`);
-      return new IResponse(true, 'Password changed successfully');
-    } catch (error) {
-      this.logger.error(
-        `Change password failed for userId=${data.user?.sub}: ${error.message}`,
-        error.stack,
-      );
-      handleCatch(error);
-    }
+    const user = data.user; // decoded JWT
+    const body = data.body;
+    // Object-level authorization
+    if (!user?.sub) throw new ForbiddenException('Unauthorized');
+    await this.usecases.changePassword(user?.sub, body);
+    return new IResponse(
+      true,
+      'Password changed successfully. Please log in again.',
+    );
   }
 
   @Public()
   @MessagePattern('SUPPER_ADDMIN')
   async superAdmin(@Payload() dto: any) {
-    try {
-      const user = await this.usecases.createSuperAdmin();
-      return new IResponse(true, 'User is registered Succuessfuly', user);
-    } catch (error) {
-      handleCatch(error);
-    }
+    const user = await this.usecases.createSuperAdmin();
+    return new IResponse(true, 'User is registered Succuessfuly', user);
   }
 }
 //

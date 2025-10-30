@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
+  HttpStatus,
   Inject,
   Param,
   Patch,
@@ -14,12 +16,14 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { PATTERNS } from '../contracts';
 import {
+  AssignStaffToBranchDto,
   ChangeRoleDto,
   RegisterStaffDto,
   UpdateStaffDto,
 } from '../operations/staff/staff.entity';
-import { query, Request } from 'express';
 import { ListQueryDto } from '../common/query/query.dto';
+import * as jwt from 'jsonwebtoken';
+import { SanitizePipe } from '../common/sanitize.pipe';
 
 @Controller('staff')
 export class StaffGatewayController {
@@ -32,19 +36,45 @@ export class StaffGatewayController {
   async changeUserRole(@Body() dto: ChangeRoleDto, @Req() req) {
     console.log('dto: ', dto);
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
 
     return this.staffClient.send(PATTERNS.USER_CHANGE_ROLE, {
       data: dto,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
   //Get staff or user using their email
   @Get('email/:email')
   async findUserByEmail(@Param('email') email: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.staffClient.send(PATTERNS.USER_FIND_BY_EMAIL, {
       email,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -52,9 +82,22 @@ export class StaffGatewayController {
   @Post()
   async createStaff(@Req() req, @Body() dto: RegisterStaffDto) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     console.log('=========================: ', authHeader);
     return this.staffClient.send(PATTERNS.STAFF_CREATE, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
       data: dto,
     });
   }
@@ -70,11 +113,24 @@ export class StaffGatewayController {
     @Query() query: ListQueryDto,
   ) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
 
     // Wait for microservice response
     const result = await firstValueFrom(
       this.staffClient.send(PATTERNS.STAFF_FIND_ALL, {
         headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
         query,
       }),
     );
@@ -91,9 +147,22 @@ export class StaffGatewayController {
     @Query() query: ListQueryDto,
   ) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
 
     return this.staffClient.send(PATTERNS.STAFF_FIND_BY_ROLE, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
       query,
       role,
     });
@@ -103,10 +172,23 @@ export class StaffGatewayController {
   async deleteStaff(@Param('id') id: string, @Req() req) {
     console.log('Deleting....');
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
 
     return this.staffClient.send(PATTERNS.STAFF_DELETE, {
       id,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -118,20 +200,46 @@ export class StaffGatewayController {
   ) {
     console.log('this is dto : ', dto);
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
 
     return this.staffClient.send(PATTERNS.STAFF_UPDATE, {
       id,
       data: dto,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
   @Get(':id')
   async findStaffById(@Param('id') id: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.staffClient.send(PATTERNS.STAFF_FIND_BY_ID, {
       id,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -145,9 +253,22 @@ export class StaffGatewayController {
     @Query() query: ListQueryDto,
   ) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
 
     return this.staffClient.send(PATTERNS.STAFF_FIND_BY_BRANCH, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
       branchId,
       query,
     });
@@ -155,13 +276,26 @@ export class StaffGatewayController {
 
   @Post('assign-branch')
   async assignBranch(
-    @Body() dto: { staffIds: string[]; branchId: string },
+    @Body() dto: AssignStaffToBranchDto,
     @Req() req,
   ) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.staffClient.send(PATTERNS.STAFF_ASSIGN_BRANCH, {
       data: dto,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 }

@@ -17,9 +17,9 @@ import { ConfigModule } from '@nestjs/config';
 import { MapGatewayController } from './maps.gateway.controller';
 import { RedisService } from '../redis/redis.service';
 import { WebSocketModule } from '../websocket/socket.module';
-// import { DriverLocationService } from '../fulfillment/maps/driver-location.service';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { ReportGatewayController } from './report.gateway.controller';
+import { AppLogger } from '../common/app-logger.service';
 
 
 @Module({
@@ -45,7 +45,7 @@ import { ReportGatewayController } from './report.gateway.controller';
       },
     }),
   ],
-  providers: [PermissionBootstrapper, PrismaService, RedisService],
+  providers: [PermissionBootstrapper, PrismaService, RedisService, AppLogger],
   controllers: [
     AuthGatewayController,
     UserGatewayController,

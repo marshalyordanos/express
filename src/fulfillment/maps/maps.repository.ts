@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { connect } from 'http2';
 import { DriverStatus, DriverType, OptimizationStatus, OptimizationType } from '@prisma/client';
 
 @Injectable()

@@ -29,6 +29,8 @@ export class OrderDistanceWsService {
       payload.orderId,
     );
 
+    console.log(`responsing after calculating of distance ${distance} and price ${priceData}`);
+    
     return { distance, priceData };
   }
 

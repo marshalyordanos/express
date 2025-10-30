@@ -15,10 +15,14 @@ import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 
 @Injectable()
 export class UserRepository {
+
   constructor(private prisma: PrismaService) {}
 
   async findUserById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } });
+  }
+   async findAddressById(id: string) {
+    return this.prisma.address.findUnique({ where: { id } });
   }
 
   async findAll(payload: ListQueryDto) {

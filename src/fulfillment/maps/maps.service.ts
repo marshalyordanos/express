@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
-import { log } from 'console';
 import axios from 'axios';
 
 type LatLon = { id?: string; lat: number; lon: number };

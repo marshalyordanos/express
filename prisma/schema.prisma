@@ -28,6 +28,7 @@ model User {
   mfa                Mfa?
   notifications      Notification[]
   orders             Order[]            @relation("CustomerOrders")
+  receivers          Order[]            @relation("ReceiverOrders")
   //assignedOrders     Order[]            @relation("DriverOrders")
   validatedOrders    Order[]            @relation("ValidateOrders")
   passwordReset      PasswordReset[]
@@ -53,6 +54,8 @@ deliveryOrders Order[] @relation("DeliveryDriverOrders")
   corporateInfo CorporateInfo?
   driver        Driver?
 
+  createdBy        String?
+
   @@index([isStaff])
   @@index([branchId])
   @@index([roleId])
@@ -71,6 +74,7 @@ model CorporateInfo {
   website        String?
   address        String?
   notes          String?
+  createdBy      String?
 
   user User @relation(fields: [userId], references: [id])
 }
@@ -94,7 +98,8 @@ model Address {
   userId      String?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
-    branchId    String?        @unique 
+  branchId    String?        @unique 
+  createdBy     String?
 
   user           User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
   pickupOrders   Order[] @relation("PickupAddress")
@@ -117,6 +122,7 @@ model UserPreferences {
   deliveryNotes        String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+  createdBy            String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -128,6 +134,7 @@ model Permission {
   rolePermissions RolePermission[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  createdBy       String?
 
   @@unique([resource]) // one row per resource
 }
@@ -140,6 +147,7 @@ model Role {
   rolePermissions RolePermission[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  createdBy       String?
 }
 
 model RolePermission {
@@ -155,6 +163,10 @@ model RolePermission {
   updateAction Boolean @default(false)
   deleteAction Boolean @default(false)
 
+  scope      String[] @default([])
+
+  createdBy    String?
+
   @@unique([roleId, permissionId]) // prevent duplicates
 }
 
@@ -169,6 +181,8 @@ model Branch {
   orders    Order[]
   staff     User[]
   address   Address? @relation("BranchAddress")
+
+  createdBy    String?
 }
 
 model Vehicle {
@@ -181,6 +195,7 @@ model Vehicle {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   fleetLogs   FleetLog[]
+  createdBy    String?
 
   // driver      User?         @relation(fields: [driverId], references: [id])
   batchDispatches BatchDispatch[] @relation("BatchDispatchVehicle")
@@ -197,12 +212,14 @@ model FleetLog {
   cost        Float?
   date        DateTime @default(now())
   vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  createdBy   String?
 }
 
 model Order {
   id              String          @id @default(cuid())
   trackingCode    String          @unique
   customerId      String
+  receiverId      String?
   branchId        String?
   pickupDriverId  String?        
   deliveryDriverId String? 
@@ -237,6 +254,7 @@ model Order {
   validatedBy       String?
   validatedAt       DateTime?
   validatedNotes    String?
+  quantity          Float?
 
   // Analaytics
   pickupAssignedBy      String?   
@@ -248,6 +266,7 @@ model Order {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  createdBy  String?
   batchId   String?
 
   // Tariff & Pricing
@@ -260,6 +279,7 @@ model Order {
   // Relations
   branch          Branch?          @relation(fields: [branchId], references: [id])
   customer        User             @relation("CustomerOrders", fields: [customerId], references: [id])
+  receiver        User?             @relation("ReceiverOrders", fields: [receiverId], references: [id])
   validator       User?            @relation("ValidateOrders", fields: [validatedBy], references: [id])
   exceptions      OrderException[]
   payment         Payment?
@@ -308,6 +328,7 @@ model ParcelApproval {
   decidedAt  DateTime?
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
+  createdBy  String?
 
   order Order @relation(fields: [orderId], references: [id])
   staff User? @relation("StaffApprovals", fields: [decisionBy], references: [id])
@@ -323,6 +344,7 @@ model OrderTracking {
   updatedBy String?
   notes     String?
   createdAt DateTime    @default(now())
+  createdBy String?
 
   order Order @relation(fields: [orderId], references: [id])
 
@@ -336,6 +358,7 @@ model OrderException {
   type      String
   reason    String
   createdAt DateTime @default(now())
+  createdBy String?
   order     Order    @relation(fields: [orderId], references: [id])
 }
 
@@ -353,6 +376,7 @@ model BatchDispatch {
   notes        String?
   weight       Float?
   shipmentDate DateTime?      @db.Date
+  createdUser    String?
 
   // Relations
   originId      String?
@@ -379,6 +403,7 @@ model BatchHandover {
   method     String? // e.g., "handed to airport", "receipt scanned"
   reference  String? // optional: receipt number or photo URL
   notes      String?
+  createdBy  String?
 
   // Relations
   batches BatchDispatch[] @relation("HandoverBatches")
@@ -393,6 +418,7 @@ model OrderScan {
   batchId   String? // optional
   notes     String? // optional notes
   valid     Boolean  @default(true)
+  createdBy String?
 
   order Order @relation("OrderToOrderScan", fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -409,6 +435,7 @@ model Payment {
   transactionId String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  createdBy     String?
   order         Order         @relation(fields: [orderId], references: [id])
 }
 
@@ -424,6 +451,7 @@ model Pricing {
   corporateId String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  createdBy   String?
 }
 
 /// ─────────────────── Pricing & Tariff Management ────────────────────────────────
@@ -443,6 +471,7 @@ model Tariff {
   updatedAt          DateTime          @updatedAt
   shippingScope      ShippingScope?
   customerCategoryId String?
+  createdBy          String?
   customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id])
 
   // Relations
@@ -467,6 +496,7 @@ model ProfitMargin {
   maxAmount  Float? // optional cap on margin
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  createdBy  String?
 }
 
 model AirportFee {
@@ -484,6 +514,7 @@ model AirportFee {
   effectiveTo   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  createdBy     String?
 }
 
 model MiscFee {
@@ -509,6 +540,7 @@ model MiscFee {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  createdBy String?
 }
 
 model Surcharge {
@@ -525,6 +557,7 @@ model Surcharge {
   isActive      Boolean        @default(true)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  createdBy     String?
 }
 
 model DiscountRule {
@@ -543,6 +576,7 @@ model DiscountRule {
   isActive      Boolean        @default(true)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  createdBy     String?
 
   customerCategoryId String?
   customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id])
@@ -554,6 +588,7 @@ model CustomerCategory {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  createdBy   String?
 
   users         User[]
   tariffs       Tariff[]
@@ -572,6 +607,7 @@ model PricingRule {
   validTo            DateTime?
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
+  createdBy          String?
 }
 
 model PriceCalculationLog {
@@ -591,6 +627,7 @@ model PriceCalculationLog {
   finalPrice  Float
   currency    String   @default("ETB")
   createdAt   DateTime @default(now())
+  createdBy   String?
 }
 
 model Notification {
@@ -600,6 +637,7 @@ model Notification {
   message   String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+  createdBy String?
   user      User     @relation(fields: [userId], references: [id])
 }
 
@@ -611,6 +649,7 @@ model AuditLog {
   entityId  String
   details   String?
   createdAt DateTime @default(now())
+  createdBy String?
   user      User     @relation(fields: [userId], references: [id])
 }
 
@@ -622,6 +661,7 @@ model Bookmark {
   description String?
   link        String?
   userId      String
+  createdBy   String?
   user        User     @relation(fields: [userId], references: [id])
 }
 
@@ -633,6 +673,7 @@ model Bookmark2 {
   description String?
   link        String?
   userId      Int
+  createdBy   String?
 }
 
 model RefreshToken {
@@ -658,6 +699,7 @@ model EmailVerification {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
+  createdBy String?
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -667,6 +709,7 @@ model Mfa {
   secret    String
   enabled   Boolean  @default(false)
   createdAt DateTime @default(now())
+  createdBy String?
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -682,6 +725,7 @@ model Location {
   country   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  createdBy String?
 
   originRoutes      Route[] @relation("RouteOrigin")
   destinationRoutes Route[] @relation("RouteDestination")
@@ -702,6 +746,7 @@ model Route {
   trafficAware  Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  createdBy     String?
 
   origin      Location @relation("RouteOrigin", fields: [originId], references: [id])
   destination Location @relation("RouteDestination", fields: [destinationId], references: [id])
@@ -725,6 +770,7 @@ model OptimizationJob {
   createdAt      DateTime           @default(now())
   completedAt    DateTime?
   optimizedOrder Json?
+  createdBy      String?
 
   // Relations
   orders            Order[]            @relation("OptimizationJobOrders")
@@ -745,6 +791,7 @@ model Driver {
   currentLat Float?
   currentLon Float?
   updatedAt  DateTime?
+  createdBy  String?
 
   // Relations
   user             User?               @relation(fields: [userId], references: [id])
@@ -766,6 +813,7 @@ model DriverLocationLog {
   speed     Float?
   heading   Float?
   timestamp DateTime @default(now())
+  createdBy String?
 
   driver Driver @relation(fields: [driverId], references: [id])
 
@@ -781,6 +829,7 @@ model TrafficCondition {
   congestionLevel   CongestionLevel
   updatedAt         DateTime        @default(now())
   lastCheckedAt     DateTime?
+  createdBy         String?
 
   // Relations
   route           Route?           @relation(fields: [routeId], references: [id], onDelete: Cascade)

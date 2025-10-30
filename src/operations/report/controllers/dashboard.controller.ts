@@ -1,17 +1,17 @@
-import { Controller, Get, Injectable, Query, UseGuards } from '@nestjs/common';
+import { Injectable, UseGuards } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { ServiceType } from '@prisma/client';
 import { CheckPermission } from '../../../common/decorator/check-permission.decorator';
 import { PermissionGuard } from '../../../common/permission.guard';
 import { PATTERNS } from '../../../contracts';
 import { PermissionActions } from '../../../contracts/permission-actions.enum';
 import { DashboardReportService } from '../services/dashboard.service';
+import { RateLimitGuard } from '../../../common/rate-limit.guard';
 
 @Injectable()
 export class DashboardReportMessageController {
   constructor(private readonly reportsService: DashboardReportService) {}
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Dashboard-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_OVERVIEW)
   async getOverview(
@@ -21,7 +21,7 @@ export class DashboardReportMessageController {
     return this.reportsService.getOverview(token);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Dashboard-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_SHIPMENT_PERFORMANCE)
   async getShipmentPerformance(
@@ -29,7 +29,7 @@ export class DashboardReportMessageController {
   ) {
     return this.reportsService.getShipmentPerformance();
   }
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Dashboard-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_REVENUE_TRENDS)
   async getRevenueTrends(
@@ -42,7 +42,7 @@ export class DashboardReportMessageController {
       | 'yearly';
     return this.reportsService.getRevenueTrends(period);
   }
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Dashboard-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_BRANCH_PERFORMANCE)
   async getBranchPerformance(
@@ -51,7 +51,7 @@ export class DashboardReportMessageController {
     const metric = payload.metric?.toLowerCase() || 'deliveries';
     return this.reportsService.getBranchPerformance(metric);
   }
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Dashboard-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_DRIVER_PERFORMANCE)
   async getDriverPerformance(
@@ -65,7 +65,7 @@ export class DashboardReportMessageController {
     return this.reportsService.getDriverPerformance(regionId);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Dashboard-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_BRANCH_SUMMARY)
   async getBranchDashboardSummary(
@@ -77,7 +77,7 @@ export class DashboardReportMessageController {
     return this.reportsService.getBranchDashboardSummary();
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Dashboard-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_STAFF_SUMMARY)
   async getStaffDashboardSummary(
@@ -88,7 +88,7 @@ export class DashboardReportMessageController {
   ) {
     return this.reportsService.getStaffDashboardSummary();
   }
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Dashboard-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_ORDER_SUMMARY)
   async getOrderDashboardSummary(
@@ -100,7 +100,7 @@ export class DashboardReportMessageController {
     return this.reportsService.getOrderDashboardSummary();
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Dashboard-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_CUSTOMER_SUMMARY)
   async getCustomerDashboardSummary(
@@ -110,5 +110,16 @@ export class DashboardReportMessageController {
     },
   ) {
     return this.reportsService.getCustomerAnalytics();
+  }
+    @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @MessagePattern(PATTERNS.REPORT_DASHBOARD_REVENUE_SUMMARY)
+  async getReportOverview(
+    @Payload()
+    payload: {
+      headers: { authorization: string };
+    },
+  ) {
+    return this.reportsService.getReportOverview();
   }
 }

@@ -8,7 +8,6 @@ import {
   VehicleMaintenanceDto,
   VehicleMaintenanceQueryDto,
 } from './fleet.entity';
-import { IPagination } from '../../common/types';
 
 @Injectable()
 export class VehicleRepository {

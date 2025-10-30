@@ -1,85 +1,233 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { BranchRepository } from './branch.repository';
 import { Branch } from '@prisma/client';
-import {
-  BranchCreateDto,
-  BranchUpdateDto,
-  BranchResponseDto,
-} from './branch.entity';
+import { BranchCreateDto, BranchUpdateDto } from './branch.entity';
 import { BranchUseCases } from './branch.useCase';
-import { IPagination } from '../../common/types';
 import { RpcException } from '@nestjs/microservices';
 import { ListQueryDto } from '../../common/query/query.dto';
+import { AppLogger } from '../../common/app-logger.service';
 
 @Injectable()
 export class BranchUseCaseImpl implements BranchUseCases {
-  constructor(private readonly branchRepository: BranchRepository) {}
-  async revokeManager(branchId: string, managerId: string): Promise<string> {
-    const [user, branch] =
-      await this.branchRepository.findBranchAndBranchManager(
-        managerId,
-        branchId,
-      );
-    // Validate user and branch existence
-    if (!user || !branch) {
-      throw new RpcException('User or Branch not found');
-    }
-
-    if (branch.managerId !== managerId) {
-      throw new RpcException('User is not a manager of this branch');
-    }
-    await this.branchRepository.revokeManager(branchId, managerId);
-
-    return 'Manager revoked successfully';
+  constructor(
+    private readonly branchRepository: BranchRepository,
+    private readonly logger: AppLogger,
+  ) {
+    this.logger.setContext('OperationsService', 'BranchUseCaseImpl');
   }
-  async assignManager(branchId: string, managerId: string): Promise<Branch> {
-    const [user, branch] =
-      await this.branchRepository.findBranchAndBranchManager(
-        managerId,
-        branchId,
+  async revokeManager(branchId: string, managerId: string): Promise<string> {
+    try {
+      this.logger.log(
+        `🧩 Attempting to revoke manager ${managerId} from branch ${branchId}`,
       );
-    // Validate user and branch existence
-    if (!user || !branch) {
-      throw new RpcException('User or Branch not found');
-    }
 
-    //  Checking if branch already has a manager
-    if (branch.managerId) {
-      throw new RpcException('Branch already has a manager');
-    }
+      // Security: sanitize input
+      if (!branchId || !managerId) {
+        throw new RpcException({
+          code: 400,
+          message: 'Invalid branch or manager ID',
+        });
+      }
 
-    const existingManagedBranch = await this.branchRepository.findManagedBranch(
-      branchId,
-      managerId,
-    );
-    if (existingManagedBranch) {
-      throw new RpcException('User is already a manager of another branch');
-    }
+      const [user, branch] =
+        await this.branchRepository.findBranchAndBranchManager(
+          managerId,
+          branchId,
+        );
 
-    return await this.branchRepository.assignManager(branchId, managerId);
+      if (!user || !branch) {
+        this.logger.warn(`⚠️ User or Branch not found during revoke`);
+        throw new RpcException({
+          code: 404,
+          message: 'User or Branch not found',
+        });
+      }
+
+      if (branch.managerId !== managerId) {
+        this.logger.warn(
+          `⚠️ Attempted revoke: user ${managerId} is not the manager of branch ${branchId}`,
+        );
+        throw new RpcException({
+          code: 403,
+          message: 'User is not authorized as manager of this branch',
+        });
+      }
+
+      await this.branchRepository.revokeManager(branchId, managerId);
+
+      this.logger.log(
+        `✅ Manager ${managerId} successfully revoked from branch ${branchId}`,
+      );
+      return 'Manager revoked successfully';
+    } catch (error) {
+      this.logger.error(
+        `❌ Error revoking manager ${managerId} from branch ${branchId}: ${error.message}`,
+      );
+      throw new RpcException({
+        code: error.code || 500,
+        message: 'Failed to revoke manager',
+      });
+    }
+  }
+
+  async assignManager(branchId: string, managerId: string): Promise<Branch> {
+    try {
+      this.logger.log(
+        `🧩 Assigning manager ${managerId} to branch ${branchId}`,
+      );
+
+      if (!branchId || !managerId) {
+        throw new RpcException({
+          code: 400,
+          message: 'Invalid branch or manager ID',
+        });
+      }
+
+      const [user, branch] =
+        await this.branchRepository.findBranchAndBranchManager(
+          managerId,
+          branchId,
+        );
+
+      if (!user || !branch) {
+        this.logger.warn(`⚠️ Branch or User not found`);
+        throw new RpcException({
+          code: 404,
+          message: 'User or Branch not found',
+        });
+      }
+
+      // Prevent privilege escalation
+      if (branch.managerId) {
+        this.logger.warn(`⚠️ Branch ${branchId} already has a manager`);
+        throw new RpcException({
+          code: 409,
+          message: 'Branch already has a manager',
+        });
+      }
+
+      // Prevent same manager managing multiple branches
+      const existingManagedBranch =
+        await this.branchRepository.findManagedBranch(branchId, managerId);
+      if (existingManagedBranch) {
+        this.logger.warn(
+          `⚠️ Manager ${managerId} already manages another branch`,
+        );
+        throw new RpcException({
+          code: 409,
+          message: 'Manager already assigned to another branch',
+        });
+      }
+
+      const result = await this.branchRepository.assignManager(
+        branchId,
+        managerId,
+      );
+      this.logger.log(`✅ Assigned manager ${managerId} to branch ${branchId}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`❌ Error assigning manager: ${error.message}`);
+      throw new RpcException({
+        code: error.code || 500,
+        message: 'Failed to assign manager',
+      });
+    }
   }
 
   async createBranch(data: BranchCreateDto): Promise<Branch> {
-    return this.branchRepository.createBranch(data);
+    try {
+      this.logger.log(`🧩 Creating new branch: ${data.name}`);
+      return await this.branchRepository.createBranch(data);
+    } catch (error) {
+      this.logger.error(`❌ Failed to create branch: ${error.message}`);
+      throw new RpcException({
+        code: error.code || 500,
+        message: 'Failed to create branch',
+      });
+    }
   }
 
   async findAllBranch(query: ListQueryDto) {
-    return await this.branchRepository.findAllBranch(query);
+    try {
+      this.logger.log(
+        `🔍 Fetching all branches with query: ${JSON.stringify(query)}`,
+      );
+      return await this.branchRepository.findAllBranch(query);
+    } catch (error) {
+      this.logger.error(`❌ Error fetching branches: ${error.message}`);
+      throw new RpcException({
+        code: error.code || 500,
+        message: 'Failed to fetch branches',
+      });
+    }
   }
+
   async findBranchById(id: string): Promise<Branch> {
-    return this.branchRepository.findBranchById(id);
+    try {
+      this.logger.log(`🔍 Finding branch with ID: ${id}`);
+
+      if (!id) {
+        throw new RpcException({ code: 400, message: 'Invalid branch ID' });
+      }
+
+      const branch = await this.branchRepository.findBranchById(id);
+      if (!branch) {
+        this.logger.warn(`⚠️ Branch not found: ${id}`);
+        throw new RpcException({ code: 404, message: 'Branch not found' });
+      }
+
+      this.logger.log(`✅ Branch ${id} fetched successfully`);
+      return branch;
+    } catch (error) {
+      this.logger.error(`❌ Error finding branch: ${error.message}`);
+      throw new RpcException({
+        code: error.code || 500,
+        message: 'Failed to find branch',
+      });
+    }
   }
 
   async updateBranch(
     id: string,
     data: Partial<BranchUpdateDto>,
   ): Promise<Branch> {
-    console.log("Updating.....222 : ", data);
-    
-    return this.branchRepository.updateBranch(id, data);
+    try {
+      this.logger.log(
+        `🧩 Updating branch ${id} with data: ${JSON.stringify(data)}`,
+      );
+
+      if (!id) {
+        throw new RpcException({ code: 400, message: 'Invalid branch ID' });
+      }
+
+      const updated = await this.branchRepository.updateBranch(id, data);
+      this.logger.log(`✅ Branch ${id} updated successfully`);
+      return updated;
+    } catch (error) {
+      this.logger.error(`❌ Error updating branch ${id}: ${error.message}`);
+      throw new RpcException({
+        code: error.code || 500,
+        message: 'Failed to update branch',
+      });
+    }
   }
 
   async deleteBranch(id: string): Promise<Branch> {
-    return this.branchRepository.deleteBranch(id);
+    try {
+      this.logger.log(`🗑️ Deleting branch ${id}`);
+      if (!id) {
+        throw new RpcException({ code: 400, message: 'Invalid branch ID' });
+      }
+
+      const deleted = await this.branchRepository.deleteBranch(id);
+      this.logger.log(`✅ Branch ${id} deleted successfully`);
+      return deleted;
+    } catch (error) {
+      this.logger.error(`❌ Error deleting branch ${id}: ${error.message}`);
+      throw new RpcException({
+        code: error.code || 500,
+        message: 'Failed to delete branch',
+      });
+    }
   }
 }

@@ -4,11 +4,13 @@ import { FulfillmentModule } from './fulfillment.module';
 import { ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from '../common/auth.guard';
+import { NestSystemLogger } from '../common/nest-system-logger.util';
 
 async function bootstrap() {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     FulfillmentModule,
     {
+      logger: new NestSystemLogger('FulfillmentService', 'System'),
       transport: Transport.TCP,
       options: {
         host: '0.0.0.0',
@@ -30,12 +32,12 @@ async function bootstrap() {
 
   await app.listen();
 
-//   const redisTest = app.get(TestRedisService);
+  //   const redisTest = app.get(TestRedisService);
 
-//   await redisTest.test();
+  //   await redisTest.test();
 
-//   const seeder = app.get(DriverLocationSeeder);
-//   await seeder.seed(); // 🌍 seed sample driver data
+  //   const seeder = app.get(DriverLocationSeeder);
+  //   await seeder.seed(); // 🌍 seed sample driver data
   console.log(
     'Fulfillment microservice running on TCP port',
     process.env.FULFILLMENT_PORT ?? 4003,

@@ -5,56 +5,53 @@ import {
   BatchDispatchDto,
   CreateDriver,
 } from './dispatch.entity';
-import {
-  DispatchStatus,
-  ShippingScope,
-  ServiceType,
-  OrderStatus,
-  Prisma,
-  DriverStatus,
-  DriverType,
-} from '@prisma/client';
+import { DispatchStatus, OrderStatus, Prisma } from '@prisma/client';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 import { RpcException } from '@nestjs/microservices';
-import { create } from 'domain';
 
 @Injectable()
 export class DispatchRepository {
   constructor(private prisma: PrismaService) {}
 
- async assignDriverForPickup(driverId: string, orderId: string) {
-  return this.prisma.order.update({
-    where: { id: orderId },
-    data: {
-      pickupDriverId: driverId,
-      status: 'ASSIGNED', // or maybe 'PICKUP_ASSIGNED' if you want to differentiate stages
-    },
-    select: {
-      id: true,
-      trackingCode: true,
-      // status: true,
-      // serviceType: true,
-      // fulfillmentType: true,
-      pickupAddress: {
-        select: { addressLine: true, city: true },
+  async assignDriverForPickup(
+    driverId: string,
+    orderId: string,
+    userId: string,
+  ) {
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        pickupDriverId: driverId,
+        status: 'ASSIGNED', // or maybe 'PICKUP_ASSIGNED' if you want to differentiate stages
+        pickupAssignedBy: userId,
+        pickupAssignedAt: new Date(),
       },
-      // deliveryAddress: {
-      //   select: { addressLine: true, city: true },
-      // },
-      pickupDate: true,
-      // deliveryDate: true,
-      pickupDriver: {
-        select: {
-          id: true,
-          name: true,
-          phone: true,
-          email: true,
+      select: {
+        id: true,
+        trackingCode: true,
+        // status: true,
+        // serviceType: true,
+        // fulfillmentType: true,
+        pickupAddress: {
+          select: { addressLine: true, city: true },
+        },
+        // deliveryAddress: {
+        //   select: { addressLine: true, city: true },
+        // },
+        pickupDate: true,
+        // deliveryDate: true,
+        pickupDriver: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+          },
         },
       },
-    },
-  });
-}
+    });
+  }
 
   async confirmDispatch(batchIds: string[], officerId: string) {
     return this.prisma.$transaction(async (tx) => {
@@ -255,12 +252,17 @@ export class DispatchRepository {
     });
   }
   // 1. Assign order to driver (no pickup yet)
-  async assignOrder(orderId: string, driverId: string) {
+  async assignOrder(orderId: string, driverId: string, userId: string) {
     return this.prisma.$transaction(async (tx) => {
       // 1. Update the order → assign to driver
       const updatedOrder = await tx.order.update({
         where: { id: orderId },
-        data: { status: 'ASSIGNED', deliveryDriverId: driverId },
+        data: {
+          status: 'ASSIGNED',
+          deliveryDriverId: driverId,
+          deliveryAssignedAt: new Date(),
+          deliveryAssignedBy: userId,
+        },
         include: { batch: true }, // include to get batch info
       });
 
@@ -404,23 +406,23 @@ export class DispatchRepository {
     });
   }
 
-  async findBatches(batchIds: string[]) {
+  async findBatches(batchIds: string[], officerId: string) {
     return this.prisma.batchDispatch.findMany({
-      where: { id: { in: batchIds } },
+      where: { id: { in: batchIds },officerId },
     });
   }
 
   async removeDriverFromOrder(orderId: string) {
     return this.prisma.order.update({
       where: { id: orderId },
-      data: { deliveryDriverId : null,  },
+      data: { deliveryDriverId: null },
     });
   }
 
   async changeDriverForOrder(orderId: string, driverId: string) {
     return this.prisma.order.update({
       where: { id: orderId },
-      data: { deliveryDriverId:driverId },
+      data: { deliveryDriverId: driverId },
     });
   }
 
@@ -431,7 +433,11 @@ export class DispatchRepository {
     });
   }
 
-  async createBatchDispatch(dto: BatchDispatchDto, batchCode: string) {
+  async createBatchDispatch(
+    dto: BatchDispatchDto,
+    batchCode: string,
+    userId: string,
+  ) {
     return this.prisma.$transaction(
       async (tx) => {
         // Create batch and connect orders
@@ -446,7 +452,7 @@ export class DispatchRepository {
             destinationId: dto.destinationId, // use destinationId directly
             status: 'PENDING',
             notes: dto.notes,
-            createdById: dto.createdById,
+            createdById: userId,
             driverId: dto.driverId,
             vehicleId: dto.vehicleId,
             awbNumber: dto.awbNumber,
@@ -457,10 +463,45 @@ export class DispatchRepository {
             },
           },
           include: {
-            orders: true,
-            createdBy: true,
-            origin: true,
-            destination: true,
+            orders: {
+              select: {
+                id: true,
+                trackingCode: true,
+                status: true,
+                serviceType: true,
+                fulfillmentType: true,
+                category: true,
+                isFragile: true,
+                shipmentType: true,
+                shippingScope: true,
+                deliveryAddress: {
+                  select: { addressLine: true, city: true },
+                },
+              },
+            },
+            createdBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            origin: {
+              select: {
+                id: true,
+                addressLine: true,
+                city: true,
+                country: true,
+              },
+            },
+            destination: {
+              select: {
+                id: true,
+                addressLine: true,
+                city: true,
+                country: true,
+              },
+            },
           },
         });
 
@@ -475,8 +516,8 @@ export class DispatchRepository {
           tx,
           [batch.id],
           'DISPATCHED',
-          batch.origin.addressLine,
-          dto.createdById,
+          batch.origin.addressLine || 'Unknown location',
+          userId,
           dto.notes,
         );
 
@@ -512,11 +553,45 @@ export class DispatchRepository {
           orders: { connect: newOrderIds.map((id) => ({ id })) },
         },
         include: {
-          orders: true,
-          driver: true,
-          vehicle: true,
-          origin: true,
-          destination: true,
+           orders: {
+              select: {
+                id: true,
+                trackingCode: true,
+                status: true,
+                serviceType: true,
+                fulfillmentType: true,
+                category: true,
+                isFragile: true,
+                shipmentType: true,
+                shippingScope: true,
+                deliveryAddress: {
+                  select: { addressLine: true, city: true },
+                },
+              },
+            },
+            createdBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            origin: {
+              select: {
+                id: true,
+                addressLine: true,
+                city: true,
+                country: true,
+              },
+            },
+            destination: {
+              select: {
+                id: true,
+                addressLine: true,
+                city: true,
+                country: true,
+              },
+            },
         },
       });
 

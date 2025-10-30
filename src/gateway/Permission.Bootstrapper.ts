@@ -21,6 +21,9 @@ export class PermissionBootstrapper {
     { resource: 'Price', description: 'Pricing, discount, and tariff structure management' },
     { resource: 'Fleet', description: 'Fleet management, vehicle operations, and analytics' },
     { resource: 'Auth', description: 'User authentication, authorization, and session management' },
+    { resource: 'CustomerCategory', description: 'Used for managing and assigning customers to categories' },
+    { resource: 'PermissionRole', description: 'Used to manage and assign permissions to roles and their relation to each other.' },
+    { resource: 'CalculatePrice', description: 'Used to calculate the price of an order.' },
   ];
 
   async run() {

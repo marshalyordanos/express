@@ -9,9 +9,8 @@ import {
   Delete,
   Req,
   Query,
-  Logger,
-  BadRequestException,
-  Search,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PATTERNS } from '../contracts';
@@ -27,8 +26,9 @@ import {
   UpdateCustomerCategoryDto,
   UserDto,
 } from '../operations/user/user.entity';
-import { firstValueFrom, lastValueFrom } from 'rxjs';
 import { ListQueryDto } from '../common/query/query.dto';
+import * as jwt from 'jsonwebtoken';
+import { SanitizePipe } from '../common/sanitize.pipe';
 
 @Controller('users')
 export class UserGatewayController {
@@ -39,17 +39,43 @@ export class UserGatewayController {
   @Post('addresses')
   async addAddress(@Body() dto: AddressDto, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.ADDRESS_CREATE, {
       data: dto,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
   @Get('addresses')
   async listAddresses(@Req() req) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.ADDRESS_LIST, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -60,20 +86,46 @@ export class UserGatewayController {
     @Body() dto: AddressUpdateDto,
   ) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
 
     return this.usersClient.send(PATTERNS.ADDRESS_UPDATE, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
       id,
       data: dto,
     });
   }
 
   @Delete('addresses/:id')
-  async deleteAddress(@Req() req, @Param('id') id: string) {
+  async deleteAddress(@Req() req, @Param('id',SanitizePipe) id: string) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
 
     return this.usersClient.send(PATTERNS.ADDRESS_DELETE, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
       id,
     });
   }
@@ -85,9 +137,22 @@ export class UserGatewayController {
     @Body() dto: PreferencesDto,
   ) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
 
     return this.usersClient.send(PATTERNS.PREFERENCES_UPDATE, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
       userId: id,
       data: dto,
     });
@@ -100,9 +165,22 @@ export class UserGatewayController {
     @Body() dto: UpdateCorporateInfoDto,
   ) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
 
     return this.usersClient.send(PATTERNS.CORPORATEINFO_UPDATE, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
       userId: id,
       data: dto,
     });
@@ -112,56 +190,138 @@ export class UserGatewayController {
   @Get('addresses/:id')
   async findUser(@Param('id') id: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.USER_FIND_BY_ID, {
       id,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
   @Get('customers/order')
   async getCustomerOrder(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.CUSTOMER_ORDERS, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
       query,
     });
   }
+  
   @Get('customers')
   async findAllCustomers(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
-    console.log('=================: ', query);
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.USER_ALL_CUSTOMERS, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
       query,
     });
   }
 
+ 
   @Get()
   async findAll(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     console.log('=================: ', query);
     return this.usersClient.send(PATTERNS.USER_FIND_ALL, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
       query,
     });
   }
 
-  @Patch(':id')
-  async updateUser(@Param('id') id: string, @Body() dto: UserDto, @Req() req) {
+  @Patch()
+  // @Patch(':id')
+  async updateUser(
+    // @Param('id') id: string,
+   @Body() dto: Partial<UserDto>, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.USER_UPDATE, {
-      id,
+      // id,
       data: dto,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
   @Delete(':id')
   async deleteUser(@Param('id') id: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.USER_DELETE, {
       id,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -170,8 +330,21 @@ export class UserGatewayController {
   @Get('/category')
   async getCustomerCategory(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_FIND_ALL, {
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
       query,
     });
   }
@@ -179,18 +352,44 @@ export class UserGatewayController {
   @Get('/category/:id')
   async getCustomerCategoryById(@Param('id') id: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_FIND_BY_ID, {
       id,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
   @Post('/category')
   async createCustomerCategory(@Body() dto: CustomerCategoryDto, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_CREATE, {
       data: dto,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -201,19 +400,45 @@ export class UserGatewayController {
     @Req() req,
   ) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_UPDATE, {
       id,
       data: dto,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
   @Delete('/category/:id')
   async deleteCustomerCategory(@Param('id') id: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_DELETE, {
       id,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -225,9 +450,22 @@ export class UserGatewayController {
     console.log('dto: ', dto);
 
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_ASSIGN_USER, {
       data: dto,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 
@@ -237,9 +475,22 @@ export class UserGatewayController {
     @Req() req,
   ) {
     const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
     return this.usersClient.send(PATTERNS.CUSTOMER_CATEGORY_UNASSIGN_USER, {
       data: dto,
       headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
     });
   }
 }

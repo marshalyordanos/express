@@ -8,8 +8,6 @@ import {
   IsEnum,
 } from 'class-validator';
 
-
-
 export interface BranchResponseDto {
   id: string;
   name: string;

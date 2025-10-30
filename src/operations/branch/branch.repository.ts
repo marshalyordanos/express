@@ -2,11 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   BranchCreateDto,
-  BranchResponseDto,
   BranchUpdateDto,
 } from './branch.entity';
 import { Branch } from '@prisma/client';
-import { IPagination } from '../../common/types';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 

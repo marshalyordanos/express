@@ -5,6 +5,8 @@ import {
   IsString,
   MinLength,
   IsIn,
+  IsArray,
+  ArrayNotEmpty,
 } from 'class-validator';
 
 export class RegisterStaffDto {
@@ -60,4 +62,15 @@ export class ChangeRoleDto {
   @IsNotEmpty()
   @IsString()
   userId: string;
+}
+
+export class AssignStaffToBranchDto {
+  @IsArray({ message: 'staffIds must be an array of strings' })
+  @ArrayNotEmpty({ message: 'staffIds cannot be empty' })
+  @IsString({ each: true, message: 'Each staffId must be a string' })
+  staffIds: string[];
+
+  @IsNotEmpty({ message: 'branchId is required' })
+  @IsString({ message: 'branchId must be a string' })
+  branchId: string;
 }

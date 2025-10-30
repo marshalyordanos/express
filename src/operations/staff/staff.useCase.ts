@@ -1,7 +1,6 @@
 import { Prisma, User } from '@prisma/client';
 import { ChangeRoleDto } from '../user/user.entity';
 import { RegisterStaffDto,UpdateStaffDto } from './staff.entity';
-import { IPagination } from '../../common/types';
 import { ListQueryDto } from '../../common/query/query.dto';
 
 export interface StaffUsecase {

@@ -16,19 +16,16 @@ import { RedisService } from '../redis/redis.service';
 import { DriverLocationService } from './maps/driver-location.service';
 import { RouteOptimizerService } from './maps/route-optimizer.service';
 import { ScheduleModule } from '@nestjs/schedule';
-// import { MapsSharedModule } from './maps/maps-shared.module';
-// import { WebSocketSharedModule } from '../websocket/websocket.shared.module';
 import { WebSocketModule } from '../websocket/socket.module';
 import { MapsUseCasesImpl } from './maps/maps.usecase.impl';
 import { MapsRepository } from './maps/maps.repository';
 import { MapMessageController } from './maps/maps.controller';
 import { RouteCacheService } from './maps/navigation.service';
+import { AppLogger } from '../common/app-logger.service';
 
 @Module({
   imports: [
-    // MapsSharedModule,
     forwardRef(() => WebSocketModule),
-    // forwardRef(() => WebSocketSharedModule),
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.register({
@@ -57,6 +54,7 @@ import { RouteCacheService } from './maps/navigation.service';
     RouteCacheService,
     MapsUseCasesImpl,
     MapsRepository,
+    AppLogger
   ],
   exports: [
     OrderUseCasesImpl,

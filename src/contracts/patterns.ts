@@ -13,8 +13,8 @@ export const PATTERNS = {
   USER_DELETE: 'user.delete',
   USER_FIND_BY_EMAIL: 'user.findByEmail',
   USER_CHANGE_ROLE: 'user.changeRole',
-  USER_ALL_CUSTOMERS: 'user.changeRole',
-  CUSTOMER_ORDERS: 'user.changeRole',
+  USER_ALL_CUSTOMERS: 'user.allCustomers',
+  CUSTOMER_ORDERS: 'customer.orders',
 
   ADDRESS_CREATE: 'address.create',
   ADDRESS_LIST: 'address.list',
@@ -122,6 +122,8 @@ export const PATTERNS = {
   ORDER_FIND_EXCEPTIONS: 'order.getExceptions',
   ORDER_REMOVE_EXCEPTION: 'order.removeException',
   ORDER_FIND_MY_ORDERS: 'order.findMyOrders',
+  ORDER_CREATE_NOT_LOGGED_IN_CUSTOMER: 'order.createNotLoggedInCustomer',
+  ORDER_FIND_BY_USER_AND_TRACK_CODE: 'order.findByUserAndTrackCode',
 
   //Dispatch Management System
   DISPATCH_CREATE: 'dispatch.create',
@@ -158,6 +160,7 @@ export const PATTERNS = {
   MAP_GET_ROUTE: 'map.getRoute',
   MAP_MARK_STOP_VISITED: 'map.markStopVisited',
   MAP_GET_CURRENT_ROUTE_STATUS: 'map.getCurrentRouteStatus',
+  MAP_NEARBY_DRIVERS: 'map.nearbyDrivers',
   //Pricing and Tariff Management Module
 
   //Tariff
@@ -224,6 +227,7 @@ export const PATTERNS = {
   REPORT_DASHBOARD_STAFF_SUMMARY: 'report.dashboardStaffSummary',
   REPORT_DASHBOARD_ORDER_SUMMARY: 'report.dashboardOrderSummary',
   REPORT_DASHBOARD_CUSTOMER_SUMMARY: 'report.dashboardCustomerSummary',
+  REPORT_DASHBOARD_REVENUE_SUMMARY: 'report.dashboardRevenueSummary',
 
   REPORT_SHIPMENT_SUMMARY: 'report.shipmentSummary',
   REPORT_SHIPMENT_STATUS_BREAKDOWN: 'report.shipmentStatusBreakdown',

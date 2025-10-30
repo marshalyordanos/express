@@ -8,7 +8,6 @@ import { MapLocationGateway } from './gateways/map-location.gateway';
 import { MapsService } from '../fulfillment/maps/maps.service';
 import { RedisService } from '../redis/redis.service';
 import { NavigationWsService } from './services/navigation.ws.service';
-// import { DriverLocationService } from '../fulfillment/maps/driver-location.service';
 @Module({
   imports: [ MapModule,forwardRef(() => FulfillmentModule),],
   providers: [

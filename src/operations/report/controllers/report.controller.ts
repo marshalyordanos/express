@@ -4,12 +4,13 @@ import { CheckPermission } from "../../../common/decorator/check-permission.deco
 import { PermissionGuard } from "../../../common/permission.guard";
 import { PATTERNS } from "../../../contracts";
 import { PermissionActions } from "../../../contracts/permission-actions.enum";
+import { RateLimitGuard } from "../../../common/rate-limit.guard";
 
 
 @Injectable()
 export class ReportMessageController{
    
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Performance-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_PERFORMANCE_BRANCH_DETAILS)
   async getBranchDetails(
@@ -19,14 +20,14 @@ export class ReportMessageController{
       headers: { authorization: string };
     },
   ) {}
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Performance-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_PERFORMANCE_DRIVER_OVERVIEW)
   async getDriverOverview(
     @Payload() payload: { headers: { authorization: string } },
   ) {}
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Performance-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_PERFORMANCE_DRIVER_DETAILS)
   async getDriverDetails(
@@ -36,13 +37,13 @@ export class ReportMessageController{
       headers: { authorization: string };
     },
   ) {}
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Performance-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_PERFORMANCE_TOP_BRANCHES)
   async getTopBranches(
     @Payload() payload: { metric: string; headers: { authorization: string } },
   ) {}
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Performance-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_PERFORMANCE_TOP_DRIVERS)
   async getTopDrivers(

@@ -1,4 +1,3 @@
-import { Public } from '../../common/decorator/public.decorator';
 import { PricingUseCasesImpl } from './pricing.usecase.impl';
 import { PATTERNS } from '../../contracts';
 import { MessagePattern, Payload } from '@nestjs/microservices';
@@ -19,20 +18,20 @@ import {
   UpdateSurchargeDto,
   UpdateTariffDto,
 } from './pricing.entity';
-import { Controller, Injectable, UseGuards } from '@nestjs/common';
+import { Controller, UseGuards } from '@nestjs/common';
 import { IResponse } from '../../common/types';
 import { CheckPermission } from '../../common/decorator/check-permission.decorator';
 import { PermissionGuard } from '../../common/permission.guard';
-import { PermissionActions } from '../../contracts/permission-actions.enum';
+import { PermissionActions, ScopeAction } from '../../contracts/permission-actions.enum';
 import { ListQueryDto } from '../../common/query/query.dto';
+import { RateLimitGuard } from '../../common/rate-limit.guard';
 
 @Controller()
 export class PricingMessageController {
   constructor(private readonly usecases: PricingUseCasesImpl) {}
   //=============================================================================TARIFF====================================================================
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.CREATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_TARIFF_CREATE)
   async createTariff(@Payload() payload: { data: TariffDto }) {
     console.log('Tariff datajjj : ', payload);
@@ -40,9 +39,8 @@ export class PricingMessageController {
     return IResponse.success('Tariff created successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.UPDATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_TARIFF_UPDATE)
   async updateTariff(
     @Payload() payload: { id: string; data: UpdateTariffDto },
@@ -52,18 +50,16 @@ export class PricingMessageController {
     return IResponse.success('Tariff updated successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_TARIFF_FIND_ALL)
   async getTariff(@Payload() payload: { query: ListQueryDto }) {
     const result = await this.usecases.findAllTariff(payload.query);
     return IResponse.success('All Tariff fetched successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_TARIFF_FIND_BY_ID)
   async getTariffById(@Payload() payload: { id: string }) {
     const result = await this.usecases.findTariffById(payload.id);
@@ -73,9 +69,8 @@ export class PricingMessageController {
     );
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.DELETE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_TARIFF_DELETE)
   async deleteTariff(@Payload() payload: { id: string }) {
     const result = await this.usecases.deleteTariff(payload.id);
@@ -85,27 +80,24 @@ export class PricingMessageController {
     );
   }
   //===================================================================================================PROFIT MARGIN====================================================================
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.CREATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_PROFIT_MARGIN_CREATE)
   async createProfitMargin(@Payload() payload: { data: ProfitMarginDto }) {
     const result = await this.usecases.createProfitMargin(payload.data);
     return IResponse.success('Profit margin created successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_PROFIT_MARGIN_FIND_ALL)
   async getProfitMargin(@Payload() payload: { query: ListQueryDto }) {
     const result = await this.usecases.findAllProfitMargins(payload.query);
     return IResponse.success('All Profit margin fetched successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.UPDATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_PROFIT_MARGIN_UPDATE)
   async updateProfitMargin(
     @Payload() payload: { id: string; data: UpdateProfitMarginDto },
@@ -117,9 +109,8 @@ export class PricingMessageController {
     return IResponse.success('Profit margin updated successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_PROFIT_MARGIN_FIND_BY_ID)
   async getProfitMarginById(@Payload() payload: { id: string }) {
     const result = await this.usecases.findProfitMarginById(payload.id);
@@ -129,9 +120,8 @@ export class PricingMessageController {
     );
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.DELETE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_PROFIT_MARGIN_DELETE)
   async deleteProfitMargin(@Payload() payload: { id: string }) {
     const result = await this.usecases.deleteProfitMargin(payload.id);
@@ -141,27 +131,24 @@ export class PricingMessageController {
     );
   }
   //===================================================================================================AIRPORT FEE====================================================================
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.CREATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_AIRPORT_FEE_CREATE)
   async createAirportFee(@Payload() payload: { data: AirportFeeDto }) {
     const result = await this.usecases.createAirportFee(payload.data);
     return IResponse.success('Airport fee created successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_AIRPORT_FEE_FIND_ALL)
   async getAirportFee(@Payload() payload: { query: ListQueryDto }) {
     const result = await this.usecases.findAllAirportFees(payload.query);
     return IResponse.success('All Airport fee fetched successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.UPDATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_AIRPORT_FEE_UPDATE)
   async updateAirportFee(
     @Payload() payload: { id: string; data: UpdateAirportFeeDto },
@@ -173,9 +160,8 @@ export class PricingMessageController {
     return IResponse.success('Airport fee updated successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_AIRPORT_FEE_FIND_BY_ID)
   async getAirportFeeById(@Payload() payload: { id: string }) {
     const result = await this.usecases.findAirportFeeById(payload.id);
@@ -185,9 +171,8 @@ export class PricingMessageController {
     );
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.DELETE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_AIRPORT_FEE_DELETE)
   async deleteAirportFee(@Payload() payload: { id: string }) {
     const result = await this.usecases.deleteAirportFee(payload.id);
@@ -197,18 +182,16 @@ export class PricingMessageController {
     );
   }
   //=============================================================================================MISCELLANEOUS FEE====================================================================
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.CREATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_MISC_FEE_CREATE)
   async createMiscFee(@Payload() payload: { data: MiscellaneousFeeDto }) {
     const result = await this.usecases.createMiscFee(payload.data);
     return IResponse.success('Miscellaneous fee created successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_MISC_FEE_FIND_ALL)
   async getMiscFee(@Payload() payload: { query: ListQueryDto }) {
     const result = await this.usecases.findAllMiscFees(payload.query);
@@ -218,9 +201,8 @@ export class PricingMessageController {
     );
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.UPDATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_MISC_FEE_UPDATE)
   async updateMiscFee(
     @Payload() payload: { id: string; data: UpdateMiscellaneousFeeDto },
@@ -229,9 +211,8 @@ export class PricingMessageController {
     return IResponse.success('Miscellaneous fee updated successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_MISC_FEE_FIND_BY_ID)
   async getMiscFeeById(@Payload() payload: { id: string }) {
     const result = await this.usecases.findMiscFeeById(payload.id);
@@ -241,9 +222,8 @@ export class PricingMessageController {
     );
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.DELETE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_MISC_FEE_DELETE)
   async deleteMiscFee(@Payload() payload: { id: string }) {
     const result = await this.usecases.deleteMiscFee(payload.id);
@@ -253,9 +233,8 @@ export class PricingMessageController {
     );
   }
   //==============================================================================SURCHARGE====================================================================
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.CREATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_SURCHARGE_CREATE)
   async createSurcharge(@Payload() payload: { data: SurchargeDto }) {
     console.log('Surcharge data : ', payload.data);
@@ -263,18 +242,16 @@ export class PricingMessageController {
     return IResponse.success('Surcharge created successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_SURCHARGE_FIND_ALL)
   async getSurcharge(@Payload() payload: { query: ListQueryDto }) {
     const result = await this.usecases.findAllSurcharge(payload.query);
     return IResponse.success('All Surcharge fetched successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.UPDATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_SURCHARGE_UPDATE)
   async updateSurcharge(
     @Payload() payload: { id: string; data: UpdateSurchargeDto },
@@ -287,9 +264,8 @@ export class PricingMessageController {
     return IResponse.success('Surcharge updated successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.DELETE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_SURCHARGE_DELETE)
   async deleteSurcharge(@Payload() payload: { id: string }) {
     const result = await this.usecases.deleteSurcharge(payload.id);
@@ -299,9 +275,8 @@ export class PricingMessageController {
     );
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_SURCHARGE_FIND_BY_ID)
   async getSurchargeById(@Payload() payload: { id: string }) {
     const result = await this.usecases.findSurchargeById(payload.id);
@@ -311,9 +286,8 @@ export class PricingMessageController {
     );
   }
   //==============================================================================DISCOUNT====================================================================
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.CREATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_DISCOUNT_CREATE)
   async createDiscount(@Payload() payload: { data: DiscountDto }) {
     console.log('Discount data : ', payload.data);
@@ -322,18 +296,16 @@ export class PricingMessageController {
     return IResponse.success('Discount created successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_DISCOUNT_FIND_ALL)
   async getDiscount(@Payload() payload: { query: ListQueryDto }) {
     const result = await this.usecases.findAllDiscount(payload.query);
     return IResponse.success('All Discount fetched successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.UPDATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_DISCOUNT_UPDATE)
   async updateDiscount(
     @Payload() payload: { id: string; data: UpdateDiscountDto },
@@ -343,9 +315,8 @@ export class PricingMessageController {
     return IResponse.success('Discount updated successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.DELETE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_DISCOUNT_DELETE)
   async deleteDiscount(@Payload() payload: { id: string }) {
     const result = await this.usecases.deleteDiscount(payload.id);
@@ -355,9 +326,8 @@ export class PricingMessageController {
     );
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_DISCOUNT_FIND_BY_ID)
   async getDiscountById(@Payload() payload: { id: string }) {
     const result = await this.usecases.findDiscountById(payload.id);
@@ -367,9 +337,8 @@ export class PricingMessageController {
     );
   }
   //==============================================================================CUSTOMER CATEGORY====================================================================
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.CREATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_CUSTOMER_CATEGORY_CREATE)
   async createCustomerCategory(
     @Payload() payload: { data: CustomerCategoryDto },
@@ -378,9 +347,8 @@ export class PricingMessageController {
     return IResponse.success('Customer category created successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_CUSTOMER_CATEGORY_FIND_ALL)
   async getCustomerCategory(@Payload() payload: { query: ListQueryDto }) {
     const result = await this.usecases.findAllCustomerCategory(payload.query);
@@ -390,9 +358,8 @@ export class PricingMessageController {
     );
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.UPDATE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_CUSTOMER_CATEGORY_UPDATE)
   async updateCustomerCategory(
     @Payload() payload: {id: string; data: UpdateCustomerCategoryDto },
@@ -404,9 +371,8 @@ export class PricingMessageController {
     return IResponse.success('Customer category updated successfully', result);
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.DELETE)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_CUSTOMER_CATEGORY_DELETE)
   async deleteCustomerCategory(@Payload() payload:{id: string}) {
     const result = await this.usecases.deleteCustomerCategory(payload.id);
@@ -416,9 +382,8 @@ export class PricingMessageController {
     );
   }
 
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard,RateLimitGuard)
   @CheckPermission('Price', PermissionActions.READ)
-  // @Public()
   @MessagePattern(PATTERNS.PRICE_CUSTOMER_CATEGORY_FIND_BY_ID)
   async getCustomerCategoryById(@Payload() payload:{id: string}) {
     const result = await this.usecases.findCustomerCategoryById(payload.id);
@@ -428,9 +393,8 @@ export class PricingMessageController {
     );
   }
   //==============================================================================PRICE CALCULATION LOG====================================================================
-  @UseGuards(PermissionGuard)
-  @CheckPermission('Price', PermissionActions.CREATE)
-  // @Public()
+  @UseGuards(PermissionGuard,RateLimitGuard)
+  @CheckPermission('Price', PermissionActions.READ)
   @MessagePattern(PATTERNS.PRICE_CALCULATION_LOG_FIND_ALL)
   async getPriceCalculationLog(@Payload() payload: { query: ListQueryDto }) {
     const result = await this.usecases.findAllPriceCalculationLog(payload.query);
@@ -440,9 +404,8 @@ export class PricingMessageController {
     );
   }
 
-  @UseGuards(PermissionGuard)
-  @CheckPermission('Price', PermissionActions.CREATE)
-  // @Public()
+  @UseGuards(PermissionGuard,RateLimitGuard)
+  @CheckPermission('CalculatePrice', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.PRICE_CALCULATE)
   async calculatePrice(@Payload() payload:{data: PriceCalculationLogDto}) {
     console.log('data calculate price : ', payload.data);

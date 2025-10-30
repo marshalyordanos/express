@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { StaffUsecase } from './staff.useCase';
 import {
@@ -8,140 +8,210 @@ import {
 } from './staff.entity';
 import { Prisma, User } from '@prisma/client';
 import { StaffRepository } from './staff.repository';
-import { IPagination } from '../../common/types';
 import * as bcrypt from 'bcrypt';
 import { ListQueryDto } from '../../common/query/query.dto';
+import { AppLogger } from '../../common/app-logger.service';
 
 @Injectable()
 export class StaffUseCasesImpl implements StaffUsecase {
-  constructor(private readonly staffRepo: StaffRepository) {}
+  constructor(
+    private readonly staffRepo: StaffRepository,
+    private readonly logger: AppLogger,
+  ) {
+    this.logger.setContext('OperationsService', 'RoleUseCaseImpl');
+  }
 
+  // ✅ CREATE STAFF WITH SECURITY + LOGGER
   async createStaff(data: RegisterStaffDto): Promise<User> {
-    if (data.role) {
-      const roleName = data.role;
-      const role = await this.staffRepo.findRoleByName(roleName);
+    try {
+      this.logger.log(
+        `🧑‍💻 Creating new staff user: ${data.email || data.phone}`,
+      );
 
-      if (!role) {
-        throw new RpcException(`Invalid role: ${roleName}`);
+      // Validate Role
+      if (data.role) {
+        const role = await this.staffRepo.findRoleByName(data.role);
+        if (!role) {
+          this.logger.warn(`❌ Invalid role: ${data.role}`);
+          throw new RpcException(`Invalid role: ${data.role}`);
+        }
+        data.role = role.id;
       }
-      data.role = role.id;
-    }
-    if (data.branchId) {
-      const branch = await this.staffRepo.findBranchById(data.branchId);
 
-      if (!branch) {
-        throw new RpcException(`Branch not found with id : ${data.branchId}`);
+      // Validate Branch
+      if (data.branchId) {
+        const branch = await this.staffRepo.findBranchById(data.branchId);
+        if (!branch) {
+          this.logger.warn(`❌ Invalid branch ID: ${data.branchId}`);
+          throw new RpcException(`Branch not found with id: ${data.branchId}`);
+        }
+        data.branchId = branch.id;
       }
-      data.branchId = branch.id;
-    }
-    const hashedPassword = await bcrypt.hash(data.password, 10);
-    data.password = hashedPassword;
 
-    // Pass DTO and roleId to repository
-    return this.staffRepo.createStaff(data);
+      // Hash password securely
+      const hashedPassword = await bcrypt.hash(data.password, 12);
+      data.password = hashedPassword;
+
+      const staff = await this.staffRepo.createStaff(data);
+
+      this.logger.log(`✅ Staff created successfully with ID: ${staff.id}`);
+      return staff;
+    } catch (error) {
+      this.logger.error(
+        `🚨 Error creating staff: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(error.message || 'Failed to create staff');
+    }
   }
 
-  async findStaffByRole(query: ListQueryDto, role: string){
-    // const { page = 1, pageSize = 10, role } = data;
+  // ✅ FIND STAFF BY ROLE
+  async findStaffByRole(query: ListQueryDto, role: string) {
+    try {
+      this.logger.log(`🔍 Fetching staff for role: ${role}`);
 
-    // const skip = (page - 1) * pageSize;
+      const roleData = await this.staffRepo.findRoleByName(role);
+      if (!roleData) {
+        this.logger.warn(`❌ Invalid role: ${role}`);
+        throw new RpcException(`Invalid role: ${role}`);
+      }
 
-    console.log('role name :', role);
-    console.log('role name query :', query);
-
-
-    // Check role existence
-    const roles = await this.staffRepo.findRoleByName(role);
-
-    if (!roles) {
-      throw new RpcException(`Invalid role: ${role}`);
+      const result = await this.staffRepo.findStaffByRole(roleData.id, query);
+      this.logger.log(
+        `✅ Found ${result.pagination.total} staff under role: ${role}`,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `🚨 Error fetching staff by role: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(error.message || 'Failed to fetch staff by role');
     }
-    const roleId = roles.id;
-
-    return await this.staffRepo.findStaffByRole(
-      roleId,
-      query
-    );
-
-    // return {
-    //   users,
-    //   pagination: {
-    //     total,
-    //     page,
-    //     pageSize,
-    //     totalPages: Math.ceil(total / pageSize),
-    //   },
-    // };
   }
+
+  // ✅ FIND ALL STAFF
   async findAllStaff(query: ListQueryDto) {
-    return await this.staffRepo.findAllStaff(query);
+    try {
+      this.logger.log(
+        `📋 Fetching all staff with filters: ${JSON.stringify(query)}`,
+      );
+      return await this.staffRepo.findAllStaff(query);
+    } catch (error) {
+      this.logger.error(
+        `🚨 Error fetching all staff: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(error.message || 'Failed to fetch all staff');
+    }
   }
 
+  // ✅ CHANGE USER ROLE
   async changeUserRole(data: ChangeRoleDto): Promise<User> {
-    const user = await this.staffRepo.findStaffById(data.userId);
+    try {
+      this.logger.log(`🔄 Changing role for userId: ${data.userId}`);
 
-    if (!user) {
-      throw new RpcException(`User with id ${data.userId} not found`);
+      const user = await this.staffRepo.findStaffById(data.userId);
+      if (!user)
+        throw new RpcException(`User with id ${data.userId} not found`);
+
+      const role = await this.staffRepo.findRoleByName(data.role);
+      if (!role) throw new RpcException(`Role ${data.role} not found`);
+
+      const updatedUser = await this.staffRepo.changeUserRole(user, role);
+      this.logger.log(`✅ Role updated successfully for user ${user.id}`);
+      return updatedUser;
+    } catch (error) {
+      this.logger.error(
+        `🚨 Error changing role: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(error.message || 'Failed to change user role');
     }
-
-    const role = await this.staffRepo.findRoleByName(data.role);
-
-    if (!role) {
-      throw new RpcException(`Role ${data.role} not found`);
-    }
-
-    return this.staffRepo.changeUserRole(user, role);
   }
 
+  // ✅ DELETE STAFF
   async deleteStaff(id: string): Promise<string> {
-    // Check if staff exists
-    const staff = await this.staffRepo.findStaffById(id);
+    try {
+      this.logger.log(`🗑️ Attempting to delete staff with id: ${id}`);
 
-    if (!staff) {
-      throw new RpcException(`User with id ${id} not found`);
+      const staff = await this.staffRepo.findStaffById(id);
+      if (!staff) throw new RpcException(`User with id ${id} not found`);
+
+      await this.staffRepo.deleteStaff(id);
+
+      this.logger.log(`✅ Staff deleted successfully: ${id}`);
+      return `User deleted successfully with id: ${id}`;
+    } catch (error) {
+      this.logger.error(
+        `🚨 Error deleting staff: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(error.message || 'Failed to delete staff');
     }
-    await this.staffRepo.deleteStaff(id);
-    return 'User deleted successfully with id: ' + id;
   }
+
+  // ✅ FIND STAFF BY ID
   async findStaffById(id: string): Promise<User> {
-    const result = await this.staffRepo.findStaffById(id);
-
-    if (!result) {
-      throw new Error('User not found');
+    try {
+      this.logger.log(`🗑️ Fetching staff with id: ${id}`);
+      const staff = await this.staffRepo.findStaffById(id);
+      if (!staff) throw new RpcException('User not found');
+      return staff;
+    } catch (error) {
+      this.logger.error(
+        `🚨 Error finding staff by ID: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(error.message || 'Failed to find staff by ID');
     }
-    return result;
   }
+
+  // ✅ UPDATE STAFF
   async updateStaff(id: string, data: UpdateStaffDto): Promise<User> {
-    return this.staffRepo.updateStaff(id, data);
+    try {
+      this.logger.log(`✏️ Updating staff with id: ${id}`);
+      return await this.staffRepo.updateStaff(id, data);
+    } catch (error) {
+      this.logger.error(
+        `🚨 Error updating staff: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(error.message || 'Failed to update staff');
+    }
   }
 
-  async findStaffByBranch(
-    query: ListQueryDto, branchId: string
-  ){
-    // const { page = 1, pageSize = 10, branchId, search } = data;
-
-    // const skip = (page - 1) * pageSize;
-
-    const where: any = {
-      isStaff: true,
-      branchId,
-    };
-
-    // if (search) {
-    //   where.OR = [
-    //     { name: { contains: search, mode: 'insensitive' } },
-    //     { email: { contains: search, mode: 'insensitive' } },
-    //     { phone: { contains: search, mode: 'insensitive' } },
-    //   ];
-    // }
-
-    return await this.staffRepo.findStaffByBranch(query, branchId);
+  // ✅ FIND STAFF BY BRANCH
+  async findStaffByBranch(query: ListQueryDto, branchId: string) {
+    try {
+      this.logger.log(`🏢 Fetching staff for branchId: ${branchId}`);
+      return await this.staffRepo.findStaffByBranch(query, branchId);
+    } catch (error) {
+      this.logger.error(
+        `🚨 Error fetching staff by branch: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(
+        error.message || 'Failed to fetch staff by branch',
+      );
+    }
   }
 
-  async assignStaffToBranch(
-    staffIds: string[],
-    branchId: string,
-  ): Promise<Prisma.BatchPayload> {
-    return this.staffRepo.assignStaffToBranch(staffIds, branchId);
+  // ✅ ASSIGN STAFF TO BRANCH
+  async assignStaffToBranch(staffIds: string[], branchId: string) {
+    try {
+      this.logger.log(
+        `👥 Assigning ${staffIds.length} staff to branchId: ${branchId}`,
+      );
+      return await this.staffRepo.assignStaffToBranch(staffIds, branchId);
+    } catch (error) {
+      this.logger.error(
+        `🚨 Error assigning staff to branch: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(
+        error.message || 'Failed to assign staff to branch',
+      );
+    }
   }
 }

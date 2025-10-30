@@ -749,6 +749,24 @@ export class DashboardReportRepository {
     const loyalUsers = users.filter((u) => u.orders.length >= minOrders);
     return loyalUsers.length;
   }
+
+  /**
+   * Fetch all price calculation logs between two dates.
+   * Includes order relation for potential future filtering/grouping.
+   */
+  async getLogsBetween(start: Date, end: Date) {
+    return this.prisma.priceCalculationLog.findMany({
+      where: {
+        createdAt: {
+          gte: start, // greater than or equal to start
+          lte: end, // less than or equal to end
+        },
+      },
+      include: {
+        order: true, // include the related order
+      },
+    });
+  }
 }
 
 /**

@@ -7,20 +7,19 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
-import { Prisma } from '@prisma/client';
 import { IResponse } from './types';
 
 @Catch()
 export class AllExceptions implements ExceptionFilter {
   catch(exception: any, host: ArgumentsHost) {
     const ctxType = host.getType();
-    console.log(
-      'ppppppppppppppppp:',
+    // console.log(
+    //   'ppppppppppppppppp:',
 
-      exception,
-      ctxType,
-      // exception,
-    );
+    //   exception,
+    //   ctxType,
+    //   // exception,
+    // );
 
     let status =
       exception?.statusCode ||
@@ -59,7 +58,7 @@ export class AllExceptions implements ExceptionFilter {
           ? response
           : (response as any)?.message || exception.message;
 
-      console.log('------------------------------', message);
+      // console.log('------------------------------', message);
     }
 
     // ------------------------

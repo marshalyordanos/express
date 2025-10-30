@@ -5,12 +5,14 @@ import { AuthModule } from './auth.module';
 import { JwtAuthGuard } from '../common/auth.guard';
 import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
-import { AllExceptions } from '../common/error';
+import { NestSystemLogger } from '../common/nest-system-logger.util';
 
 async function bootstrap() {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     AuthModule,
+    
     {
+      logger: new NestSystemLogger('AuthService', 'System'),
       transport: Transport.TCP,
       options: {
         host: process.env.AUTH_HOST ?? '0.0.0.0',

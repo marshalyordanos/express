@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
@@ -27,7 +22,6 @@ export class JwtAuthGuard implements CanActivate {
       const data = context.switchToRpc().getData();
       const token =
         data?.headers?.authorization?.replace('Bearer ', '') || null;
-console.log("Token :", data?.headers?.authorization);
 
       if (!token)
         throw new RpcException({

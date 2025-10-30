@@ -12,8 +12,6 @@ import { DriverLocationWsService } from '../../websocket/services/driver-locatio
 import { WebSocketEventService } from '../../websocket/services/websocket-event.service';
 import { Inject, forwardRef } from '@nestjs/common';
 import { NavigationWsService } from '../services/navigation.ws.service';
-import { RouteCache } from '../../fulfillment/maps/maps.entity';
-import { log } from 'node:console';
 
 // interface RouteCache {
 //   optimizationJobId: string;

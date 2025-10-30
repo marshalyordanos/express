@@ -4,3 +4,11 @@ export enum PermissionActions {
   UPDATE = 'updateAction',
   DELETE = 'deleteAction',
 }
+
+export enum ScopeAction{
+  APPROVE = 'APPROVE',
+  DELIVERY = 'DELIVERY',
+  ASSIGN = 'ASSIGN',
+  FULL = 'FULL',
+  MINIMUM = 'MINIMUM'
+}

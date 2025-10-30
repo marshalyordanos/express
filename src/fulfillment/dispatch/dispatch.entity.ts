@@ -5,6 +5,7 @@ import {
   ServiceType,
   ShippingScope,
 } from '@prisma/client';
+import { Transform } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -16,14 +17,18 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
+import { escape } from 'lodash';
+
 
 export class AssignDriverForPickup {
   @IsNotEmpty()
   @IsString()
+  @Transform(({ value }) => value.trim())
   orderId: string;
 
   @IsNotEmpty()
   @IsString()
+  @Transform(({ value }) => value.trim())
   driverId: string;
 }
 
@@ -46,30 +51,37 @@ export class BatchDispatchDto {
 
   @IsNotEmpty()
   @IsString()
-  originId: string; // <-- now we use Address ID
+  @Transform(({ value }) => value.trim())
+  originId: string;
 
   @IsNotEmpty()
   @IsString()
-  destinationId: string; // <-- now we use Address ID
+  @Transform(({ value }) => value.trim())
+  destinationId: string;
 
   @IsOptional()
   @IsString()
+   @Transform(({ value }) => escape(value?.trim()))
   notes?: string;
 
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => value.trim())
   createdById?: string; // FK to User (manager/staff who created)
 
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => value.trim())
   driverId?: string;
 
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => value.trim())
   vehicleId?: string;
 
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => value.trim())
   awbNumber?: string; // required only for international
 
   @IsOptional()
@@ -80,6 +92,7 @@ export class BatchDispatchDto {
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
+  @Transform(({ value }) => value.map((v: string) => v.trim()))
   orders: string[]; // Array of order IDs to include in this batch
 
   @IsNotEmpty()
@@ -93,10 +106,12 @@ export class BatchDispatchDto {
 export class CreateDriver {
   @IsNotEmpty()
   @IsString()
+  @Transform(({ value }) => value.trim())
   userId: string;
 
   @IsNotEmpty()
   @IsString()
+  @Transform(({ value }) => value.trim())
   vehicleId: string;
 
   @IsNotEmpty()
@@ -121,93 +136,114 @@ export class AssignOfficerForBatch {
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
+  @Transform(({ value }) => value.map((v: string) => v.trim()))
   batchId: string[];
 
   @IsNotEmpty()
   @IsString()
+  @Transform(({ value }) => value.trim())
   officerId: string;
 }
 
 export class BatchHandoverDto {
   @IsNotEmpty()
   @IsString()
+  @Transform(({ value }) => value.trim())
   handedById: string; // Cargo officer ID
 
+  @IsNotEmpty()
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
+  @Transform(({ value }) => value.map((v: string) => v.trim()))
   batchIds: string[]; // IDs of batches being handed over
 
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => escape(value?.trim()))
   method?: string; // e.g., "handed to airport", "receipt scanned"
 
   @IsOptional()
   @IsString()
+   @Transform(({ value }) => escape(value?.trim()))
   reference?: string; // optional receipt number, QR code, or photo URL
 
   @IsOptional()
   @IsString()
+   @Transform(({ value }) => escape(value?.trim()))
   notes?: string; // additional notes or comments
 
   @IsOptional()
   @IsString()
+   @Transform(({ value }) => escape(value?.trim()))
   currentLocation?: string; // additional notes or comments
 }
 
 export class OrderScanTokenDto {
   @IsNotEmpty()
   @IsString()
+  @Transform(({ value }) => value.trim())
   scannedBy: string; // officer ID
 
   @IsNotEmpty()
   @IsString()
+  @Transform(({ value }) => value.trim())
   token: string; // scanned QR code token
 }
 
 export class ConfirmBatchHandoverDto {
   @IsString()
   @IsNotEmpty({ message: 'handedById is required' })
+  @Transform(({ value }) => value.trim())
   handedById: string;
 
   @IsString()
   @IsOptional()
+   @Transform(({ value }) => escape(value?.trim()))
   method?: string;
 
   @IsString()
   @IsOptional()
+   @Transform(({ value }) => escape(value?.trim()))
   reference?: string;
 
   @IsString()
   @IsOptional()
+   @Transform(({ value }) => escape(value?.trim()))
   notes?: string;
 }
 
 export class CompleteDeliveryDto {
   @IsString()
   @IsNotEmpty({ message: 'orderId is required' })
+  @Transform(({ value }) => value.trim())
   orderId: string;
 
   @IsString()
   @IsNotEmpty({ message: 'driverId is required' })
+  @Transform(({ value }) => value.trim())
   driverId: string;
 
   @IsString()
   @IsOptional()
+   @Transform(({ value }) => escape(value?.trim()))
   notes?: string;
 }
 
 export class LastMileDeliveryDto {
   @IsString()
   @IsNotEmpty({ message: 'orderId is required' })
+  @Transform(({ value }) => value.trim())
   orderId: string;
 
   @IsString()
   @IsNotEmpty({ message: 'driverId is required' })
+  @Transform(({ value }) => value.trim())
   driverId: string;
 
   @IsString()
   @IsOptional()
+   @Transform(({ value }) => escape(value?.trim()))
   notes?: string;
 }
 
@@ -215,14 +251,17 @@ export class GenerateQrDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @Transform(({ value }) => value?.map((v: string) => v.trim()))
   orderIds?: string[];
 
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => value?.trim())
   batchId?: string;
 
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => value?.trim())
   branchId?: string;
 
   @IsOptional()

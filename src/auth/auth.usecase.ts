@@ -7,8 +7,6 @@ import {
   AuthForgotPasswordDto,
   AuthResetPasswordDto,
   AuthVerifyEmailDto,
-  AuthMfaDto,
-  AuthSession,
 } from './auth.entity';
 
 export interface AuthUseCase {
@@ -19,13 +17,13 @@ export interface AuthUseCase {
   refreshToken(userId: string, refreshToken: string): Promise<AuthTokens>;
 
   // Password management
-  changePassword(userId: string, data: AuthChangePasswordDto): Promise<void>;
-  forgotPassword(data: AuthForgotPasswordDto): Promise<void>;
-  resetPassword(data: AuthResetPasswordDto): Promise<void>;
+  changePassword(userId: string, data: AuthChangePasswordDto): Promise<void> ;
+  forgotPassword(data: AuthForgotPasswordDto): Promise<{ success: boolean; message: string }>;
+  resetPassword(data: AuthResetPasswordDto): Promise<{ success: boolean; message: string }>;
 
   // Email verification
-  verifyEmail(data: AuthVerifyEmailDto): Promise<void>;
-  resendVerification(email: string): Promise<void>;
+  verifyEmail(data: AuthVerifyEmailDto): Promise<{ success: boolean; message: string }>;
+  resendVerification(email: string): Promise<{ success: boolean; message: string }>;
 
   // MFA
   // setupMfa(userId: string): Promise<{ qrCodeUrl: string; secret: string }>;

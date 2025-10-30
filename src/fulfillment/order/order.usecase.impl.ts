@@ -1,406 +1,837 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { OrderUseCases } from './order.usecase';
 import {
   AddException,
   CancelOrderDto,
-  CreateOrderDto,
   UpdateOrderDto,
   ValidateOrderDto,
 } from './order.entity';
 import { OrderRepository } from './order.repository';
 import {
-  Address,
-  FulfillmentType,
-  Order,
-  OrderStatus,
   OrderTracking,
   ServiceType,
+  Order,
   ShippingScope,
 } from '@prisma/client'; // assuming you use Prisma enums
 import { RpcException } from '@nestjs/microservices';
-import { IPagination, IResponse } from '../../common/types';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { MapsService } from '../maps/maps.service';
-// import { MapsService } from '../maps/maps.usecase.impl';
+import { handleCatch } from '../../common/handleCatch';
+import { AppLogger } from '../../common/app-logger.service';
 
 @Injectable()
 export class OrderUseCasesImpl implements OrderUseCases {
-
   constructor(
     private readonly orderRepo: OrderRepository,
     private readonly mapsService: MapsService,
     // private readonly mapsService: MapsService,
-  ) {}
+    private readonly logger: AppLogger,
+  ) {
+    this.logger.setContext('FulfillmentService', 'OrderUsecaseImpl');
+  }
   //Customer order creating API: For customer to create for it self and staff/Admin to create for customer
-  async createOrder(data: any): Promise<Order> {
-    // 🔹 Find or create customer
-    let customer =
-      (data.customerId &&
-        (await this.orderRepo.findCustomer(data.customerId))) ||
-      ((data.email || data.phone) &&
-        (await this.orderRepo.findCustomerByEmailOrPhone(
-          data.email,
-          data.phone,
-        )));
+  async createOrder(data: any, userId: string): Promise<Order> {
+    this.logger.log(`Order creation requested by userId: ${userId}`);
 
-    if (!customer) {
-      if (!data.name || (!data.email && !data.phone)) {
-        throw new RpcException(
-          'Customer not found or required details not provided',
+    try {
+      // 🔹 Find or create customer
+      let customer =
+        (data.customerId &&
+          (await this.orderRepo.findCustomer(data.customerId))) ||
+        ((data.email || data.phone) &&
+          (await this.orderRepo.findCustomerByEmailOrPhone(
+            data.email,
+            data.phone,
+          )));
+
+      if (customer && customer.id !== userId) {
+        this.logger.warn(
+          `Unauthorized order creation attempt by userId: ${userId}, customerId: ${customer.id}`,
         );
+        throw new RpcException({
+          statusCode: 403,
+          message: 'You are not authorized to create this order.',
+        });
       }
-      customer = await this.orderRepo.createCustomer({
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-      });
+
+      // 🔹 Find or create receiver
+      let receiver =
+        (data.receiverId &&
+          (await this.orderRepo.findCustomer(data.receiverId))) ||
+        ((data.receiverEmail || data.receiverPhone) &&
+          (await this.orderRepo.findCustomerByEmailOrPhone(
+            data.receiverEmail,
+            data.receiverPhone,
+          )));
+
+      // 🔹 Create customer if not found
+      if (!customer) {
+        if (!data.name || (!data.email && !data.phone)) {
+          this.logger.warn(
+            `Customer details missing for order creation by userId: ${userId}`,
+          );
+          throw new RpcException({
+            statusCode: 400,
+            message: 'Customer not found or required details not provided',
+          });
+        }
+        customer = await this.orderRepo.createCustomer({
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          userId,
+        });
+        this.logger.verbose(`Customer created with id: ${customer.id}`);
+      }
+
+      // 🔹 Create receiver if not found
+      if (!receiver) {
+        if (
+          !data.receiverName ||
+          (!data.receiverEmail && !data.receiverPhone)
+        ) {
+          this.logger.warn(
+            `Receiver details missing for order creation by userId: ${userId}`,
+          );
+          throw new RpcException({
+            statusCode: 400,
+            message: 'Receiver not found or required details not provided',
+          });
+        }
+        receiver = await this.orderRepo.createCustomer({
+          name: data.receiverName,
+          email: data.receiverEmail,
+          phone: data.receiverPhone,
+          userId,
+        });
+        this.logger.verbose(`Receiver created with id: ${receiver.id}`);
+      }
+
+      // 🔹 Generate tracking code
+      const username = customer.name.substring(0, 3).toUpperCase();
+      const trackingCode = this.generateTrackingCode(username);
+
+      // 🔹 Resolve addresses
+      let pickupAddress: any = null;
+      if (data.fulfillmentType === 'PICKUP') {
+        pickupAddress = await this.mapsService.reverseGeocode(
+          data.pickupAddress.lat,
+          data.pickupAddress.long,
+        );
+        this.logger.verbose('Pickup address resolved');
+      }
+
+      const deliveryAddress = await this.mapsService.reverseGeocode(
+        data.deliveryAddress.lat,
+        data.deliveryAddress.long,
+      );
+      this.logger.verbose('Delivery address resolved');
+
+      // 🔹 Delegate order creation to repository
+      const order = await this.orderRepo.createOrderWithAddresses(
+        data,
+        customer.id,
+        receiver.id,
+        trackingCode,
+        pickupAddress,
+        deliveryAddress,
+        userId,
+      );
+
+      this.logger.log(
+        `Order created successfully with id: ${order.id}, trackingCode: ${trackingCode}`,
+      );
+      return order;
+    } catch (error) {
+      // ✅ Handle known and unknown errors
+      this.logger.error(
+        `Order creation failed for userId: ${userId}: ${error.message}`,
+      );
+      throw handleCatch(error);
     }
+  }
+  async createUserOrder(data: any): Promise<Order> {
+    this.logger.log('User order creation requested');
 
-    const username = customer.name.substring(0, 3).toUpperCase();
-    const trackingCode = this.generateTrackingCode(username);
+    try {
+      // 🔹 Find or create customer
+      let customer =
+        (data.customerId &&
+          (await this.orderRepo.findCustomer(data.customerId))) ||
+        ((data.email || data.phone) &&
+          (await this.orderRepo.findCustomerByEmailOrPhone(
+            data.email,
+            data.phone,
+          )));
 
-    let pickupAddress: any;
+      let receiver =
+        (data.receiverId &&
+          (await this.orderRepo.findCustomer(data.receiverId))) ||
+        ((data.receiverEmail || data.receiverPhone) &&
+          (await this.orderRepo.findCustomerByEmailOrPhone(
+            data.receiverEmail,
+            data.receiverPhone,
+          )));
 
-    if(data.fulfillmentType === 'PICKUP'){
-       pickupAddress= await this.mapsService.reverseGeocode(data.pickupAddress.lat, data.pickupAddress.long);
+      // 🔹 Create customer if not found
+      if (!customer) {
+        if (!data.name || (!data.email && !data.phone)) {
+          this.logger.warn('Customer not found or required details missing');
+          throw new RpcException({
+            statusCode: 400,
+            message: 'Customer not found or required details not provided',
+          });
+        }
+        customer = await this.orderRepo.createCustomer({
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+        });
+        this.logger.verbose(`Customer created with id: ${customer.id}`);
+      }
+
+      // 🔹 Create receiver if not found
+      if (!receiver) {
+        if (
+          !data.receiverName ||
+          (!data.receiverEmail && !data.receiverPhone)
+        ) {
+          this.logger.warn('Receiver not found or required details missing');
+          throw new RpcException({
+            statusCode: 400,
+            message: 'Receiver not found or required details not provided',
+          });
+        }
+        receiver = await this.orderRepo.createCustomer({
+          name: data.receiverName,
+          email: data.receiverEmail,
+          phone: data.receiverPhone,
+        });
+        this.logger.verbose(`Receiver created with id: ${receiver.id}`);
+      }
+
+      // 🔹 Generate tracking code
+      const username = customer.name.substring(0, 3).toUpperCase();
+      const trackingCode = this.generateTrackingCode(username);
+
+      // 🔹 Resolve addresses
+      let pickupAddress: any = null;
+      if (data.fulfillmentType === 'PICKUP') {
+        pickupAddress = await this.mapsService.reverseGeocode(
+          data.pickupAddress.lat,
+          data.pickupAddress.long,
+        );
+        this.logger.verbose('Pickup address resolved');
+      }
+
+      const deliveryAddress = await this.mapsService.reverseGeocode(
+        data.deliveryAddress.lat,
+        data.deliveryAddress.long,
+      );
+      this.logger.verbose('Delivery address resolved');
+
+      // 🔹 Create order with addresses
+      const order = await this.orderRepo.createOrderWithAddresses(
+        data,
+        customer.id,
+        receiver.id,
+        trackingCode,
+        pickupAddress,
+        deliveryAddress,
+      );
+
+      this.logger.log(
+        `Order created successfully with id: ${order.id}, trackingCode: ${trackingCode}`,
+      );
+      return order;
+    } catch (error) {
+      this.logger.error(`User order creation failed: ${error.message}`);
+      throw handleCatch(error);
     }
-    // console.log("Repository inside creation order for addresses pickup :::::: ", pickupAddress);
-
-    const deliveryAddress= await this.mapsService.reverseGeocode(data.deliveryAddress.lat, data.deliveryAddress.long);
-    // console.log("Repository inside creation order for addresses delivery :::::: ", deliveryAddress);
-
-    // 🔹 Delegate entire order creation + addresses + tracking + distance to repository
-    const order = await this.orderRepo.createOrderWithAddresses(
-      data,
-      customer.id,
-      trackingCode,
-      pickupAddress,
-      deliveryAddress
-    );
-
-    return order;
   }
 
-  async solveExceptions(orderId: string, data: UpdateOrderDto): Promise<any> {
-    const order = await this.orderRepo.getOrderById(orderId);
-    if (!order) {
-      throw new RpcException(`Order with ID ${orderId} not found`);
-    }
-    if (order.status !== 'EXCEPTION') {
-      throw new RpcException(
-        `Order with ID ${orderId} is not in exception state`,
+  async solveExceptions(
+    orderId: string,
+    data: UpdateOrderDto,
+    userId: string,
+  ): Promise<any> {
+    this.logger.log(
+      `Solve exception requested for orderId=${orderId} by userId=${userId}`,
+    );
+
+    try {
+      const order = await this.orderRepo.getOrderById(orderId);
+      if (!order) {
+        this.logger.warn(`Order not found: ${orderId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with ID ${orderId} not found`,
+        });
+      }
+
+      if (order.status !== 'EXCEPTION') {
+        this.logger.warn(`Order ${orderId} not in exception state`);
+        throw new RpcException({
+          statusCode: 400,
+          message: `Order with ID ${orderId} is not in exception state`,
+        });
+      }
+
+      const result = await this.orderRepo.solveException(orderId, data, userId);
+      this.logger.log(`Order exception solved for orderId=${orderId}`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to solve exception for orderId=${orderId}: ${error.message}`,
       );
+      throw handleCatch(error);
     }
-    return this.orderRepo.solveException(orderId, data);
   }
 
   async acceptDropOff(trackingCode: string): Promise<any> {
-    console.log('trackingCode 1: ', trackingCode);
-
-    const order = await this.orderRepo.getOrderByTrackingCode(trackingCode);
-    if (!order) {
-      throw new RpcException(
-        `Order with tracking code ${trackingCode} not found`,
-      );
-    }
-    
-    // Determine branchId from order or driver's branch
-    const branchId = order.branchId ?? order.pickupDriver?.branchId;
-
-    if (!branchId) {
-      throw new RpcException(
-        `Order with tracking code ${trackingCode} does not have a branch assigned`,
-      );
-    }
-
-    // Fetch branch details
-    const branch = await this.orderRepo.findBranch(branchId);
-
-    if (!branch) {
-      throw new RpcException(
-        `Branch with ID ${branchId} not found for order ${trackingCode}`,
-      );
-    }
-
-    if (order.status !== 'CREATED' && order.status !== 'PICKED_UP') {
-      throw new RpcException(
-        `Order with tracking code ['${trackingCode}'] or Order Id ['${order.id}'] can not be COLLECTED because it does not meet the requirement for COLLECTED it have to be in CREATED or PICKED_UP state.`,
-      );
-    }
-    const updatedBy = order.customerId;
-    return this.orderRepo.acceptDropOffOrder(
-      trackingCode,
-      order.id,
-      branchId,
-      updatedBy,
-      branch.location,
+    this.logger.log(
+      `Accept drop-off requested for trackingCode=${trackingCode}`,
     );
-  }
 
-  async confirmPickupOrder(orderId: string, driverId: string) {
-    const order = await this.orderRepo.getOrderById(orderId);
-    if (!order) {
-      throw new RpcException({
-        statusCode: 404,
-        message: `Order with ID ${orderId} not found.`,
-      });
-    }
+    try {
+      const order = await this.orderRepo.getOrderByTrackingCode(trackingCode);
+      if (!order) {
+        this.logger.warn(`Order not found for trackingCode=${trackingCode}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with tracking code ${trackingCode} not found`,
+        });
+      }
 
-    console.log("Order for comfirming order pickup : ", order);
-    
-    // ✅ Check if order is assigned to this driver
-    if (order.pickupDriverId !== driverId) {
-      throw new RpcException({
-        statusCode: 403, // Forbidden
-        message: `Order with ID ${orderId} is not assigned to this driver.`,
-      });
-    }
-    if (order.status !== 'ASSIGNED') {
-      throw new RpcException({
-        statusCode: 403, // Forbidden
-        message: `Order with Tracking code ['${order.trackingCode}'] or Order Id ['${order.id}'] is not ASSIGNED to the driver for the pick up or the package already picked up.`,
-      });
-    }
-    const location = order.pickupAddress.addressLine;
+      const branchId = order.branchId ?? order.pickupDriver?.branchId;
+      if (!branchId) {
+        this.logger.warn(
+          `Branch not assigned for order trackingCode=${trackingCode}`,
+        );
+        throw new RpcException({
+          statusCode: 400,
+          message: `Order with tracking code ${trackingCode} does not have a branch assigned`,
+        });
+      }
 
-    console.log("location to be the pickup happened. : ", location);
-    
-    return this.orderRepo.confirmPickupOrder(orderId, location, driverId);
-  }
-
-  // done
-  async validateOrder(orderId: string, data: ValidateOrderDto) {
-    console.log('updates: ', data);
-    const order = await this.orderRepo.getOrderById(orderId);
-    if (!order) {
-      throw new RpcException({
-        statusCode: 404,
-        message: `Order with ID ${orderId} not found.`,
-      });
-    }
-    console.log('Order for validation: ', order);
-
-    const officer = await this.orderRepo.findStaffById(data.validatedBy);
-    if (!officer) {
-      throw new RpcException({
-        statusCode: 404,
-        message: `Officer with ID ${data.validatedBy} not found.`,
-      });
-    }
-    console.log('Office for validation: ', officer);
-
-    let location: string | null = null;
-
-    if (order.branchId || officer.branchId) {
-      // Choose the branchId from order first, then officer
-      const branchId = order.branchId ?? officer.branchId;
-
-      // Fetch branch location from DB
       const branch = await this.orderRepo.findBranch(branchId);
-      console.log('Found location in branch : ', branch);
+      if (!branch) {
+        this.logger.warn(
+          `Branch not found: ${branchId} for order trackingCode=${trackingCode}`,
+        );
+        throw new RpcException({
+          statusCode: 404,
+          message: `Branch with ID ${branchId} not found for order ${trackingCode}`,
+        });
+      }
 
-      location = branch ? branch.location : null;
+      if (order.status !== 'CREATED' && order.status !== 'PICKED_UP') {
+        this.logger.warn(
+          `Order status invalid for drop-off: trackingCode=${trackingCode}, status=${order.status}`,
+        );
+        throw new RpcException({
+          statusCode: 400,
+          message: `Order with tracking code ['${trackingCode}'] or Order Id ['${order.id}'] cannot be collected because it must be in CREATED or PICKED_UP state`,
+        });
+      }
+
+      const updatedBy = order.customerId;
+      const result = await this.orderRepo.acceptDropOffOrder(
+        trackingCode,
+        order.id,
+        branchId,
+        updatedBy,
+        branch.location,
+      );
+
+      this.logger.log(`Drop-off accepted for orderId=${order.id}`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to accept drop-off for trackingCode=${trackingCode}: ${error.message}`,
+      );
+      throw handleCatch(error);
     }
-
-    console.log('location for validation: ', location);
-
-    if (!location) {
-      throw new RpcException({
-        statusCode: 404,
-        message: `Order with ID ${order.id} do not have a branch to be found.`,
-      });
-    }
-
-    if (order.status !== 'DROPPED_OFF') {
-      throw new RpcException({
-        statusCode: 404,
-        message: `Order with Tracking code ['${order.trackingCode}'] can not be validated. It is already Validated or not Collected.`,
-      });
-    }
-
-    const validatedBy = data.validatedBy;
-    return this.orderRepo.validateOrder(orderId, validatedBy, location, data);
   }
 
-  //done
+  async confirmPickupOrder(orderId: string, driverId: string, userId: string) {
+    this.logger.log(
+      `Confirm pickup requested for orderId=${orderId} by userId=${userId}`,
+    );
+
+    try {
+      if (userId !== driverId) {
+        this.logger.warn(`Unauthorized pickup attempt by userId=${userId}`);
+        throw new RpcException({
+          statusCode: 403,
+          message: 'You are not authorized for this request',
+        });
+      }
+
+      const order = await this.orderRepo.getOrderById(orderId);
+      if (!order) {
+        this.logger.warn(`Order not found: ${orderId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with ID ${orderId} not found`,
+        });
+      }
+
+      if (order.pickupDriverId !== userId) {
+        this.logger.warn(`Order ${orderId} not assigned to driver ${userId}`);
+        throw new RpcException({
+          statusCode: 403,
+          message: `Order with ID ${orderId} is not assigned to this driver`,
+        });
+      }
+
+      if (order.status !== 'ASSIGNED') {
+        this.logger.warn(
+          `Order ${orderId} status invalid for pickup: ${order.status}`,
+        );
+        throw new RpcException({
+          statusCode: 400,
+          message: `Order with Tracking code ['${order.trackingCode}'] or Order Id ['${order.id}'] is not in ASSIGNED state for pickup`,
+        });
+      }
+
+      const location = order.pickupAddress.addressLine;
+      const result = await this.orderRepo.confirmPickupOrder(
+        orderId,
+        location,
+        userId,
+      );
+
+      this.logger.log(
+        `Pickup confirmed for orderId=${orderId} at location=${location}`,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to confirm pickup for orderId=${orderId}: ${error.message}`,
+      );
+      throw handleCatch(error);
+    }
+  }
+  // done
+  async validateOrder(orderId: string, data: ValidateOrderDto, userId: string) {
+    this.logger.log(
+      `Validate order requested for orderId=${orderId} by userId=${userId}`,
+    );
+
+    try {
+      const order = await this.orderRepo.getOrderById(orderId);
+      if (!order) {
+        this.logger.warn(`Order not found: ${orderId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with ID ${orderId} not found.`,
+        });
+      }
+      this.logger.log(`Order found: ${order.id}`);
+
+      const officer = await this.orderRepo.findStaffById(userId);
+      if (!officer) {
+        this.logger.warn(`Officer not found: ${userId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Officer with ID ${userId} not found.`,
+        });
+      }
+
+      let location: string | null = null;
+      if (order.branchId || officer.branchId) {
+        const branchId = order.branchId ?? officer.branchId;
+        const branch = await this.orderRepo.findBranch(branchId);
+        location = branch?.location ?? null;
+        this.logger.log(`Branch location determined: ${location}`);
+      }
+
+      if (!location) {
+        this.logger.warn(`No branch location for orderId=${orderId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with ID ${order.id} has no branch.`,
+        });
+      }
+
+      if (order.status !== 'DROPPED_OFF') {
+        this.logger.warn(
+          `Order status invalid for validation: ${order.status}`,
+        );
+        throw new RpcException({
+          statusCode: 400,
+          message: `Order with Tracking code ['${order.trackingCode}'] cannot be validated. It is already validated or not collected.`,
+        });
+      }
+
+      const result = await this.orderRepo.validateOrder(
+        orderId,
+        userId,
+        location,
+        data,
+      );
+      this.logger.log(`Order validated successfully: orderId=${orderId}`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to validate order ${orderId}: ${error.message}`,
+      );
+      throw handleCatch(error);
+    }
+  }
+
   async markUnusualOrder(orderId: string, data: any) {
-    const order = await this.orderRepo.getOrderById(orderId);
-    if (!order) {
-      throw new RpcException({
-        statusCode: 404,
-        message: `Order with ID ${orderId} not found.`,
-      });
+    this.logger.log(`Mark unusual order requested for orderId=${orderId}`);
+
+    try {
+      const order = await this.orderRepo.getOrderById(orderId);
+      if (!order) {
+        this.logger.warn(`Order not found: ${orderId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with ID ${orderId} not found.`,
+        });
+      }
+
+      const result = await this.orderRepo.markUnusualOrder(orderId, data);
+      this.logger.log(
+        `Order marked as unusual successfully: orderId=${orderId}`,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to mark unusual order ${orderId}: ${error.message}`,
+      );
+      throw handleCatch(error);
     }
-    return this.orderRepo.markUnusualOrder(orderId, data);
   }
 
-  //done
-  async approveOrder(orderId: string, reason: string) {
-    const order = await this.orderRepo.getOrderById(orderId);
-    if (!order) {
-      throw new RpcException({
-        statusCode: 404,
-        message: `Order with ID ${orderId} not found.`,
-      });
-    }
-    if (order.status !== 'PENDING_APPROVAL') {
-      throw new RpcException({
-        statusCode: 404,
-        message: `Order with Tracking code  ['${order.trackingCode}'] can not be approved. It may not be Validated or it already approved.`,
-      });
-    }
+  async approveOrder(orderId: string, reason: string, userId: string) {
+    this.logger.log(
+      `Approve order requested for orderId=${orderId} by userId=${userId}`,
+    );
 
-    const location = order.branchId;
-    const updatedBy = order.customerId;
-    return this.orderRepo.approveOrder(order, reason, location, updatedBy);
+    try {
+      const order = await this.orderRepo.getOrderById(orderId);
+      if (!order) {
+        this.logger.warn(`Order not found: ${orderId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with ID ${orderId} not found.`,
+        });
+      }
+
+      if (order.status !== 'PENDING_APPROVAL') {
+        this.logger.warn(`Order status invalid for approval: ${order.status}`);
+        throw new RpcException({
+          statusCode: 400,
+          message: `Order with Tracking code ['${order.trackingCode}'] cannot be approved. It may not be validated or already approved.`,
+        });
+      }
+
+      const location = order.branchId;
+      const updatedBy = userId;
+
+      const result = await this.orderRepo.approveOrder(
+        order,
+        reason,
+        location,
+        updatedBy,
+      );
+      this.logger.log(`Order approved successfully: orderId=${orderId}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to approve order ${orderId}: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
   async getAllOrders(query: ListQueryDto) {
-    const result = await this.orderRepo.getAllOrders(query);
-    return result;
+    this.logger.log(`Fetching all orders with query: ${JSON.stringify(query)}`);
+
+    try {
+      const result = await this.orderRepo.getAllOrders(query);
+      this.logger.log(`Fetched ${result.pagination.total} orders successfully`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to fetch orders: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
+
   async getOrderById(id: string): Promise<any> {
-    return this.orderRepo.getOrderById(id);
+    this.logger.log(`Fetching order by ID: ${id}`);
+    try {
+      const order = await this.orderRepo.getOrderById(id);
+      if (!order) {
+        this.logger.warn(`Order not found: ${id}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with ID ${id} not found.`,
+        });
+      }
+      this.logger.log(`Order fetched successfully: ${id}`);
+      return order;
+    } catch (error) {
+      this.logger.error(`Failed to fetch order ${id}: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
   async getException(query: ListQueryDto) {
-    return await this.orderRepo.getException(query);
-  }
-  async updateOrder(orderId: string, data: UpdateOrderDto): Promise<any> {
-    const order = await this.orderRepo.getOrderById(orderId);
-    if (!order) {
-      throw new RpcException({
-        statusCode: 404,
-        message: `Order with ID ${orderId} not found.`,
-      });
+    this.logger.log(`Fetching exceptions with query: ${JSON.stringify(query)}`);
+    try {
+      const exceptions = await this.orderRepo.getException(query);
+      this.logger.log(
+        `Fetched ${exceptions.pagination.total} exceptions successfully`,
+      );
+      return exceptions;
+    } catch (error) {
+      this.logger.error(`Failed to fetch exceptions: ${error.message}`);
+      throw handleCatch(error);
     }
-
-    return this.orderRepo.updateOrder(orderId, data);
   }
+
+  async updateOrder(
+    orderId: string,
+    data: UpdateOrderDto,
+    userId: string,
+  ): Promise<any> {
+    this.logger.log(`Updating order ${orderId} by user ${userId}`);
+    try {
+      const order = await this.orderRepo.getOrderById(orderId);
+      if (!order) {
+        this.logger.warn(`Order not found: ${orderId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with ID ${orderId} not found.`,
+        });
+      }
+
+      const updatedOrder = await this.orderRepo.updateOrder(
+        orderId,
+        data,
+        userId,
+      );
+      this.logger.log(`Order updated successfully: ${orderId}`);
+      return updatedOrder;
+    } catch (error) {
+      this.logger.error(`Failed to update order ${orderId}: ${error.message}`);
+      throw handleCatch(error);
+    }
+  }
+
   deleteOrder(id: string): Promise<any> {
     throw new Error('Method not implemented.');
   }
-  updateOrderStatus(id: string, data: any): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-  updateOrderType(id: string, data: any): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-  updateOrderDriver(id: string, data: any): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-  async trackOrder(code: string): Promise<any> {
-    console.log('Controller received tracking code:', code);
-    const order = await this.orderRepo.getOrderByTrackingCode(code);
-    if (!order) {
-      throw new RpcException({
-        code: 404,
-        message: `Order with tracking code ${code} not found`,
-      });
-    }
-    const tracking = await this.orderRepo.trackOrder(order.id);
-    if (!tracking) {
-      throw new RpcException({
-        code: 404,
-        message: `Order with tracking code ${code} Does not have a tracking`,
-      });
-    }
 
-    return {
-      order,
-      tracking,
-    };
+  async trackOrder(code: string): Promise<any> {
+    this.logger.log(`Tracking order with code: ${code}`);
+    try {
+      const order = await this.orderRepo.getOrderByTrackingCode(code);
+      if (!order) {
+        this.logger.warn(`Order not found for code: ${code}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with tracking code ${code} not found`,
+        });
+      }
+
+      const tracking = await this.orderRepo.trackOrder(order.id);
+      if (!tracking) {
+        this.logger.warn(`Tracking info not found for order code: ${code}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with tracking code ${code} does not have tracking info`,
+        });
+      }
+
+      this.logger.log(`Order tracking fetched successfully for code: ${code}`);
+      return { order, tracking };
+    } catch (error) {
+      this.logger.error(`Failed to track order ${code}: ${error.message}`);
+      throw handleCatch(error);
+    }
+  }
+
+  async trackUserOrder(code: string, userId: string): Promise<any> {
+    this.logger.log(
+      `Tracking user order with code: ${code}, userId: ${userId}`,
+    );
+    try {
+      const order = await this.orderRepo.getOrderByTrackingCode(code, userId);
+      if (!order) {
+        this.logger.warn(
+          `User order not found for code: ${code}, userId: ${userId}`,
+        );
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with tracking code ${code} not found`,
+        });
+      }
+
+      const tracking = await this.orderRepo.trackOrder(order.id);
+      if (!tracking) {
+        this.logger.warn(`Tracking info not found for order code: ${code}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with tracking code ${code} does not have tracking info`,
+        });
+      }
+
+      this.logger.log(
+        `User order tracking fetched successfully for code: ${code}`,
+      );
+      return { order, tracking };
+    } catch (error) {
+      this.logger.error(`Failed to track user order ${code}: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
   async getOrdersGroupedByScope(query: ListQueryDto) {
-    const result = await this.orderRepo.getOrdersGroupedByScope(query);
-    // Initialize structure
-    const grouped: Record<ShippingScope, Record<ServiceType, any[]>> = {
-      TOWN: { STANDARD: [], EXPRESS: [], SAME_DAY: [], OVERNIGHT: [] },
-      REGIONAL: { STANDARD: [], EXPRESS: [], SAME_DAY: [], OVERNIGHT: [] },
-      INTERNATIONAL: { STANDARD: [], EXPRESS: [], SAME_DAY: [], OVERNIGHT: [] },
-    };
+    this.logger.log('Fetching orders grouped by shipping scope');
+    try {
+      const result = await this.orderRepo.getOrdersGroupedByScope(query);
 
-    // Group orders
-    for (const order of result.orders) {
-      if (order.shippingScope && order.serviceType) {
-        grouped[order.shippingScope][order.serviceType].push(order);
+      const grouped: Record<ShippingScope, Record<ServiceType, any[]>> = {
+        TOWN: { STANDARD: [], EXPRESS: [], SAME_DAY: [], OVERNIGHT: [] },
+        REGIONAL: { STANDARD: [], EXPRESS: [], SAME_DAY: [], OVERNIGHT: [] },
+        INTERNATIONAL: {
+          STANDARD: [],
+          EXPRESS: [],
+          SAME_DAY: [],
+          OVERNIGHT: [],
+        },
+      };
+
+      for (const order of result.orders) {
+        if (order.shippingScope && order.serviceType) {
+          grouped[order.shippingScope][order.serviceType].push(order);
+        }
       }
-    }
 
-    return {
-      grouped,
-      pagination: result.pagination,
-    };
+      this.logger.log('Orders grouped successfully');
+      return { grouped, pagination: result.pagination };
+    } catch (error) {
+      this.logger.error(`Failed to fetch grouped orders: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
   async getOrderStatusLog(query: ListQueryDto) {
-    const result = await this.orderRepo.getOrderStatusLog(query);
+    this.logger.log('Fetching order status logs');
+    try {
+      const result = await this.orderRepo.getOrderStatusLog(query);
 
-    // Group by orderId
-    const ordersLogGrouped = Object.entries(
-      result.orders.reduce(
-        (acc, log) => {
-          if (!acc[log.orderId]) acc[log.orderId] = [];
-          acc[log.orderId].push(log);
-          return acc;
-        },
-        {} as Record<string, OrderTracking[]>,
-      ),
-    ).map(([orderId, logs]) => ({
-      id: orderId,
-      logs,
-    }));
-    // const ordersLogFlatSorted = ordersLogFlat.sort((a, b) =>
-    //   a.orderId.localeCompare(b.orderId),
-    // );
-    return {
-      orders: ordersLogGrouped,
-      // ordersLog: ordersLogFlatSorted,
-      pagination: result.pagination,
-    };
+      const ordersLogGrouped = Object.entries(
+        result.orders.reduce(
+          (acc, log) => {
+            if (!acc[log.orderId]) acc[log.orderId] = [];
+            acc[log.orderId].push(log);
+            return acc;
+          },
+          {} as Record<string, OrderTracking[]>,
+        ),
+      ).map(([orderId, logs]) => ({ id: orderId, logs }));
+
+      this.logger.log('Order status logs fetched successfully');
+      return { orders: ordersLogGrouped, pagination: result.pagination };
+    } catch (error) {
+      this.logger.error(`Failed to fetch order status logs: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
   async getPendingApproval(query: ListQueryDto) {
-    return await this.orderRepo.getPendingApprovals(query);
+    this.logger.log('Fetching orders pending approval');
+    try {
+      const result = await this.orderRepo.getPendingApprovals(query);
+      this.logger.log('Pending approval orders fetched successfully');
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to fetch pending approvals: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
-  async cancelOrder(data: CancelOrderDto): Promise<any> {
+  async cancelOrder(data: CancelOrderDto, userId: string): Promise<any> {
     const { orderId, reason } = data;
-    return await this.orderRepo.cancelOrder(orderId, reason);
+    this.logger.log(`Cancelling order ${orderId} by user ${userId}`);
+    try {
+      const result = await this.orderRepo.cancelOrder(orderId, reason, userId);
+      this.logger.log(`Order ${orderId} cancelled successfully`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to cancel order ${orderId}: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
 
-  async addException(data: AddException): Promise<any> {
+  async addException(data: AddException, userId: string): Promise<any> {
     const { orderId, reason, type } = data;
-    const order = await this.orderRepo.getOrderById(orderId);
-    if (!order) {
-      throw new RpcException({
-        code: 404,
-        message: `Order with id ${orderId} not found`,
-      });
-    }
-    const exception = await this.orderRepo.addException(orderId, reason, type);
-    if (!exception) {
-      throw new RpcException({
-        code: 404,
-        message: `Order with id ${orderId} not found`,
-      });
-    }
-    return exception;
-  }
+    this.logger.log(`Adding exception to order ${orderId} by user ${userId}`);
+    try {
+      const order = await this.orderRepo.getOrderById(orderId);
+      if (!order) {
+        this.logger.warn(`Order not found: ${orderId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Order with id ${orderId} not found`,
+        });
+      }
 
+      const exception = await this.orderRepo.addException(
+        orderId,
+        reason,
+        type,
+        userId,
+      );
+      if (!exception) {
+        this.logger.warn(`Failed to add exception for order: ${orderId}`);
+        throw new RpcException({
+          statusCode: 500,
+          message: `Could not add exception for order ${orderId}`,
+        });
+      }
+
+      this.logger.log(`Exception added successfully for order ${orderId}`);
+      return exception;
+    } catch (error) {
+      this.logger.error(
+        `Add exception failed for order ${orderId}: ${error.message}`,
+      );
+      throw handleCatch(error);
+    }
+  }
 
   async updateOrderDistance(orderId: string, distance: number) {
-   return await this.orderRepo.updateOrderDistance(orderId, distance);
+    this.logger.log(`Updating distance for order ${orderId} to ${distance}km`);
+    try {
+      const result = await this.orderRepo.updateOrderDistance(
+        orderId,
+        distance,
+      );
+      this.logger.log(`Distance updated successfully for order ${orderId}`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Update distance failed for order ${orderId}: ${error.message}`,
+      );
+      throw handleCatch(error);
+    }
   }
+
   // Local method for tracking code generation
   private generateTrackingCode(username: string): string {
     if (!username || username.length !== 3) {
+      this.logger.error('Username for tracking code must be exactly 3 letters');
       throw new Error('Username must be exactly 3 letters');
     }
 
     let trackingCode: string;
-    const usedCodes = new Set();
+    const usedCodes = new Set<string>();
     do {
       const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
       const randomSuffix = Math.floor(Math.random() * 1000)
@@ -410,28 +841,23 @@ export class OrderUseCasesImpl implements OrderUseCases {
     } while (usedCodes.has(trackingCode));
 
     usedCodes.add(trackingCode);
+    this.logger.verbose(`Generated tracking code: ${trackingCode}`);
     return trackingCode;
   }
 
-   async getMyOrders(userId: string, query: ListQueryDto) {
-    return await this.orderRepo.getMyOrders(userId, query);
+  async getMyOrders(userId: string, query: ListQueryDto) {
+    this.logger.log(`Fetching orders for user ${userId}`);
+    try {
+      const orders = await this.orderRepo.getMyOrders(userId, query);
+      this.logger.log(
+        `Fetched ${orders?.pagination?.total || 0} orders for user ${userId}`,
+      );
+      return orders;
+    } catch (error) {
+      this.logger.error(
+        `Fetching orders failed for user ${userId}: ${error.message}`,
+      );
+      throw handleCatch(error);
+    }
   }
-}
-
-function calculateDistanceKm(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
-  const R = 6371; // Earth radius in km
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Number((R * c).toFixed(2)); // Distance in km
 }
