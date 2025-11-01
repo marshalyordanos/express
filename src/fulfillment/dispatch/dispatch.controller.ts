@@ -171,12 +171,7 @@ export class DispatchMessageController {
     @Payload() payload: { data: CompleteDeliveryDto; user: any },
   ): Promise<any> {
     const userId = payload.user?.sub;
-    return this.usecases.completeDelivery(
-      payload.data.orderId,
-      payload.data.driverId,
-      userId,
-      payload.data.notes,
-    );
+    return this.usecases.completeDelivery(payload.data, userId);
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)

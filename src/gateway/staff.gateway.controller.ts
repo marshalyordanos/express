@@ -105,13 +105,10 @@ export class StaffGatewayController {
   @Get()
   async findStaff(
     @Req() req,
-    // @Query('search') search?: string,
-    // @Query('branchId') branchId?: string,
-    // @Query('roleId') roleId?: string,
-    // @Query('page') page = 1,
-    // @Query('pageSize') pageSize = 10,
     @Query() query: ListQueryDto,
   ) {
+    console.log('gateway query :: ', query);
+
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
 
@@ -125,23 +122,19 @@ export class StaffGatewayController {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
 
-    // Wait for microservice response
-    const result = await firstValueFrom(
-      this.staffClient.send(PATTERNS.STAFF_FIND_ALL, {
-        headers: { authorization: authHeader },
-        user: decodedUser, // ✅ send user info
-        ip,
-        query,
-      }),
-    );
-    return result;
+    return this.staffClient.send(PATTERNS.STAFF_FIND_ALL, {
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+      query,
+    });
   }
 
   //Get staff by their roles and it is manadatory to pass role
-  @Get('role/staff')
+  @Get('role/:id')
   async findStaffByRole(
     @Req() req,
-    @Query('role') role: string,
+    @Param('id') id: string,
     // @Query('page') page?: number,
     // @Query('pageSize') pageSize?: number,
     @Query() query: ListQueryDto,
@@ -163,8 +156,8 @@ export class StaffGatewayController {
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
       ip,
-      query,
-      role,
+      query: { ...query },
+      role: id,
     });
   }
   //delete staff with roles like Internal driver,customer service, dispatch officer, branch manager
@@ -275,10 +268,7 @@ export class StaffGatewayController {
   }
 
   @Post('assign-branch')
-  async assignBranch(
-    @Body() dto: AssignStaffToBranchDto,
-    @Req() req,
-  ) {
+  async assignBranch(@Body() dto: AssignStaffToBranchDto, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
 

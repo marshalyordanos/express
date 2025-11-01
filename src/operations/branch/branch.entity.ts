@@ -6,7 +6,9 @@ import {
   IsOptional,
   ValidateNested,
   IsEnum,
+  IsNumber,
 } from 'class-validator';
+import { PartialType } from '@nestjs/mapped-types';
 
 export interface BranchResponseDto {
   id: string;
@@ -106,12 +108,14 @@ export class CreateAddressDto {
   postalCode?: string;
 
   @IsOptional()
-  @IsString()
-  lat?: string;
+  @Type(() => Number)
+  @IsNumber()
+  lat?: number;
 
   @IsOptional()
-  @IsString()
-  long?: string;
+  @Type(() => Number)
+  @IsNumber()
+  long?: number;
 
   @IsNotEmpty()
   @IsString()
@@ -121,6 +125,8 @@ export class CreateAddressDto {
   @IsString()
   branchId?: string;
 }
+
+export class PartialAddressDto extends PartialType(CreateAddressDto) {}
 
 export class BranchCreateDto {
   @IsNotEmpty()
@@ -137,6 +143,6 @@ export class BranchCreateDto {
 
   @IsOptional()
   @ValidateNested()
-  @Type(() => CreateAddressDto)
-  address?: CreateAddressDto; // Nested DTO for one-to-one relation
+  @Type(() => PartialAddressDto)
+  address?: PartialAddressDto; 
 }

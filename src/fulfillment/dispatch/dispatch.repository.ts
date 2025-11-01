@@ -327,43 +327,128 @@ export class DispatchRepository {
   }
 
   // 3. Deliver order to customer
-  async deliverOrder(orderId: string, driverId: string, notes?: string) {
+  //  async deliverOrder(
+  //   orderId: string,
+  //   driverId: string,
+  //   notes?: string,
+  //   podImages?: {
+  //     url: string;
+  //     publicId: string;
+  //     fileName: string;
+  //     fileType: string;
+  //   }[],
+  // ) {
+  //   return this.prisma.$transaction(async (tx) => {
+  //     // 🔹 1. Fetch order including delivery address
+  //     const order = await tx.order.findUnique({
+  //       where: { id: orderId },
+  //       include: {
+  //         deliveryAddress: true,
+  //       },
+  //     });
+
+  //     if (!order) {
+  //       throw new RpcException(`Order with ID ${orderId} not found.`);
+  //     }
+
+  //     // 🔹 2. Ensure it's still in valid state
+  //     if (order.status === 'DELIVERED') {
+  //       throw new RpcException(
+  //         `Order ${orderId} is already marked as delivered.`,
+  //       );
+  //     }
+
+  //     // 🔹 3. Insert POD images if provided
+  //     const savedPodImages = [];
+  //     if (podImages && podImages.length > 0) {
+  //       for (const img of podImages) {
+  //         const pod = await tx.podImage.create({
+  //           data: {
+  //             driverId,
+  //             orderId,
+  //             url: img.url,
+  //             publicId: img.publicId,
+  //             fileName: img.fileName,
+  //             fileType: img.fileType,
+  //           },
+  //         });
+  //         savedPodImages.push(pod);
+  //       }
+  //     }
+
+  //     // 🔹 4. Update order status
+  //     const updatedOrder = await tx.order.update({
+  //       where: { id: orderId },
+  //       data: {
+  //         status: 'DELIVERED',
+  //         deliveryDate: new Date(),
+  //         notes: notes || 'Order delivered successfully.',
+  //       },
+  //       include: {
+  //         deliveryAddress: true,
+  //         deliveryDriver: true,
+  //         customer: true,
+  //       },
+  //     });
+
+  //     // 🔹 5. Log delivery completion in tracking
+  //     await tx.orderTracking.create({
+  //       data: {
+  //         orderId,
+  //         status: 'DELIVERED',
+  //         updatedBy: driverId,
+  //         location: updatedOrder.deliveryAddress?.addressLine || 'Unknown location',
+  //         notes: notes || 'Order delivered to customer successfully.',
+  //       },
+  //     });
+
+  //     return { order: updatedOrder, podImages: savedPodImages };
+  //   });
+  // }
+  async deliverOrderWithPodImages(
+    orderId: string,
+    driverId: string,
+    notes?: string,
+    podImages?: {
+      url: string;
+      publicId?: string;
+      fileName?: string;
+      fileType?: string;
+    }[],
+  ) {
     return this.prisma.$transaction(async (tx) => {
-      // 🔹 1. Fetch order including delivery address
-      const order = await tx.order.findUnique({
-        where: { id: orderId },
-        include: {
-          deliveryAddress: true, // Needed for coordinates & tracking location
-        },
-      });
+      // 1️⃣ Fetch order
+      const order = await tx.order.findUnique({ where: { id: orderId } });
+      if (!order) throw new RpcException(`Order ${orderId} not found`);
+      if (order.status === 'DELIVERED')
+        throw new RpcException('Already delivered');
 
-      if (!order) {
-        throw new RpcException(`Order with ID ${orderId} not found.`);
+      // 2️⃣ Insert POD images
+      if (podImages && podImages.length > 0) {
+        for (const img of podImages) {
+          await tx.podImage.create({
+            data: {
+              orderId,
+              driverId,
+              url: img.url,
+              publicId: img.publicId,
+              fileName: img.fileName,
+              fileType: img.fileType,
+            },
+          });
+        }
       }
 
-      // 🔹 2. Ensure it's still in valid state (can’t be delivered twice)
-      if (order.status === 'DELIVERED') {
-        throw new RpcException(
-          `Order ${orderId} is already marked as delivered.`,
-        );
-      }
-
-      // 🔹 3. Update order status
+      // 3️⃣ Update order
       const updatedOrder = await tx.order.update({
         where: { id: orderId },
-        data: {
-          status: 'DELIVERED',
-          deliveryDate: new Date(),
-          notes: notes || 'Order delivered successfully.',
-        },
+        data: { status: 'DELIVERED', deliveryDate: new Date(), notes },
         include: {
           deliveryAddress: true,
-          deliveryDriver: true,
-          customer: true,
         },
       });
 
-      // 🔹 4. Log delivery completion in tracking
+      //     // 🔹 4. Log delivery completion in tracking
       await tx.orderTracking.create({
         data: {
           orderId,
@@ -371,19 +456,9 @@ export class DispatchRepository {
           updatedBy: driverId,
           location:
             updatedOrder.deliveryAddress?.addressLine || 'Unknown location',
-          // lat: updatedOrder.deliveryAddress?.lat ?? null,
-          // long: updatedOrder.deliveryAddress?.long ?? null,
           notes: notes || 'Order delivered to customer successfully.',
         },
       });
-
-      // // 🔹 5. (Optional) mark driver available again after delivery
-      // if (updatedOrder.driverId) {
-      //   await tx.driver.update({
-      //     where: { id: updatedOrder.driverId },
-      //     data: { isAvailable: true },
-      //   });
-      // }
 
       return updatedOrder;
     });
@@ -408,7 +483,7 @@ export class DispatchRepository {
 
   async findBatches(batchIds: string[], officerId: string) {
     return this.prisma.batchDispatch.findMany({
-      where: { id: { in: batchIds },officerId },
+      where: { id: { in: batchIds }, officerId },
     });
   }
 
@@ -553,45 +628,45 @@ export class DispatchRepository {
           orders: { connect: newOrderIds.map((id) => ({ id })) },
         },
         include: {
-           orders: {
-              select: {
-                id: true,
-                trackingCode: true,
-                status: true,
-                serviceType: true,
-                fulfillmentType: true,
-                category: true,
-                isFragile: true,
-                shipmentType: true,
-                shippingScope: true,
-                deliveryAddress: {
-                  select: { addressLine: true, city: true },
-                },
+          orders: {
+            select: {
+              id: true,
+              trackingCode: true,
+              status: true,
+              serviceType: true,
+              fulfillmentType: true,
+              category: true,
+              isFragile: true,
+              shipmentType: true,
+              shippingScope: true,
+              deliveryAddress: {
+                select: { addressLine: true, city: true },
               },
             },
-            createdBy: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
+          },
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
             },
-            origin: {
-              select: {
-                id: true,
-                addressLine: true,
-                city: true,
-                country: true,
-              },
+          },
+          origin: {
+            select: {
+              id: true,
+              addressLine: true,
+              city: true,
+              country: true,
             },
-            destination: {
-              select: {
-                id: true,
-                addressLine: true,
-                city: true,
-                country: true,
-              },
+          },
+          destination: {
+            select: {
+              id: true,
+              addressLine: true,
+              city: true,
+              country: true,
             },
+          },
         },
       });
 

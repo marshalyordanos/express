@@ -18,8 +18,9 @@ export class BranchMessageController {
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Branch', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.BRANCH_CREATE)
-  async createBranch(@Payload() payload: { data: BranchCreateDto }) {
-    const result = await this.usecases.createBranch(payload.data);
+  async createBranch(@Payload() payload: { data: BranchCreateDto; user: any }) {
+    const userId = payload?.user?.sub;
+    const result = await this.usecases.createBranch(payload.data, userId);
     return new IResponse(true, 'Branch is created Succuessfuly', result);
   }
 
@@ -50,7 +51,7 @@ export class BranchMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Branch', PermissionActions.CREATE )
+  @CheckPermission('Branch', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.BRANCH_ASSIGN_MANAGER)
   async assignManager(
     @Payload() payload: { branchId: string; managerId: string },

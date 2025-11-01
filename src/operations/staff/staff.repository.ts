@@ -1,4 +1,4 @@
-import { Injectable, } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { User, Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UserDto } from '../user/user.entity';
@@ -10,21 +10,47 @@ import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 export class StaffRepository {
   constructor(private prisma: PrismaService) {}
 
-  async changeUserRole(user: User, role: Role): Promise<User> {
+  async changeUserRole(userId: string, role: Role): Promise<Partial<User>> {
     // Update user with new role
     return this.prisma.user.update({
-      where: { id: user.id },
+      where: { id: userId },
       data: {
         role: { connect: { id: role.id } },
       },
-      include: {
-        role: true, // optional: return updated role info
-        branch: true, // optional: return branch info if relevant
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        emailVerified: true,
+        role: {
+          select: { id: true, name: true },
+        },
+        createdBy: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
   }
 
-  async createStaff(data: UserDto): Promise<User> {
+  async findStaffByEmailAndPhone(
+    email: string,
+    phone: string,
+  ): Promise<{ existingEmailStaff: any; existingStaffPhone: any }> {
+    const [existingEmailStaff, existingStaffPhone] = await Promise.all([
+      this.prisma.user.findUnique({ where: { email } }),
+      this.prisma.user.findUnique({ where: { phone } }),
+    ]);
+
+    return { existingEmailStaff, existingStaffPhone };
+  }
+
+  async findRoleById(roleId: string) {
+    return this.prisma.role.findUnique({
+      where: { id: roleId },
+    });
+  }
+  async createStaff(data: UserDto, userId: string): Promise<User> {
     // Transform DTO into Prisma create input
     const prismaData: Prisma.UserCreateInput = {
       name: data.name,
@@ -34,6 +60,7 @@ export class StaffRepository {
       isStaff: true,
       role: data.role ? { connect: { id: data.role } } : undefined, // relation
       branch: data.branchId ? { connect: { id: data.branchId } } : undefined,
+      createdBy: userId,
     };
 
     return this.prisma.user.create({
@@ -67,12 +94,29 @@ export class StaffRepository {
       this.prisma.user.findMany({
         ...query,
         where,
-        include: {
-          role: true,
-          branch: true,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          emailVerified: true,
+          role: {
+            select: { id: true, name: true },
+          },
+          branch: {
+            select: { id: true, name: true },
+          },
+          createdBy: true,
+          createdAt: true,
+          updatedAt: true,
         },
       }),
-      this.prisma.user.count({ where: query.where || {} }),
+      this.prisma.user.count({
+        where: {
+          ...query.where, // from PrismaQueryFeature
+          ...where, // additional filters (e.g., isStaff)
+        },
+      }),
     ]);
 
     const Staffs = results[0] || [];
@@ -95,15 +139,25 @@ export class StaffRepository {
   async findStaffById(id: string) {
     return await this.prisma.user.findUnique({
       where: { id },
-      include: {
-        role: true,
-        branch: true,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        emailVerified: true,
+        role: {
+          select: { id: true, name: true },
+        },
+        branch: {
+          select: { id: true, name: true },
+        },
+        createdBy: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
   }
   async findAllStaff(payload: ListQueryDto) {
-    console.log('quest1: ', payload);
-
     const feature = new PrismaQueryFeature({
       search: payload.search,
       filter: payload.filter,
@@ -112,23 +166,45 @@ export class StaffRepository {
       pageSize: payload.pageSize,
       searchableFields: ['name', 'email', 'phone'],
     });
-    const query = feature.getQuery();
-    console.log('query : ', query);
 
-    const results = await Promise.all([
+    const query = feature.getQuery();
+
+    console.log('Query to be queried : ', query);
+
+    // 🔹 Optimize: select only needed fields instead of deleting later
+    const [Staffs, total] = await Promise.all([
       this.prisma.user.findMany({
         ...query,
-        where: query.where || {},
-        include: {
-          role: true,
-          branch: true,
+        where: {
+          ...query.where,
+          isStaff: true, // optional: filter only staff
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          emailVerified: true,
+          role: {
+            select: { id: true, name: true },
+          },
+          branch: {
+            select: { id: true, name: true },
+          },
+          createdBy: true,
+          createdAt: true,
+          updatedAt: true,
         },
       }),
-      this.prisma.user.count({ where: query.where || {} }),
+
+      this.prisma.user.count({
+        where: {
+          ...query.where,
+          isStaff: true,
+        },
+      }),
     ]);
 
-    const Staffs = results[0] || [];
-    const total = results[1] || 0;
     return {
       Staffs,
       pagination: feature.getPagination(total),
@@ -136,7 +212,20 @@ export class StaffRepository {
   }
 
   async updateStaff(id: string, data: UpdateStaffDto) {
-    return await this.prisma.user.update({ where: { id }, data });
+    return await this.prisma.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        emailVerified: true,
+        createdAt: true,
+        updatedAt: true,
+        createdBy: true,
+      },
+    });
   }
 
   async findStaffByBranch(payload: ListQueryDto, branchId: string) {
@@ -162,9 +251,21 @@ export class StaffRepository {
       this.prisma.user.findMany({
         ...query,
         where,
-        include: {
-          role: true,
-          branch: true,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          emailVerified: true,
+          role: {
+            select: { id: true, name: true },
+          },
+          branch: {
+            select: { id: true, name: true },
+          },
+          createdBy: true,
+          createdAt: true,
+          updatedAt: true,
         },
       }),
       this.prisma.user.count({ where }),

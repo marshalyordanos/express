@@ -6,12 +6,14 @@ import { BranchUseCases } from './branch.useCase';
 import { RpcException } from '@nestjs/microservices';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { AppLogger } from '../../common/app-logger.service';
+import { MapsService } from '../../fulfillment/maps/maps.service';
 
 @Injectable()
 export class BranchUseCaseImpl implements BranchUseCases {
   constructor(
     private readonly branchRepository: BranchRepository,
     private readonly logger: AppLogger,
+    private readonly mapService: MapsService,
   ) {
     this.logger.setContext('OperationsService', 'BranchUseCaseImpl');
   }
@@ -134,10 +136,19 @@ export class BranchUseCaseImpl implements BranchUseCases {
     }
   }
 
-  async createBranch(data: BranchCreateDto): Promise<Branch> {
+  async createBranch(data: BranchCreateDto, userId: string): Promise<Branch> {
     try {
       this.logger.log(`🧩 Creating new branch: ${data.name}`);
-      return await this.branchRepository.createBranch(data);
+
+      const address = await this.mapService.reverseGeocode(
+        data.address.lat,
+        data.address.long,
+      );
+      this.logger.log(
+        `🧩 Address created for branch with latitude : ${data.address.lat} and longitude ${data.address.long}. and created address response : ${address}`,
+      );
+
+      return await this.branchRepository.createBranch(data, address, userId);
     } catch (error) {
       this.logger.error(`❌ Failed to create branch: ${error.message}`);
       throw new RpcException({
@@ -162,7 +173,7 @@ export class BranchUseCaseImpl implements BranchUseCases {
     }
   }
 
-  async findBranchById(id: string): Promise<Branch> {
+  async findBranchById(id: string): Promise<Partial<Branch>> {
     try {
       this.logger.log(`🔍 Finding branch with ID: ${id}`);
 

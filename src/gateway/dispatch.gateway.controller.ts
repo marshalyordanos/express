@@ -11,6 +11,8 @@ import {
   Post,
   Query,
   Req,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PATTERNS } from '../contracts';
@@ -28,7 +30,9 @@ import {
 } from '../fulfillment/dispatch/dispatch.entity';
 import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
-import { SanitizePipe } from '../common/sanitize.pipe';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import cloudinary from '../common/cloudinary/cloudinary.config';
+import { memoryStorage } from 'multer';
 
 @Controller('dispatch')
 export class DispatchGatewayController {
@@ -316,28 +320,61 @@ export class DispatchGatewayController {
     );
   }
 
-  @Post('/complete-delivery')
+ @Post('/complete-delivery')
+  @UseInterceptors(FilesInterceptor('podImages', 5, { storage: memoryStorage() }))
   async completeDelivery(
+    @UploadedFiles() files: Express.Multer.File[],
     @Body() data: CompleteDeliveryDto,
     @Req() req,
-  ): Promise<any> {
+  ) {
     const authHeader = req.headers['authorization'] || null;
-    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
-
-    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
-    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
     let decodedUser = null;
     try {
+      const token = authHeader?.replace('Bearer ', '');
       decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
-      // decodedUser = this.jwtService.verify(token);
-    } catch (err) {
+    } catch {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
-    return this.dispatchClient.send(PATTERNS.DISPATCH_COMPLETE_DELIVERY, {
+
+    // 1️⃣ Upload POD images to Cloudinary
+    const uploadedImages = [];
+    if (files && files.length > 0) {
+      for (const file of files) {
+        const uploaded = await new Promise<{
+          url: string;
+          publicId: string;
+          fileName: string;
+          fileType: string;
+        }>((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { folder: 'pod_images', resource_type: 'image' },
+            (err, res) => {
+              if (err) return reject(err);
+              resolve({
+                url: res.secure_url,
+                publicId: res.public_id,
+                fileName: file.originalname,
+                fileType: file.mimetype,
+              });
+            },
+          );
+          stream.end(file.buffer);
+        });
+
+        uploadedImages.push(uploaded);
+      }
+    }
+
+    if (uploadedImages.length) {
+      data.podImages = uploadedImages;
+    }
+
+    // 2️⃣ Send to microservice
+    return this.dispatchClient.send('DISPATCH_COMPLETE_DELIVERY', {
       data,
       headers: { authorization: authHeader },
-      user: decodedUser, // ✅ send user info
-      ip,
+      user: decodedUser,
+      ip: req.ip,
     });
   }
 
@@ -396,7 +433,6 @@ export class DispatchGatewayController {
     );
   }
 
-  
   //Controller used for getting all batch dispatches with filters and pagination
   @Get()
   async getAllDispatches(@Req() req, @Query() query: ListQueryDto) {
@@ -498,7 +534,6 @@ export class DispatchGatewayController {
     });
   }
 
-  
   @Get('/driver')
   async findDriver(@Query() query: ListQueryDto, @Req() req) {
     const authHeader = req.headers['authorization'] || null;

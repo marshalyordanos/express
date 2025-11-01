@@ -18,6 +18,7 @@ import { ListQueryDto } from '../../common/query/query.dto';
 import { MapsService } from '../maps/maps.service';
 import { handleCatch } from '../../common/handleCatch';
 import { AppLogger } from '../../common/app-logger.service';
+import { PricingUseCasesImpl } from '../pricing/pricing.usecase.impl';
 
 @Injectable()
 export class OrderUseCasesImpl implements OrderUseCases {
@@ -25,6 +26,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
     private readonly orderRepo: OrderRepository,
     private readonly mapsService: MapsService,
     // private readonly mapsService: MapsService,
+    private readonly pricingUseCases: PricingUseCasesImpl,
     private readonly logger: AppLogger,
   ) {
     this.logger.setContext('FulfillmentService', 'OrderUsecaseImpl');
@@ -98,7 +100,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
             message: 'Receiver not found or required details not provided',
           });
         }
-        receiver = await this.orderRepo.createCustomer({
+        receiver = await this.orderRepo.findOrCreateCustomer({
           name: data.receiverName,
           email: data.receiverEmail,
           phone: data.receiverPhone,
@@ -138,6 +140,28 @@ export class OrderUseCasesImpl implements OrderUseCases {
         userId,
       );
 
+      let origin: { lat: number; lon: number };
+      if (order.pickupAddress) {
+        origin = {
+          lat: Number(order.pickupAddress.lat),
+          lon: Number(order.pickupAddress.long),
+        };
+      } else {
+        origin = (await this.orderRepo.getBranchCoordinates(
+          data.branchId,
+        )) as any;
+      }
+
+      const destination = {
+        lat: Number(order.deliveryAddress.lat),
+        lon: Number(order.deliveryAddress.long),
+      };
+
+      console.log('before calculating : ', origin, destination);
+
+      // Emit WebSocket or background job for async processing
+      this.calculateDistanceAndPrice(order.id, origin, destination);
+
       this.logger.log(
         `Order created successfully with id: ${order.id}, trackingCode: ${trackingCode}`,
       );
@@ -149,6 +173,36 @@ export class OrderUseCasesImpl implements OrderUseCases {
       );
       throw handleCatch(error);
     }
+  }
+
+  async calculateDistanceAndPrice(
+    orderId: string,
+    origin: { lat: number; lon: number },
+    destination: { lat: number; lon: number },
+  ) {
+    console.log(
+      'Corrected to be calculated origin and destination :: ',
+      origin,
+      destination,
+    );
+
+    const distance = await this.mapsService.calculateDistance(
+      origin,
+      destination,
+    );
+
+    console.log('calculated data for distance ::: ', distance);
+
+    await this.updateOrderDistance(orderId, distance);
+
+    const priceData = await this.pricingUseCases.calculatePrice(orderId);
+    console.log('Calculated data for price ::: ', priceData);
+
+    console.log(
+      `responsing after calculating of distance ${distance} and price ${priceData}`,
+    );
+
+    return { distance, priceData };
   }
   async createUserOrder(data: any): Promise<Order> {
     this.logger.log('User order creation requested');
@@ -202,7 +256,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
             message: 'Receiver not found or required details not provided',
           });
         }
-        receiver = await this.orderRepo.createCustomer({
+        receiver = await this.orderRepo.findOrCreateCustomer({
           name: data.receiverName,
           email: data.receiverEmail,
           phone: data.receiverPhone,
@@ -239,6 +293,28 @@ export class OrderUseCasesImpl implements OrderUseCases {
         pickupAddress,
         deliveryAddress,
       );
+
+      let origin: { lat: number; lon: number };
+      if (order.pickupAddress) {
+        origin = {
+          lat: Number(order.pickupAddress.lat),
+          lon: Number(order.pickupAddress.long),
+        };
+      } else {
+        origin = (await this.orderRepo.getBranchCoordinates(
+          data.branchId,
+        )) as any;
+      }
+
+      const destination = {
+        lat: Number(order.deliveryAddress.lat),
+        lon: Number(order.deliveryAddress.long),
+      };
+
+      console.log('before calculating : ', origin, destination);
+
+      // Emit WebSocket or background job for async processing
+      this.calculateDistanceAndPrice(order.id, origin, destination);
 
       this.logger.log(
         `Order created successfully with id: ${order.id}, trackingCode: ${trackingCode}`,

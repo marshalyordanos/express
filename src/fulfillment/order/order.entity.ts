@@ -42,9 +42,9 @@ export class AddressDto {
   addressLine?: string;
 
   @IsString({ message: 'City must be a string' })
-  @IsNotEmpty({ message: 'City is required' })
+  @IsOptional()
   @Transform(({ value }) => sanitize(value))
-  city: string;
+  city?: string;
 
   @IsString({ message: 'State must be a string' })
   @IsOptional()
@@ -52,9 +52,9 @@ export class AddressDto {
   state?: string;
 
   @IsString({ message: 'Country must be a string' })
-  @IsNotEmpty({ message: 'Country is required' })
+  @IsOptional()
   @Transform(({ value }) => sanitize(value))
-  country: string;
+  country?: string;
 
   @IsString({ message: 'Postal code must be a string' })
   @IsOptional()

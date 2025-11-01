@@ -21,8 +21,9 @@ export class StaffMessageController {
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Staff', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.STAFF_CREATE)
-  async createStaff(@Payload() payload: { headers: any; data: RegisterStaffDto }) {
-      const result = await this.usecases.createStaff(payload.data);
+  async createStaff(@Payload() payload: { user: any; data: RegisterStaffDto }) {
+    const userId = payload?.user?.sub;
+      const result = await this.usecases.createStaff(payload.data, userId);
       return IResponse.success('Staff created successfully', result);
   }
 

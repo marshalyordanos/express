@@ -37,10 +37,10 @@ export class OrderMessageController {
 
   @Public()
   @MessagePattern(PATTERNS.ORDER_CREATE_NOT_LOGGED_IN_CUSTOMER)
-  async createUserOrder(@Payload() payload: { data: ValidateOrderDto }) {
+  async createUserOrder(@Payload() payload: { data: CreateOrderDto }) {
     const result = await this.orderUseCases.createUserOrder(payload.data);
     return IResponse.success(
-      'Order created and validated successfully by customer officer',
+      'Order created successfully.',
       result,
     );
   }

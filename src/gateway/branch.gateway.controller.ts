@@ -163,7 +163,6 @@ export class BranchGatewayController {
     } catch (err) {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
-    console.log('Controller received:', data);
     return this.branchClient.send(PATTERNS.BRANCH_ASSIGN_MANAGER, {
       branchId: data.branchId,
       managerId: data.managerId,

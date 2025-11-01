@@ -11,6 +11,7 @@ import { StaffRepository } from './staff.repository';
 import * as bcrypt from 'bcrypt';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { AppLogger } from '../../common/app-logger.service';
+import { PasswordValidator } from '../../common/password-validator';
 
 @Injectable()
 export class StaffUseCasesImpl implements StaffUsecase {
@@ -22,15 +23,36 @@ export class StaffUseCasesImpl implements StaffUsecase {
   }
 
   // ✅ CREATE STAFF WITH SECURITY + LOGGER
-  async createStaff(data: RegisterStaffDto): Promise<User> {
+  async createStaff(data: RegisterStaffDto, userId: string): Promise<User> {
     try {
       this.logger.log(
         `🧑‍💻 Creating new staff user: ${data.email || data.phone}`,
       );
 
+      const { existingEmailStaff, existingStaffPhone } =
+        await this.staffRepo.findStaffByEmailAndPhone(data.email, data.phone);
+
+      if (existingEmailStaff) {
+        this.logger.warn(`❌ Duplicate entry for staff Email : ${data.email}`);
+        throw new RpcException({
+          message: `A staff with this email (${data.email}) already exists.`,
+          statusCode: 400,
+        });
+      }
+
+      if (existingStaffPhone) {
+        this.logger.warn(
+          `❌ Duplicate entry for staff Phone number: ${data.phone}`,
+        );
+        throw new RpcException({
+          message: `A staff with this phone number (${data.phone}) already exists.`,
+          statusCode: 400,
+        });
+      }
+
       // Validate Role
       if (data.role) {
-        const role = await this.staffRepo.findRoleByName(data.role);
+        const role = await this.staffRepo.findRoleById(data.role);
         if (!role) {
           this.logger.warn(`❌ Invalid role: ${data.role}`);
           throw new RpcException(`Invalid role: ${data.role}`);
@@ -48,13 +70,26 @@ export class StaffUseCasesImpl implements StaffUsecase {
         data.branchId = branch.id;
       }
 
+      // ✅ Validate new password strength
+      const valid = PasswordValidator.validate(data.password);
+      if (!valid.isValid) {
+        this.logger.warn(
+          `⚠️ Weak password attempt by user email/phone: ${data.email}, ${data.phone}`,
+        );
+        throw new RpcException({
+          statusCode: 400,
+          message: valid.message,
+        });
+      }
       // Hash password securely
       const hashedPassword = await bcrypt.hash(data.password, 12);
       data.password = hashedPassword;
 
-      const staff = await this.staffRepo.createStaff(data);
+      const staff = await this.staffRepo.createStaff(data, userId);
 
       this.logger.log(`✅ Staff created successfully with ID: ${staff.id}`);
+      delete staff.password;
+
       return staff;
     } catch (error) {
       this.logger.error(
@@ -70,7 +105,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
     try {
       this.logger.log(`🔍 Fetching staff for role: ${role}`);
 
-      const roleData = await this.staffRepo.findRoleByName(role);
+      const roleData = await this.staffRepo.findRoleById(role);
       if (!roleData) {
         this.logger.warn(`❌ Invalid role: ${role}`);
         throw new RpcException(`Invalid role: ${role}`);
@@ -96,7 +131,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
       this.logger.log(
         `📋 Fetching all staff with filters: ${JSON.stringify(query)}`,
       );
-      return await this.staffRepo.findAllStaff(query);
+      return  await this.staffRepo.findAllStaff(query);;
     } catch (error) {
       this.logger.error(
         `🚨 Error fetching all staff: ${error.message}`,
@@ -107,7 +142,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
   }
 
   // ✅ CHANGE USER ROLE
-  async changeUserRole(data: ChangeRoleDto): Promise<User> {
+  async changeUserRole(data: ChangeRoleDto): Promise<Partial<User>> {
     try {
       this.logger.log(`🔄 Changing role for userId: ${data.userId}`);
 
@@ -115,10 +150,10 @@ export class StaffUseCasesImpl implements StaffUsecase {
       if (!user)
         throw new RpcException(`User with id ${data.userId} not found`);
 
-      const role = await this.staffRepo.findRoleByName(data.role);
+      const role = await this.staffRepo.findRoleById(data.role);
       if (!role) throw new RpcException(`Role ${data.role} not found`);
 
-      const updatedUser = await this.staffRepo.changeUserRole(user, role);
+      const updatedUser = await this.staffRepo.changeUserRole(user.id, role);
       this.logger.log(`✅ Role updated successfully for user ${user.id}`);
       return updatedUser;
     } catch (error) {
@@ -152,11 +187,13 @@ export class StaffUseCasesImpl implements StaffUsecase {
   }
 
   // ✅ FIND STAFF BY ID
-  async findStaffById(id: string): Promise<User> {
+  async findStaffById(id: string): Promise<Partial<User>> {
     try {
       this.logger.log(`🗑️ Fetching staff with id: ${id}`);
       const staff = await this.staffRepo.findStaffById(id);
-      if (!staff) throw new RpcException('User not found');
+      if (!staff) throw new RpcException('User not found') && this.logger.warn(`🗑️ Staff not founf with id: ${id}`);;
+
+      this.logger.log(`🗑️ Fetched staff successfuly with id: ${id}`);
       return staff;
     } catch (error) {
       this.logger.error(
@@ -168,7 +205,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
   }
 
   // ✅ UPDATE STAFF
-  async updateStaff(id: string, data: UpdateStaffDto): Promise<User> {
+  async updateStaff(id: string, data: UpdateStaffDto): Promise<Partial<User>> {
     try {
       this.logger.log(`✏️ Updating staff with id: ${id}`);
       return await this.staffRepo.updateStaff(id, data);

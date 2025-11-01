@@ -11,6 +11,7 @@ import {
   AssignOfficerForBatch,
   BatchDispatchDto,
   BatchHandoverDto,
+  CompleteDeliveryDto,
   ConfirmBatchHandoverDto,
   CreateDriver,
 } from './dispatch.entity';
@@ -26,6 +27,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { handleCatch } from '../../common/handleCatch';
 import { AppLogger } from '../../common/app-logger.service';
+import { podUploader } from '../../common/cloudinary/cloudinary.storage';
+import { v2 as cloudinary } from 'cloudinary';
 
 @Injectable()
 export class DispatchUseCasesImpl implements DispatchUseCases {
@@ -561,89 +564,265 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     }
   }
 
-  async completeDelivery(
-    orderId: string,
-    driverId: string,
-    userId: string,
-    notes?: string,
-  ) {
-    this.logger.log(
-      `Delivery completion request received. Order: ${orderId}, Driver: ${driverId}, Requested by: ${userId}`,
-    );
+  // async completeDelivery(
+  //   orderId: string,
+  //   driverId: string,
+  //   userId: string,
+  //   notes?: string,
+  //   podImages?: string[],
+  // ) {
+  //   this.logger.log(
+  //     `Delivery completion request received. Order: ${orderId}, Driver: ${driverId}, Requested by: ${userId}`,
+  //   );
+
+  //   try {
+  //     // 0. verify POD image is provided
+
+  //       const savedPodImages = [];
+
+  //     // 1. Authorization
+  //     if (userId !== driverId) {
+  //       this.logger.warn(
+  //         `Unauthorized delivery completion attempt by user ${userId} for driver ${driverId}`,
+  //       );
+  //       throw new RpcException({
+  //         statusCode: 403,
+  //         message: 'You are not authorized to do this action.',
+  //       });
+  //     }
+
+  //     // 2. Fetch order
+  //     const order = await this.dispatchRepo.findOrderById(orderId);
+  //     if (!order) {
+  //       this.logger.warn(`Order not found for delivery completion: ${orderId}`);
+  //       throw new RpcException({
+  //         statusCode: 404,
+  //         message: `Order with ID ${orderId} not found.`,
+  //       });
+  //     }
+
+  //     this.logger.debug(`Order ${order.id} found with status: ${order.status}`);
+
+  //     // 3. Verify assigned driver
+  //     if (order.deliveryDriverId !== driverId) {
+  //       this.logger.warn(
+  //         `Driver mismatch for order ${orderId}. Assigned: ${order.deliveryDriverId}, Attempted: ${driverId}`,
+  //       );
+  //       throw new RpcException({
+  //         statusCode: 403,
+  //         message: `Order with ID ${orderId} is not assigned to this driver.`,
+  //       });
+  //     }
+
+  //     // 4. Verify order status
+  //     if (order.status !== 'OUT_FOR_DELIVERY') {
+  //       this.logger.warn(
+  //         `Order ${orderId} not eligible for completion. Current status: ${order.status}`,
+  //       );
+  //       throw new RpcException({
+  //         statusCode: 400,
+  //         message: `Order with ID ${orderId} is not eligible for delivery and it is not out for delivery. Current status: ${order.status}.`,
+  //       });
+  //     }
+
+  //     // 5. Complete delivery
+  //     this.logger.log(
+  //       `Completing delivery for order ${orderId} by driver ${driverId}`,
+  //     );
+  //     const result = await this.dispatchRepo.deliverOrder(
+  //       orderId,
+  //       driverId,
+  //       notes,
+  //     );
+
+  //     this.logger.verbose(
+  //       `Driver ${driverId} successfully completed delivery for order ${orderId}`,
+  //     );
+
+  //     return {
+  //       success: true,
+  //       message: 'Order delivered to customer.',
+  //       result,
+  //     };
+  //   } catch (error) {
+  //     this.logger.error(
+  //       `Delivery completion failed for order ${orderId} by driver ${driverId}: ${error.message}`,
+  //       error.stack,
+  //     );
+  //     throw handleCatch(error);
+  //   }
+  // }
+
+
+   /**
+   * Complete delivery for an order
+   * @param dto CompleteDeliveryDto
+   * @param files Optional POD images from frontend (express file array)
+   */
+  // async completeDelivery(
+  //   dto: CompleteDeliveryDto,
+  //   userId: string,
+  //    files?: string[],
+  // ) {
+
+  //     const { orderId, driverId, notes, podImages } = dto;
+  //   this.logger.log(
+  //     `Delivery completion request received. Order: ${dto.orderId}, Driver: ${dto.driverId}, Requested by: ${userId}`,
+  //   );
+
+  //   // 0️⃣ Authorization check
+  //   if (userId !== dto.driverId) {
+  //       this.logger.warn(
+  //         `Unauthorized delivery completion attempt by user ${userId} for driver ${dto.driverId}`,
+  //       );
+  //       throw new RpcException({
+  //         statusCode: 403,
+  //         message: 'You are not authorized to do this action.',
+  //       });
+  //     }
+
+  //   // 1️⃣ Upload images to Cloudinary if any
+  //   let uploadedImages: {
+  //     url: string;
+  //     publicId: string;
+  //     fileName: string;
+  //     fileType: string;
+  //   }[] = [];
+
+  //   try {
+  //     if (files && files.length > 0) {
+  //       for (const file of files) {
+  //         const result = await cloudinary.uploader.upload_stream({
+  //           folder: 'pod_images',
+  //           resource_type: 'image',
+  //           format: 'png', // or leave dynamic
+  //         }, (error, res) => {
+  //           if (error) throw error;
+  //           return res;
+  //         });
+
+  //         // Because upload_stream needs a buffer, we wrap in Promise
+  //         const uploaded = await new Promise<{
+  //           url: string;
+  //           publicId: string;
+  //           fileName: string;
+  //           fileType: string;
+  //         }>((resolve, reject) => {
+  //           const stream = cloudinary.uploader.upload_stream(
+  //             { folder: 'pod_images' },
+  //             (err, res) => {
+  //               if (err) return reject(err);
+  //               resolve({
+  //                 url: res.secure_url,
+  //                 publicId: res.public_id,
+  //                 fileName: file.originalname,
+  //                 fileType: file.mimetype,
+  //               });
+  //             },
+  //           );
+  //           stream.end(file.buffer);
+  //         });
+  //         uploadedImages.push(uploaded);
+  //       }
+  //     }
+
+  //           // 2. Fetch order
+  //     const order = await this.dispatchRepo.findOrderById(dto.orderId);
+  //     if (!order) {
+  //       this.logger.warn(`Order not found for delivery completion: ${dto.orderId}`);
+  //       throw new RpcException({
+  //         statusCode: 404,
+  //         message: `Order with ID ${dto.orderId} not found.`,
+  //       });
+  //     }
+
+  //     this.logger.debug(`Order ${order.id} found with status: ${order.status}`);
+
+  //     // 3. Verify assigned driver
+  //     if (order.deliveryDriverId !== dto.driverId) {
+  //       this.logger.warn(
+  //         `Driver mismatch for order ${dto.orderId}. Assigned: ${order.deliveryDriverId}, Attempted: ${dto.driverId}`,
+  //       );
+  //       throw new RpcException({
+  //         statusCode: 403,
+  //         message: `Order with ID ${dto.orderId} is not assigned to this driver.`,
+  //       });
+  //     }
+
+  //     // 4. Verify order status
+  //     if (order.status !== 'OUT_FOR_DELIVERY') {
+  //       this.logger.warn(
+  //         `Order ${dto.orderId} not eligible for completion. Current status: ${order.status}`,
+  //       );
+  //       throw new RpcException({
+  //         statusCode: 400,
+  //         message: `Order with ID ${dto.orderId} is not eligible for delivery and it is not out for delivery. Current status: ${order.status}.`,
+  //       });
+  //     }
+  //     // 2️⃣ Call repository to mark order as delivered + save POD images
+  //        this.logger.log(
+  //       `Completing delivery for order ${dto.orderId} by driver ${dto.driverId}`,
+  //     );
+  //     const result = await this.dispatchRepo.deliverOrder(
+  //       dto.orderId,
+  //       dto.driverId,
+  //       dto.notes,
+  //       uploadedImages,
+  //     );
+
+  //     this.logger.log(
+  //       `Order ${dto.orderId} delivered successfully by driver ${dto.driverId}`,
+  //     );
+
+  //     return {
+  //       success: true,
+  //       message: 'Order delivered successfully.',
+  //       data: result,
+  //     };
+  //   } catch (err) {
+  //     // 3️⃣ Rollback uploaded images if transaction failed
+  //     if (uploadedImages.length > 0) {
+  //       for (const img of uploadedImages) {
+  //         try {
+  //           await cloudinary.uploader.destroy(img.publicId);
+  //         } catch (e) {
+  //           this.logger.error(`Failed to delete Cloudinary image ${img.publicId}: ${e.message}`);
+  //         }
+  //       }
+  //     }
+
+  //     this.logger.error(
+  //       `Delivery completion failed for order ${dto.orderId}: ${err.message}`,
+  //       err.stack,
+  //     );
+  //     throw err instanceof RpcException ? err : new RpcException({
+  //       statusCode: 500,
+  //       message: 'Failed to complete delivery.',
+  //     });
+  //   }
+  // }
+
+  async completeDelivery(dto: CompleteDeliveryDto, userId: string) {
+    const { orderId, driverId, notes, podImages } = dto;
+    this.logger.log(`Completing delivery for order ${orderId} by driver ${driverId}`);
+
+    if (userId !== driverId) {
+      throw new RpcException('Unauthorized action');
+    }
 
     try {
-      // 1. Authorization
-      if (userId !== driverId) {
-        this.logger.warn(
-          `Unauthorized delivery completion attempt by user ${userId} for driver ${driverId}`,
-        );
-        throw new RpcException({
-          statusCode: 403,
-          message: 'You are not authorized to do this action.',
-        });
-      }
-
-      // 2. Fetch order
-      const order = await this.dispatchRepo.findOrderById(orderId);
-      if (!order) {
-        this.logger.warn(`Order not found for delivery completion: ${orderId}`);
-        throw new RpcException({
-          statusCode: 404,
-          message: `Order with ID ${orderId} not found.`,
-        });
-      }
-
-      this.logger.debug(`Order ${order.id} found with status: ${order.status}`);
-
-      // 3. Verify assigned driver
-      if (order.deliveryDriverId !== driverId) {
-        this.logger.warn(
-          `Driver mismatch for order ${orderId}. Assigned: ${order.deliveryDriverId}, Attempted: ${driverId}`,
-        );
-        throw new RpcException({
-          statusCode: 403,
-          message: `Order with ID ${orderId} is not assigned to this driver.`,
-        });
-      }
-
-      // 4. Verify order status
-      if (order.status !== 'OUT_FOR_DELIVERY') {
-        this.logger.warn(
-          `Order ${orderId} not eligible for completion. Current status: ${order.status}`,
-        );
-        throw new RpcException({
-          statusCode: 400,
-          message: `Order with ID ${orderId} is not eligible for delivery and it is not out for delivery. Current status: ${order.status}.`,
-        });
-      }
-
-      // 5. Complete delivery
-      this.logger.log(
-        `Completing delivery for order ${orderId} by driver ${driverId}`,
-      );
-      const result = await this.dispatchRepo.deliverOrder(
+      return await this.dispatchRepo.deliverOrderWithPodImages(
         orderId,
         driverId,
         notes,
+        podImages,
       );
-
-      this.logger.verbose(
-        `Driver ${driverId} successfully completed delivery for order ${orderId}`,
-      );
-
-      return {
-        success: true,
-        message: 'Order delivered to customer.',
-        result,
-      };
-    } catch (error) {
-      this.logger.error(
-        `Delivery completion failed for order ${orderId} by driver ${driverId}: ${error.message}`,
-        error.stack,
-      );
-      throw handleCatch(error);
+    } catch (err) {
+      this.logger.error(`Delivery failed: ${err.message}`);
+      throw err;
     }
   }
+
   async removeDriverFromOrder(orderId: string): Promise<any> {
     this.logger.log(`Request to remove driver from order ${orderId}`);
 

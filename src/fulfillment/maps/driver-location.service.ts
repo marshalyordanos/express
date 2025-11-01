@@ -1,8 +1,7 @@
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../../redis/redis.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Cron } from '@nestjs/schedule';
-import { MapLocationGateway } from '../../websocket/gateways/map-location.gateway';
+import { WebSocketEventService } from '../../websocket/services/websocket-event.service';
 
 export interface NearbyDriver {
   driverId: string;
@@ -32,24 +31,25 @@ export class DriverLocationService {
   constructor(
     private readonly redisService: RedisService,
     private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => MapLocationGateway))
-    private readonly mapGateway: MapLocationGateway,
+    // private readonly mapGateway: MapLocationGateway,
+    @Inject(forwardRef(() => WebSocketEventService))
+    private websocketEventService: WebSocketEventService,
   ) {
-    this.onlineEmitter = this.mapGateway.emitDriverStatus.bind(this.mapGateway);
+    this.onlineEmitter = this.websocketEventService.emitDriverStatus.bind(this.websocketEventService);
   }
-
+ 
   // -------------------------------
   // CRON: Sync location and offline detection
   // -------------------------------
-  @Cron('*/2 * * * *') // every 2 minutes
-  async handleCron() {
-    try {
-      await this.syncToDatabase();
-      await this.updateOfflineDrivers();
-    } catch (err) {
-      this.logger.error('Cron job failed:', err);
-    }
-  }
+  // @Cron('*/2 * * * *') // every 2 minutes
+  // async handleCron() {
+  //   try {
+  //     await this.syncToDatabase();
+  //     await this.updateOfflineDrivers();
+  //   } catch (err) {
+  //     this.logger.error('Cron job failed:', err);
+  //   }
+  // }
 
   /**
    * Update driver location in Redis + store log in DB
@@ -100,7 +100,7 @@ export class DriverLocationService {
       }
 
       // ✅ New: notify subscribed customers
-      this.mapGateway.emitDriverLocationToSubscribersPublic({
+      this.websocketEventService.emitDriverLocationToSubscribers({
         driverId: data.driverId,
         lat: data.lat,
         lon: data.lon,

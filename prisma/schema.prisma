@@ -50,6 +50,8 @@ model User {
 
 pickupOrders  Order[]  @relation("PickupDriverOrders")
 deliveryOrders Order[] @relation("DeliveryDriverOrders")
+profilePictures ProfilePicture[]
+podImages PodImage[] 
 
   corporateInfo CorporateInfo?
   driver        Driver?
@@ -298,6 +300,7 @@ model Order {
  // driver          User?                 @relation("DriverOrders", fields: [driverId], references: [id], map: "Order_driver_fk_user")
   //orderDriver     Driver?               @relation("DriverAssignedOrders", fields: [driverId], references: [id], map: "Order_driver_fk_driver")
   priceLogs       PriceCalculationLog[]
+  podImages PodImage[] 
 
   @@index([pickupAddressId, deliveryAddressId], name: "idx_order_addresses") // compound index for route optimization
   @@index([branchId, status], name: "idx_branch_status") // filter orders by branch + status
@@ -319,6 +322,38 @@ model Order {
   @@index([optimizationJobId])
 }
 
+model PodImage {
+  id         String   @id @default(cuid())
+  driverId   String
+  orderId    String
+  url        String   // Cloudinary or S3 URL
+  publicId   String?  // Optional: Cloudinary public ID for deletion
+  fileName   String?  // Original file name
+  fileType   String?  // e.g., 'image/jpeg', 'image/png'
+  uploadedAt DateTime @default(now())
+
+  // Relations (optional)
+  driver     User   @relation(fields: [driverId], references: [id])
+  order      Order    @relation(fields: [orderId], references: [id])
+
+  @@index([driverId])
+  @@index([orderId])
+}
+
+model ProfilePicture {
+  id         String   @id @default(cuid())
+  userId     String   // Could be driver or customer
+  url        String   // Cloudinary or S3 URL
+  publicId   String?  // Optional: Cloudinary public ID
+  fileName   String?  // Original file name
+  fileType   String?  // e.g., 'image/jpeg', 'image/png'
+  uploadedAt DateTime @default(now())
+
+  // Relation
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
 model ParcelApproval {
   id         String         @id @default(cuid())
   orderId    String         @unique

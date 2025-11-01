@@ -1,12 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import {
-  BranchCreateDto,
-  BranchUpdateDto,
-} from './branch.entity';
+import { BranchCreateDto, BranchUpdateDto } from './branch.entity';
 import { Branch } from '@prisma/client';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
+import e from 'express';
 
 @Injectable()
 export class BranchRepository {
@@ -106,7 +104,17 @@ export class BranchRepository {
           },
         }),
       },
-      include: { address: true },
+      include: {
+        address: {
+          select: {
+            id: true,
+            label: true,
+            city: true,
+            country: true,
+            state: true,
+          },
+        },
+      },
     });
   }
 
@@ -121,10 +129,6 @@ export class BranchRepository {
     });
 
     const query = feature.getQuery();
-    console.log('payload: ', payload);
-
-    console.log('query: ', query);
-    console.log('Where clause: ', query.where);
 
     const results = await Promise.all([
       this.prisma.branch.findMany({
@@ -134,12 +138,39 @@ export class BranchRepository {
           id: true,
           name: true,
           location: true,
-          managerId: true,
           createdAt: true,
           updatedAt: true,
-          manager: true,
-          orders: true,
-          staff: true,
+          manager: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+          orders: {
+            select: {
+              id: true,
+              trackingCode: true,
+            },
+          },
+          staff: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+          address: {
+            select: {
+              id: true,
+              label: true,
+              city: true,
+              country: true,
+              state: true,
+            },
+          },
         },
       }),
       this.prisma.branch.count({
@@ -156,24 +187,79 @@ export class BranchRepository {
     };
   }
 
-  async createBranch(data: BranchCreateDto): Promise<Branch> {
-    return await this.prisma.branch.create({
+  async createBranch(
+    data: BranchCreateDto,
+    address: any,
+    userId: string,
+  ): Promise<Branch> {
+    return this.prisma.branch.create({
       data: {
         name: data.name,
         location: data.location,
         managerId: data.managerId ?? null,
-        address: {
-          create: {
-            ...data.address,
-            purpose: 'BRANCH_LOCATION',
+        createdBy: userId,
+
+        // 👇 Handle optional address creation (one-to-one via "BranchAddress" relation)
+        ...(data.address && {
+          address: {
+            create: {
+              label: address.label ?? 'branch label unknown',
+              addressLine: address.addressLine ?? 'Unknown',
+              city: address.city ?? 'Unknown',
+              state: address.state ?? null,
+              country: address.country ?? 'Ethiopia',
+              postalCode: address.postalCode ?? null,
+              lat: data.address.lat?.toString() ?? null, // ensure string
+              long: data.address.long?.toString() ?? null,
+              purpose: address.purpose ?? 'BRANCH_LOCATION',
+              createdBy: userId,
+            },
           },
-        },
+        }),
       },
       include: { address: true },
     });
   }
 
-  async findBranchById(id: string): Promise<Branch | null> {
-    return this.prisma.branch.findUnique({ where: { id } });
+  async findBranchById(id: string): Promise<Partial<Branch> | null> {
+    return this.prisma.branch.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        location: true,
+        manager: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        staff: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        address: {
+          select: {
+            id: true,
+            label: true,
+            state: true,
+            city: true,
+            country: true,
+          },
+        },
+        orders: {
+          select: {
+            id: true,
+            trackingCode: true,
+          },
+        },
+      },
+    });
   }
 }

@@ -228,6 +228,15 @@ export class CompleteDeliveryDto {
   @IsOptional()
    @Transform(({ value }) => escape(value?.trim()))
   notes?: string;
+
+ @IsArray()
+  @IsOptional()
+  podImages?: {
+    url: string;
+    publicId?: string;
+    fileName?: string;
+    fileType?: string;
+  }[];
 }
 
 export class LastMileDeliveryDto {

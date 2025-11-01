@@ -27,6 +27,7 @@ import { DashboardReportService } from './report/services/dashboard.service';
 import { DashboardReportRepository } from './report/repositories/dashboard.repository';
 import { RedisService } from '../redis/redis.service';
 import { AppLogger } from '../common/app-logger.service';
+import { MapsService } from '../fulfillment/maps/maps.service';
 
 @Module({
   imports: [
@@ -64,7 +65,8 @@ import { AppLogger } from '../common/app-logger.service';
     RoleRepository,
     DashboardReportService,
     DashboardReportRepository,
-    AppLogger
+    AppLogger,
+    MapsService,
   ],
   exports: [
     UserUseCasesImp,

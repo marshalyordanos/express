@@ -11,9 +11,8 @@ import { WebSocketEventService } from '../../websocket/services/websocket-event.
 export class OrderRepository {
   constructor(
     private prisma: PrismaService,
-    @Inject(forwardRef(() => WebSocketEventService))
-    private readonly websocketService: WebSocketEventService,
-  ) {}
+  ) {
+  }
   async trackOrder(orderId: string) {
     return this.prisma.orderTracking.findMany({
       where: { orderId },
@@ -37,6 +36,93 @@ export class OrderRepository {
         createdBy: customerData.userId || 'system',
       },
     });
+  }
+
+  //   async findOrCreateCustomer(customerData: {
+  //   name: string;
+  //   email: string;
+  //   phone: string;
+  //   userId?: string;
+  // }) {
+  //   // 1️⃣ Try to find existing user by email or phone
+  //   const existingUser = await this.prisma.user.findFirst({
+  //     where: {
+  //       OR: [
+  //         { email: customerData.email },
+  //         { phone: customerData.phone },
+  //       ],
+  //     },
+  //   });
+
+  //   // 2️⃣ If found, return it
+  //   if (existingUser) {
+  //     return existingUser;
+  //   }
+
+  //   // 3️⃣ If not found, create new customer
+  //   return this.prisma.user.create({
+  //     data: {
+  //       name: customerData.name,
+  //       email: customerData.email,
+  //       phone: customerData.phone ?? null,
+  //       password: '', // or generate random password if needed
+  //       isStaff: false,
+  //       roleId: null,
+  //       createdBy: customerData.userId || 'system',
+  //     },
+  //   });
+  // }
+
+  async findOrCreateCustomer(customerData: {
+    name: string;
+    email: string;
+    phone: string;
+    userId?: string;
+  }) {
+    // Step 1: Try to find existing user by email or phone
+    let existingUser = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ email: customerData.email }, { phone: customerData.phone }],
+      },
+    });
+
+    // Step 2: If user exists, optionally update name if different
+    if (existingUser) {
+      if (existingUser.name !== customerData.name) {
+        existingUser = await this.prisma.user.update({
+          where: { id: existingUser.id },
+          data: { name: customerData.name },
+        });
+      }
+      return existingUser;
+    }
+
+    // Step 3: If not exists, create new user
+    try {
+      return await this.prisma.user.create({
+        data: {
+          name: customerData.name,
+          email: customerData.email,
+          phone: customerData.phone ?? null,
+          password: '', // or generate a random password
+          isStaff: false,
+          roleId: null,
+          createdBy: customerData.userId || 'system',
+        },
+      });
+    } catch (error) {
+      // Step 4: Handle unique constraint errors gracefully (race condition)
+      if (error.code === 'P2002') {
+        // Conflict: someone created the user concurrently
+        existingUser = await this.prisma.user.findFirst({
+          where: {
+            OR: [{ email: customerData.email }, { phone: customerData.phone }],
+          },
+        });
+        if (existingUser) return existingUser;
+      }
+      throw error;
+    }
   }
 
   async findCustomerByEmailOrPhone(email: string, phone: string) {
@@ -195,7 +281,7 @@ export class OrderRepository {
     pickupAddress: any,
     deliveryAddress: any,
     userId?: string,
-  ): Promise<Order> {
+  ): Promise<any> {
     console.log(
       'Repository inside creation order for addresses pickup and delivery :::::: ',
       pickupAddress,
@@ -333,35 +419,45 @@ export class OrderRepository {
     );
 
     // 2️⃣ Trigger async distance & pricing calculation outside transaction
-    let origin: { lat: number; lon: number };
-    if (order.pickupAddress) {
-      origin = {
-        lat: Number(order.pickupAddress.lat),
-        lon: Number(order.pickupAddress.long),
-      };
-    } else {
-      origin = (await this.getBranchCoordinates(data.branchId)) as any;
-    }
+    // let origin: { lat: number; lon: number };
+    // if (order.pickupAddress) {
+    //   origin = {
+    //     lat: Number(order.pickupAddress.lat),
+    //     lon: Number(order.pickupAddress.long),
+    //   };
+    // } else {
+    //   origin = (await this.getBranchCoordinates(data.branchId)) as any;
+    // }
 
-    const destination = {
-      lat: Number(order.deliveryAddress.lat),
-      lon: Number(order.deliveryAddress.long),
-    };
+    // const destination = {
+    //   lat: Number(order.deliveryAddress.lat),
+    //   lon: Number(order.deliveryAddress.long),
+    // };
 
-    console.log('before calculating : ', origin, destination);
+    // console.log('before calculating : ', origin, destination);
+    // console.log('before calculating second : ', this.websocketService);
 
-    // Emit WebSocket or background job for async processing
-    this.websocketService.emitOrderDistanceCalculation(
-      order.id,
-      origin,
-      destination,
-    );
+    // console.log(
+    //   '🧩 websocketService:',
+    //   this.websocketService?.constructor?.name,
+    // );
+    // if (!this.websocketService) {
+    //   throw new Error('🚨 websocketService is not injected!');
+    // }
+    // // Emit WebSocket or background job for async processing
+    // this.websocketService.emitOrderDistanceCalculation(
+    //   order.id,
+    //   origin,
+    //   destination,
+    // );
 
-    console.log('Distance and price calculated:: ');
+    // console.log('Distance and price calculated:: ');
 
     // 3️⃣ Return immediately, transaction is complete
     return order;
   }
+
+  
 
   async updateOrderDistance(orderId: string, distance: number) {
     try {
@@ -377,7 +473,7 @@ export class OrderRepository {
       );
     }
   }
-  private async getBranchCoordinates(branchId: string) {
+  async getBranchCoordinates(branchId: string) {
     const branch = await this.prisma.branch.findUnique({
       where: { id: branchId },
       include: { address: true },
