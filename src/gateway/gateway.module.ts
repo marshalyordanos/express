@@ -20,32 +20,46 @@ import { WebSocketModule } from '../websocket/socket.module';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { ReportGatewayController } from './report.gateway.controller';
 import { AppLogger } from '../common/app-logger.service';
-
+import { SanitizePipe } from '../common/sanitize.pipe';
+import { MulterModule } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
 
 @Module({
   imports: [
-    forwardRef(() => FulfillmentModule), 
+    MulterModule.register({
+      storage: memoryStorage(),
+      limits: { files: 5, fileSize: 5 * 1024 * 1024 },
+    }),
+    forwardRef(() => FulfillmentModule),
     WebSocketModule,
     MicroserviceClientsModule,
     ConfigModule.forRoot({ isGlobal: true }),
-    LoggerModule.forRoot({
-      pinoHttp: {
-        level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',
-        transport:
-          process.env.NODE_ENV !== 'production'
-            ? {
-                target: 'pino-pretty',
-                options: {
-                  colorize: true,
-                  translateTime: 'yyyy-mm-dd HH:MM:ss',
-                  ignore: 'pid,hostname',
-                },
-              }
-            : undefined,
-      },
-    }),
+    // LoggerModule.forRoot({
+    //   pinoHttp: {
+    //     level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',
+    //     transport:
+    //       process.env.NODE_ENV !== 'production'
+    //         ? {
+    //             target: 'pino-pretty',
+    //             options: {
+    //               colorize: true,
+    //               translateTime: 'yyyy-mm-dd HH:MM:ss',
+    //               ignore: 'pid,hostname',
+    //             },
+    //           }
+    //         : undefined,
+    //   },
+    // }),
   ],
-  providers: [PermissionBootstrapper, PrismaService, RedisService, AppLogger],
+  providers: [
+    PermissionBootstrapper,
+    PrismaService,
+    RedisService,
+    AppLogger,
+    SanitizePipe,
+    CloudinaryUploaderService,
+  ],
   controllers: [
     AuthGatewayController,
     UserGatewayController,
@@ -60,5 +74,6 @@ import { AppLogger } from '../common/app-logger.service';
     MapGatewayController,
     ReportGatewayController,
   ],
+  exports: [AppLogger, SanitizePipe]
 })
 export class GatewayModule {}

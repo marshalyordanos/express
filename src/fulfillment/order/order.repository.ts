@@ -9,10 +9,7 @@ import { WebSocketEventService } from '../../websocket/services/websocket-event.
 
 @Injectable()
 export class OrderRepository {
-  constructor(
-    private prisma: PrismaService,
-  ) {
-  }
+  constructor(private prisma: PrismaService) {}
   async trackOrder(orderId: string) {
     return this.prisma.orderTracking.findMany({
       where: { orderId },
@@ -256,9 +253,7 @@ export class OrderRepository {
       });
 
       await tx.orderException.deleteMany({
-        where: {
-          orderId,
-        },
+        where: { orderId },
       });
       await tx.orderTracking.create({
         data: {
@@ -294,72 +289,91 @@ export class OrderRepository {
         console.log('Pickup address is :::::: ', data.pickupAddress);
 
         // Create pickup address if provided
-        let pickupAddressRecord: Address | null = null;
-        if (data.pickupAddress) {
-          // Try to find an existing address with the same lat & long
-          pickupAddressRecord = await tx.address.findFirst({
-            where: {
-              lat: data.pickupAddress.lat,
-              long: data.pickupAddress.long,
-              purpose: 'ORDER_PICKUP',
-              userId: customerId,
-            },
-          });
+        // let pickupAddressRecord: Address | null = null;
+        // if (data.pickupAddress) {
+        //   // Try to find an existing address with the same lat & long
+        //   pickupAddressRecord = await tx.address.findFirst({
+        //     where: {
+        //       lat: data.pickupAddress.lat,
+        //       long: data.pickupAddress.long,
+        //       purpose: 'ORDER_PICKUP',
+        //       userId: customerId,
+        //     },
+        //   });
 
-          // If not found, create a new one
-          if (!pickupAddressRecord) {
-            pickupAddressRecord = await tx.address.create({
-              data: {
-                addressLine: pickupAddress.addressLine ?? 'Unknown',
-                label: pickupAddress.label ?? 'Unknown Home or Office',
-                lat: data.pickupAddress.lat,
-                long: data.pickupAddress.long,
-                city: pickupAddress.city ?? 'Unknown',
-                state: pickupAddress.state ?? 'Unknown',
-                country: pickupAddress.country ?? 'Unknown',
-                postalCode: pickupAddress.postalCode ?? 'Unknown',
-                purpose: 'ORDER_PICKUP',
-                user: { connect: { id: customerId } },
-                createdBy: userId ?? customerId,
-              },
-            });
-          }
-        }
+        //   console.log("Pickup address for creating address inside repo .... ::", pickupAddress);
+
+        //   // If not found, create a new one
+        //   if (!pickupAddressRecord) {
+        //     pickupAddressRecord = await tx.address.create({
+        //       data: {
+        //         addressLine: pickupAddress.addressLine ?? 'Unknown',
+        //         label: pickupAddress.label ?? 'Unknown Home or Office',
+        //         lat: data.pickupAddress.lat,
+        //         long: data.pickupAddress.long,
+        //         city: pickupAddress.city ?? 'Unknown',
+        //         state: pickupAddress.state ?? 'Unknown',
+        //         country: pickupAddress.country ?? 'Unknown',
+        //         postalCode: pickupAddress.postalCode ?? 'Unknown',
+        //         purpose: 'ORDER_PICKUP',
+        //         user: { connect: { id: customerId } },
+        //         createdBy: userId ?? customerId,
+        //       },
+        //     });
+        //   }
+        // }
 
         // console.log('Pickup address ready:', pickupAddressRecord);
 
-        // Delivery address (similar logic)
-        let deliveryAddressRecord: Address | null = null;
-        if (data.deliveryAddress) {
-          deliveryAddressRecord = await tx.address.findFirst({
-            where: {
-              lat: data.deliveryAddress.lat,
-              long: data.deliveryAddress.long,
-              purpose: 'ORDER_DELIVERY',
-              userId: customerId,
-            },
-          });
+        // // Delivery address (similar logic)
+        // let deliveryAddressRecord: Address | null = null;
+        // if (data.deliveryAddress) {
+        //   deliveryAddressRecord = await tx.address.findFirst({
+        //     where: {
+        //       lat: data.deliveryAddress.lat,
+        //       long: data.deliveryAddress.long,
+        //       purpose: 'ORDER_DELIVERY',
+        //       userId: customerId,
+        //     },
+        //   });
+        //   console.log("Delivery address for creating address inside repo .... ::", deliveryAddress);
 
-          if (!deliveryAddressRecord) {
-            deliveryAddressRecord = await tx.address.create({
-              data: {
-                addressLine: deliveryAddress.addressLine ?? 'Unknown',
-                label: deliveryAddress.label ?? 'Unknown Home or Office',
-                lat: data.deliveryAddress.lat,
-                long: data.deliveryAddress.long,
-                city: deliveryAddress.city ?? 'Unknown',
-                state: deliveryAddress.state ?? 'Unknown',
-                country: deliveryAddress.country ?? 'Unknown',
-                postalCode: deliveryAddress.postalCode ?? 'Unknown',
-                purpose: 'ORDER_DELIVERY',
-                user: { connect: { id: customerId } },
-                createdBy: userId ?? customerId,
-              },
-            });
-          }
-        }
+        //   if (!deliveryAddressRecord) {
+        //     deliveryAddressRecord = await tx.address.create({
+        //       data: {
+        //         addressLine: deliveryAddress.addressLine ?? 'Unknown',
+        //         label: deliveryAddress.label ?? 'Unknown Home or Office',
+        //         lat: data.deliveryAddress.lat,
+        //         long: data.deliveryAddress.long,
+        //         city: deliveryAddress.city ?? 'Unknown',
+        //         state: deliveryAddress.state ?? 'Unknown',
+        //         country: deliveryAddress.country ?? 'Unknown',
+        //         postalCode: deliveryAddress.postalCode ?? 'Unknown',
+        //         purpose: 'ORDER_DELIVERY',
+        //         user: { connect: { id: customerId } },
+        //         createdBy: userId ?? customerId,
+        //       },
+        //     });
+        //   }
+        // }
 
-        // console.log('Delivery address ready:', deliveryAddressRecord);
+        const pickupAddressRecord = await upsertAddress(
+          tx,
+          customerId,
+          userId,
+          data.pickupAddress,
+          'ORDER_PICKUP',
+        );
+
+        const deliveryAddressRecord = await upsertAddress(
+          tx,
+          customerId,
+          userId,
+          data.deliveryAddress,
+          'ORDER_DELIVERY',
+        );
+        console.log('Pickup address ready:', pickupAddressRecord);
+        console.log('Delivery address ready:', deliveryAddressRecord);
 
         console.log('Delivery created:: ');
 
@@ -383,6 +397,7 @@ export class OrderRepository {
           cost: data.cost,
           customerId: customerId,
           receiverId: receiverId,
+          quantity: data.quantity,
           // customer: { connect: { id: customerId } },
           branchId: data.branchId ? data.branchId : null,
           // branch: data.branchId ? { connect: { id: data.branchId } } : undefined,
@@ -457,8 +472,6 @@ export class OrderRepository {
     return order;
   }
 
-  
-
   async updateOrderDistance(orderId: string, distance: number) {
     try {
       await this.prisma.order.update({
@@ -521,8 +534,8 @@ export class OrderRepository {
     location: string,
     updatedBy: string,
   ) {
-    const result = await Promise.all([
-      await this.prisma.order.update({
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: {
           status: 'PICKED_UP',
@@ -532,17 +545,7 @@ export class OrderRepository {
         select: {
           id: true,
           trackingCode: true,
-          // status: true,
-          // serviceType: true,
-          // fulfillmentType: true,
-          // pickupAddress: {
-          //   select: { addressLine: true, city: true },
-          // },
-          // deliveryAddress: {
-          //   select: { addressLine: true, city: true },
-          // },
           pickupDate: true,
-          // deliveryDate: true,
           pickupDriver: {
             select: {
               id: true,
@@ -552,15 +555,19 @@ export class OrderRepository {
             },
           },
         },
-      }),
-      await this.logOrderStatus(
+      });
+
+      const orderLog = await this.logOrderStatus(
+        tx, // pass the transaction client here
         orderId,
         'PICKED_UP',
         location,
         updatedBy,
         'Pickup confirmed by driver',
-      ),
-    ]);
+      );
+
+      return updatedOrder;
+    });
 
     return result;
   }
@@ -571,10 +578,8 @@ export class OrderRepository {
     location: string,
     data: any,
   ) {
-    console.log('updates: ', data);
-
-    const result = await Promise.all([
-      await this.prisma.order.update({
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: {
           ...data,
@@ -583,24 +588,30 @@ export class OrderRepository {
           validatedAt: new Date(),
           updatedAt: new Date(),
         },
-      }),
-      await this.prisma.parcelApproval.create({
+      });
+
+      const parcelApproval = await tx.parcelApproval.create({
         data: {
           orderId,
           status: 'PENDING',
           reason: data.reason,
           decisionBy: officerId,
           decidedAt: new Date(),
+          createdBy: officerId,
         },
-      }),
-      await this.logOrderStatus(
+      });
+
+      const orderLog = await this.logOrderStatus(
+        tx, // pass the transaction client
         orderId,
         'PENDING_APPROVAL',
         location,
         officerId,
         'Order validated, pending approval',
-      ),
-    ]);
+      );
+
+      return updatedOrder;
+    });
     return result;
   }
 
@@ -620,33 +631,45 @@ export class OrderRepository {
     order: any,
     reason: string,
     location: string,
-    updatedBy: string,
+    userId: string,
   ) {
-    const result = await Promise.all([
-      await this.prisma.order.update({
-        where: { id: order.id },
-        data: {
-          status: 'APPROVED',
-        },
-      }),
-      await this.prisma.parcelApproval.create({
-        data: {
-          orderId: order.id,
-          status: 'APPROVED',
-          reason,
-          decisionBy: updatedBy,
-          decidedAt: new Date(),
-        },
-      }),
-      await this.logOrderStatus(
-        order.id,
-        'APPROVED',
-        location,
-        updatedBy,
-        'Order approved by Operation Manager',
-      ),
-    ]);
-    return result;
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        const updatedOrder = await tx.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'APPROVED',
+            updatedAt: new Date(),
+          },
+        });
+
+        await tx.parcelApproval.update({
+          where: { orderId: order.id },
+          data: {
+            status: 'APPROVED',
+            reason,
+            decisionBy: userId,
+            decidedAt: new Date(),
+          },
+        });
+
+        // If `logOrderStatus` writes to the DB, ensure it uses the transaction `tx`
+        await this.logOrderStatus(
+          tx,
+          order.id,
+          'APPROVED',
+          location,
+          userId,
+          `Order approved by Operation Manager`,
+        );
+
+        return updatedOrder;
+      });
+      return result;
+    } catch (error) {
+      console.error('Transaction failed:', error);
+      throw new Error(`Order approval failed: ${error.message}`);
+    }
   }
 
   async getPendingApprovals(payload: ListQueryDto) {
@@ -860,6 +883,7 @@ export class OrderRepository {
             name: true,
             phone: true,
             email: true,
+            branchId: true,
           },
         },
         deliveryDriver: {
@@ -868,6 +892,7 @@ export class OrderRepository {
             name: true,
             phone: true,
             email: true,
+            branchId: true,
           },
         },
       },
@@ -880,10 +905,9 @@ export class OrderRepository {
     updatedBy: string,
     location: string,
   ) {
-    console.log('trackingCode: ', trackingCode);
-
-    const result = await Promise.all([
-      this.prisma.order.update({
+    const result = await this.prisma.$transaction(async (tx) => {
+      // 1️⃣ Update order status
+      const updatedOrder = await tx.order.update({
         where: { trackingCode },
         data: {
           status: 'DROPPED_OFF',
@@ -900,7 +924,6 @@ export class OrderRepository {
           deliveryAddress: {
             select: { addressLine: true, city: true },
           },
-          deliveryDate: true,
           height: true,
           width: true,
           length: true,
@@ -908,61 +931,35 @@ export class OrderRepository {
           shippingScope: true,
           isFragile: true,
           isUnusual: true,
-          // dropoffConfirmed: true,
-          // actualDropoffDate: true,
+          quantity: true,
           weight: true,
-          // cost: true,
           finalPrice: true,
           payment: {
-            select: {
-              id: true,
-              amount: true,
-              status: true,
-            },
+            select: { id: true, amount: true, status: true },
           },
           customer: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-              email: true,
-            },
+            select: { id: true, name: true, phone: true, email: true },
           },
           receiver: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-              email: true,
-            },
-          },
-          pickupDriver: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-              email: true,
-              // branch: true,
-              // vehicles: true,
-            },
-          },
-          branch: {
-            select: {
-              id: true,
-              name: true,
-              location: true,
-            },
+            select: { id: true, name: true, phone: true, email: true },
           },
         },
-      }),
-      await this.logOrderStatus(
+      });
+
+      // 2️⃣ Log status using transaction-aware method
+      const logRecord = await this.logOrderStatus(
+        tx, // pass the transaction client
         orderId,
-        'PICKED_UP',
+        'DROPPED_OFF',
         location,
         updatedBy,
-        'Dropoff confirmed by customer',
-      ),
-    ]);
+        'Dropoff confirmed.',
+      );
+
+      // Return both in one object
+      return { updatedOrder, logRecord };
+    });
+
     return result;
   }
 
@@ -1003,7 +1000,18 @@ export class OrderRepository {
           serviceType: true,
           category: true,
           isFragile: true,
-          deliveryAddress: true,
+          deliveryAddress: {
+            select: {
+              id: true,
+              country: true,
+              state: true,
+              city: true,
+              addressLine: true,
+              postalCode: true,
+              lat: true,
+              long: true,
+            },
+          },
           weight: true,
           height: true,
           width: true,
@@ -1011,7 +1019,6 @@ export class OrderRepository {
           shipmentType: true,
           isUnusual: true,
           unusualReason: true,
-          notes: true,
           validatedNotes: true,
         },
       }),
@@ -1136,17 +1143,24 @@ export class OrderRepository {
     });
   }
   private async logOrderStatus(
+    prismaOrTx: any,
     orderId: string,
     status: OrderStatus,
     location?: string,
     updatedBy?: string,
     notes?: string,
   ) {
-    await this.prisma.orderTracking.create({
-      data: { orderId, status, location, updatedBy, notes },
+    return prismaOrTx.orderTracking.create({
+      data: {
+        orderId,
+        status,
+        location: location ?? null,
+        updatedBy: updatedBy ?? null,
+        notes: notes ?? null,
+        createdAt: new Date(),
+      },
     });
   }
-
   async createAddress(
     data: any,
     customerId: string,
@@ -1170,4 +1184,61 @@ export class OrderRepository {
       },
     });
   }
+}
+async function upsertAddress(
+  tx: any,
+  customerId: string,
+  userId: string | null,
+  addressData: any,
+  purpose: 'ORDER_PICKUP' | 'ORDER_DELIVERY',
+) {
+  if (!addressData) return null;
+
+  const existing = await tx.address.findFirst({
+    where: {
+      lat: addressData.lat,
+      long: addressData.long,
+      purpose,
+      userId: customerId,
+    },
+  });
+
+  const dataToApply = {
+    addressLine: addressData.addressLine ?? 'Unknown',
+    label: addressData.label ?? 'Unknown Home or Office',
+    lat: addressData.lat,
+    long: addressData.long,
+    city: addressData.city ?? 'Unknown',
+    state: addressData.state ?? 'Unknown',
+    country: addressData.country ?? 'Unknown',
+    postalCode: addressData.postalCode ?? 'Unknown',
+    purpose,
+    user: { connect: { id: customerId } },
+    createdBy: userId ?? customerId,
+  };
+
+  if (existing) {
+    // Prepare update only with non-null fields that have changed
+    const updates: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(addressData)) {
+      if (value !== null && value !== undefined && existing[key] !== value) {
+        updates[key] = value;
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      console.log(`Updating existing ${purpose} address...`);
+      return tx.address.update({
+        where: { id: existing.id },
+        data: updates,
+      });
+    }
+
+    console.log(`No updates required for ${purpose} address.`);
+    return existing;
+  }
+
+  console.log(`Creating new ${purpose} address...`);
+  return tx.address.create({ data: dataToApply });
 }

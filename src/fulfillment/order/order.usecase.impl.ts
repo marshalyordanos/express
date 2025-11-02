@@ -12,7 +12,7 @@ import {
   ServiceType,
   Order,
   ShippingScope,
-} from '@prisma/client'; // assuming you use Prisma enums
+} from '@prisma/client'; 
 import { RpcException } from '@nestjs/microservices';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { MapsService } from '../maps/maps.service';
@@ -275,14 +275,14 @@ export class OrderUseCasesImpl implements OrderUseCases {
           data.pickupAddress.lat,
           data.pickupAddress.long,
         );
-        this.logger.verbose('Pickup address resolved');
+        this.logger.verbose('Pickup address resolved ::: ', pickupAddress);
       }
 
       const deliveryAddress = await this.mapsService.reverseGeocode(
         data.deliveryAddress.lat,
         data.deliveryAddress.long,
       );
-      this.logger.verbose('Delivery address resolved');
+      this.logger.verbose('Delivery address resolved ::: ', deliveryAddress as string);
 
       // 🔹 Create order with addresses
       const order = await this.orderRepo.createOrderWithAddresses(
@@ -379,6 +379,10 @@ export class OrderUseCasesImpl implements OrderUseCases {
         });
       }
 
+      console.log(
+        "Pickup driver branch id :: ", order.pickupDriver?.branchId
+      );
+      
       const branchId = order.branchId ?? order.pickupDriver?.branchId;
       if (!branchId) {
         this.logger.warn(
@@ -607,13 +611,12 @@ export class OrderUseCasesImpl implements OrderUseCases {
       }
 
       const location = order.branchId;
-      const updatedBy = userId;
 
       const result = await this.orderRepo.approveOrder(
         order,
         reason,
         location,
-        updatedBy,
+        userId,
       );
       this.logger.log(`Order approved successfully: orderId=${orderId}`);
       return result;

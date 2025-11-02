@@ -56,7 +56,8 @@ export class DispatchMessageController {
   async findDispatches(
     @Payload() payload: { query: ListQueryDto },
   ): Promise<any> {
-    return this.usecases.getBatches(payload.query);
+    const result= await this.usecases.getBatches(payload.query);
+    return IResponse.success('Batch Dispatch Fetched successfully', result);
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
@@ -171,7 +172,8 @@ export class DispatchMessageController {
     @Payload() payload: { data: CompleteDeliveryDto; user: any },
   ): Promise<any> {
     const userId = payload.user?.sub;
-    return this.usecases.completeDelivery(payload.data, userId);
+    const result = await this.usecases.completeDelivery(payload.data, userId);
+    return IResponse.success('Delivery completed successfully', result);
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)

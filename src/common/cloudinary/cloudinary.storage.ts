@@ -1,6 +1,6 @@
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import multer from 'multer';
-import cloudinary from '../cloudinary.config';
+import cloudinary from './cloudinary.config';
 import { UploadApiOptions } from 'cloudinary';
 
 function createStorage(folder: string) {

@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 interface QueryOptions {
   search?: string;
   filter?: string;
@@ -39,7 +41,7 @@ export class PrismaQueryFeature<
     this.executeBuild(this.buildWhere.bind(this));
     this.executeBuild(this.buildOrderBy.bind(this));
   }
-  //
+
   private executeBuild(fn: () => void) {
     try {
       return fn();
@@ -52,6 +54,7 @@ export class PrismaQueryFeature<
     const { search, filter, searchableFields } = this.options;
     const where: any = {};
 
+     console.log('Initial where:', where); // Log initial state
     const processSearch = () => {
       if (search && searchableFields?.length) {
         const searchItems = search.split(',');
@@ -88,8 +91,9 @@ export class PrismaQueryFeature<
     };
 
     [processSearch, processFilter].forEach((fn) => fn());
-
+console.log('Final where:', where); // Log final state
     this.where = where;
+    
   }
 
   private buildOrderBy() {
@@ -133,6 +137,7 @@ export class PrismaQueryFeature<
         totalPages,
       };
     };
+    
 
     // pointless indirection
     return constructPagination(total);

@@ -171,7 +171,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       this.logger.debug(`Officer found: ${officer.name ?? officer.id}`);
 
       // 2. Check that all batch IDs exist
-      const batches = await this.dispatchRepo.findBatches(data.batchId, userId);
+      const batches = await this.dispatchRepo.findBatches(data.batchId);
 
       if (batches.length !== data.batchId.length) {
         const foundIds = batches.map((b) => b.id);
@@ -220,7 +220,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     userId: string,
   ): Promise<any> {
     this.logger.log(
-      `Collect batch request initiated by user ${userId} for officer ${data.officerId}`,
+      `Collect batch request initiated by user ${userId}.`,
     );
 
     try {
@@ -236,12 +236,12 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       }
 
       // Step 2: Officer validation
-      const officer = await this.dispatchRepo.findUserById(data.officerId);
+      const officer = await this.dispatchRepo.findUserById(userId);
       if (!officer) {
-        this.logger.warn(`Officer not found: ${data.officerId}`);
+        this.logger.warn(`Officer not found: ${userId}`);
         throw new RpcException({
           statusCode: 404,
-          message: `Officer with ID ${data.officerId} not found.`,
+          message: `Officer with ID ${userId} not found.`,
         });
       }
 
@@ -274,7 +274,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
 
       const result = await this.dispatchRepo.collectBatchByCargoOfficer(
         batches.map((b) => b.id),
-        officer.id,
+        userId,
       );
 
       this.logger.verbose(
@@ -300,7 +300,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     userId: string,
   ): Promise<any> {
     this.logger.log(
-      `Deliver batch request received from officer ${data.handedById} for ${data.batchIds.length} batches.`,
+      `Deliver batch request received from officer ${userId} for ${data.batchIds.length} batches.`,
     );
 
     try {
@@ -340,12 +340,12 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       this.logger.debug(`All batch statuses validated for delivery.`);
 
       // Step 4: Validate officer
-      const officer = await this.dispatchRepo.findUserById(data.handedById);
+      const officer = await this.dispatchRepo.findUserById(userId);
       if (!officer) {
-        this.logger.warn(`Officer with ID ${data.handedById} not found.`);
+        this.logger.warn(`Officer with ID ${userId} not found.`);
         throw new RpcException({
           statusCode: 404,
-          message: `Officer with ID ${data.handedById} not found.`,
+          message: `Officer with ID ${userId} not found.`,
         });
       }
 
@@ -358,12 +358,12 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
 
       const result = await this.dispatchRepo.handoverBatchToAirport(
         batches.map((b) => b.id),
-        officer.id,
+        userId,
         {
           method: data.method,
           reference: data.reference,
           notes: data.notes,
-          location: data.currentLocation,
+          location: "At Airport",
         },
       );
 
@@ -1037,11 +1037,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       );
       this.logger.verbose(`Batch created successfully with Code: ${batchCode}`);
 
-      return {
-        success: true,
-        message: `Batch created successfully with code ${batchCode}`,
-        data: batch,
-      };
+      return batch;
     } catch (error) {
       this.logger.error(
         `Failed to create batch dispatch for user ${userId}: ${error.message}`,
@@ -1332,17 +1328,17 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     }
   }
   async scanOrder(officerId: string, scannedToken: string, userId: string) {
-    this.logger.log(`Scan request received by officer ${officerId}`);
+    this.logger.log(`Scan request received by officer ${userId}`);
 
-    if (userId !== officerId) {
-      this.logger.warn(
-        `Unauthorized scan attempt by user ${userId} for officer ${officerId}`,
-      );
-      throw new RpcException({
-        statusCode: 403,
-        message: 'You are not authorized to do this action.',
-      });
-    }
+    // if (userId !== officerId) {
+    //   this.logger.warn(
+    //     `Unauthorized scan attempt by user ${userId} for officer ${officerId}`,
+    //   );
+    //   throw new RpcException({
+    //     statusCode: 403,
+    //     message: 'You are not authorized to do this action.',
+    //   });
+    // }
 
     let payload: OrderQRCodeData;
     try {
@@ -1394,7 +1390,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       await this.dispatchRepo.createScan(
         {
           orderId: order.id,
-          scannedBy: officerId ?? userId,
+          scannedBy: userId,
           valid: result.valid,
           notes: result.notes,
           batchId: order.batchId ?? undefined,

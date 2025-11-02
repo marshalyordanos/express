@@ -146,7 +146,7 @@ export class AssignOfficerForBatch {
 }
 
 export class BatchHandoverDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   @Transform(({ value }) => value.trim())
   handedById: string; // Cargo officer ID
@@ -180,7 +180,7 @@ export class BatchHandoverDto {
 }
 
 export class OrderScanTokenDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   @Transform(({ value }) => value.trim())
   scannedBy: string; // officer ID
