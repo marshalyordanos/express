@@ -60,7 +60,7 @@ export class MapGatewayController {
   @Post('route/:driverId/driver-stop')
   async markStopVisited(
     @Param('driverId') driverId: string,
-    @Body('orderId') dto: OrderIdDto,
+    @Body() dto: OrderIdDto,
     @Req() req,
   ) {
 

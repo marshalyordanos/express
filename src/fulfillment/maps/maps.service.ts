@@ -265,7 +265,8 @@ export class MapsService {
       const requestBody = {
         coordinates,
         // Optional parameters:
-        // preference: 'fastest' | 'shortest',
+        // preference: 'fastest',
+        // //  | 'shortest',
         // instructions: true,
         // geometry_format: 'encodedpolyline' // OR 'geojson'
       };

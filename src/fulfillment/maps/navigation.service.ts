@@ -12,6 +12,7 @@ interface RouteCache {
     orderId: string;
     lat: number;
     lon: number;
+    seq?: number;
     visited: boolean;
     eta?: number; // minutes
     distanceKm?: number; // to next stop
@@ -134,6 +135,40 @@ export class RouteCacheService {
     try {
       return JSON.parse(data) as RouteCache;
     } catch {
+      return null;
+    }
+  }
+
+  async getDriverRouteWithStops(
+    driverId: string,
+    reportedStops?: { orderId: string }[],
+  ): Promise<RouteCache | null> {
+    const key = `driver:${driverId}:currentRoute`;
+    console.log("keyyyyyyyyyyyyy ::: ", key);
+    
+    const data = await this.redisClient.gets(key);
+
+    console.log('Second iiiiiiiii  ::: ', data);
+
+    if (!data) return null;
+
+    try {
+      const route = JSON.parse(data) as RouteCache;
+      console.log('third iiiiiiiii  ::: ', route);
+
+      // ✅ If reportedStops is provided, filter only matching stops
+      if (reportedStops && reportedStops.length > 0) {
+        const reportedIds = new Set(reportedStops.map((r) => r.orderId));
+        console.log('fourth iiiiiiiii  ::: ', reportedIds);
+        route.stops = route.stops.filter((stop) =>
+          reportedIds.has(stop.orderId),
+        );
+      }
+      console.log('fith iiiiiiiii  ::: ', route);
+
+      return route;
+    } catch (err) {
+      console.error(`Failed to parse route for driver ${driverId}:`, err);
       return null;
     }
   }

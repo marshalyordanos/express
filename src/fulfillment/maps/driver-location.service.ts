@@ -54,66 +54,157 @@ export class DriverLocationService {
   /**
    * Update driver location in Redis + store log in DB
    */
+  // async updateDriverLocation(data: {
+  //   driverId: string;
+  //   lon: number;
+  //   lat: number;
+  //   speed?: number;
+  //   heading?: number;
+  // }): Promise<void> {
+  //   const client = this.redisService.getClient();
+
+  //   try {
+  //     // Pipeline for better performance
+  //     const pipeline = client.multi();
+
+  //     // GEO + HSET (atomic)
+  //     pipeline.geoAdd(this.GEO_KEY, {
+  //       longitude: data.lon,
+  //       latitude: data.lat,
+  //       member: data.driverId,
+  //     });
+
+  //     pipeline.hSet(`driver:${data.driverId}:location`, {
+  //       lon: data.lon.toString(),
+  //       lat: data.lat.toString(),
+  //       speed: data.speed?.toString() ?? '',
+  //       heading: data.heading?.toString() ?? '',
+  //       updatedAt: new Date().toISOString(),
+  //       status: 'ONLINE', // mark online in Redis
+  //     });
+
+  //     pipeline.expire(
+  //       `driver:${data.driverId}:location`,
+  //       this.LOCATION_TTL_SECONDS,
+  //     );
+
+  //     // Mark driver online key with TTL (for offline detection)
+  //     pipeline.set(`driver:${data.driverId}:online`, '1', {
+  //       EX: this.STATUS_PERSIST_MINUTES * 60,
+  //     });
+
+  //     await pipeline.exec();
+  //     // ✅ Emit online event to gateway if available
+  //     if (this.onlineEmitter) {
+  //       this.onlineEmitter(data.driverId, 'ONLINE');
+  //     }
+
+  //     // ✅ Log location to DB
+  //     await this.prisma.driver.update({
+  //       where: { userId: data.driverId },
+  //       data: {
+          
+  //       }
+  //     });
+
+  //     // ✅ New: notify subscribed customers
+  //     this.websocketEventService.emitDriverLocationToSubscribers({
+  //       driverId: data.driverId,
+  //       lat: data.lat,
+  //       lon: data.lon,
+  //       speed: data.speed,
+  //       heading: data.heading,
+  //     });
+  //   } catch (err) {
+  //     this.logger.error(
+  //       `Failed to update location for driver ${data.driverId}`,
+  //       err,
+  //     );
+  //   }
+  // }
+
   async updateDriverLocation(data: {
-    driverId: string;
-    lon: number;
-    lat: number;
-    speed?: number;
-    heading?: number;
-  }): Promise<void> {
-    const client = this.redisService.getClient();
+  driverId: string;
+  lon: number;
+  lat: number;
+  speed?: number;
+  heading?: number;
+}): Promise<void> {
+  const client = this.redisService.getClient();
 
-    try {
-      // Pipeline for better performance
-      const pipeline = client.multi();
+  try {
+    // Check if driver online key exists before pipeline
+    const isOnlineAlready = await client.exists(`driver:${data.driverId}:online`);
 
-      // GEO + HSET (atomic)
-      pipeline.geoAdd(this.GEO_KEY, {
-        longitude: data.lon,
-        latitude: data.lat,
-        member: data.driverId,
+    // Start a pipeline for performance
+    const pipeline = client.multi();
+
+    // 1. Update driver location in GEO set
+    pipeline.geoAdd(this.GEO_KEY, {
+      longitude: data.lon,
+      latitude: data.lat,
+      member: data.driverId,
+    });
+
+    // 2. Save location hash
+    pipeline.hSet(`driver:${data.driverId}:location`, {
+      lon: data.lon.toString(),
+      lat: data.lat.toString(),
+      speed: data.speed?.toString() ?? '',
+      heading: data.heading?.toString() ?? '',
+      updatedAt: new Date().toISOString(),
+      status: 'ONLINE',
+    });
+
+    // 3. Expire location info
+    pipeline.expire(
+      `driver:${data.driverId}:location`,
+      this.LOCATION_TTL_SECONDS,
+    );
+
+    // 4. Mark online key with TTL (for offline detection)
+    pipeline.set(`driver:${data.driverId}:online`, '1', {
+      EX: this.STATUS_PERSIST_MINUTES * 60,
+    });
+
+    await pipeline.exec();
+
+    // Emit WebSocket event
+    if (this.onlineEmitter) {
+      this.onlineEmitter(data.driverId, 'ONLINE');
+    }
+
+    // ✅ NEW: write to DB *only when driver just became online*
+    if (!isOnlineAlready) {
+      await this.prisma.driver.update({
+        where: { userId: data.driverId },
+        data: {
+          status: 'ONLINE',
+          updatedAt: new Date(),
+        },
       });
 
-      pipeline.hSet(`driver:${data.driverId}:location`, {
-        lon: data.lon.toString(),
-        lat: data.lat.toString(),
-        speed: data.speed?.toString() ?? '',
-        heading: data.heading?.toString() ?? '',
-        updatedAt: new Date().toISOString(),
-        status: 'ONLINE', // mark online in Redis
-      });
-
-      pipeline.expire(
-        `driver:${data.driverId}:location`,
-        this.LOCATION_TTL_SECONDS,
-      );
-
-      // Mark driver online key with TTL (for offline detection)
-      pipeline.set(`driver:${data.driverId}:online`, '1', {
-        EX: this.STATUS_PERSIST_MINUTES * 60,
-      });
-
-      await pipeline.exec();
-      // ✅ Emit online event to gateway if available
-      if (this.onlineEmitter) {
-        this.onlineEmitter(data.driverId, 'ONLINE');
-      }
-
-      // ✅ New: notify subscribed customers
-      this.websocketEventService.emitDriverLocationToSubscribers({
-        driverId: data.driverId,
-        lat: data.lat,
-        lon: data.lon,
-        speed: data.speed,
-        heading: data.heading,
-      });
-    } catch (err) {
-      this.logger.error(
-        `Failed to update location for driver ${data.driverId}`,
-        err,
+      this.logger.log(
+        `Driver ${data.driverId} came ONLINE — recorded immediately in DB.`,
       );
     }
+
+    // Notify subscribers (always)
+    this.websocketEventService.emitDriverLocationToSubscribers({
+      driverId: data.driverId,
+      lat: data.lat,
+      lon: data.lon,
+      speed: data.speed,
+      heading: data.heading,
+    });
+  } catch (err) {
+    this.logger.error(
+      `Failed to update location for driver ${data.driverId}`,
+      err,
+    );
   }
+}
+
 
   // provide a setter for the gateway to pass a callback
   onlineEmitter: (driverId: string, status?: 'ONLINE' | 'OFFLINE') => void;

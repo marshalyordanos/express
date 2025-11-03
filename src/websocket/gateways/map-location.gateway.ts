@@ -246,7 +246,7 @@ export class MapLocationGateway implements OnGatewayInit {
     console.log("Data for distance : ", distance);
     console.log("Data for price : ", priceData);
     
-    client.emit('order:price:result', {
+    client.emit('order:price:distance:result', {
       orderId: payload.orderId,
       ...priceData,
     });
