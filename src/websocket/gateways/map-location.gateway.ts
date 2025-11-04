@@ -10,8 +10,10 @@ import { Server, Socket } from 'socket.io';
 import { OrderDistanceWsService } from '../../websocket/services/order-distance.ws.service';
 import { DriverLocationWsService } from '../../websocket/services/driver-location.ws.service';
 import { WebSocketEventService } from '../../websocket/services/websocket-event.service';
-import { Inject, forwardRef } from '@nestjs/common';
+import { Inject, UseGuards, forwardRef } from '@nestjs/common';
 import { NavigationWsService } from '../services/navigation.ws.service';
+import { WsJwtAuthGuard } from '../../common/websocket-auth.guard';
+import * as jwt from 'jsonwebtoken';
 
 // interface RouteCache {
 //   optimizationJobId: string;
@@ -21,7 +23,12 @@ import { NavigationWsService } from '../services/navigation.ws.service';
 //   totalDuration: number;
 //   lastUpdated: number;
 // }
-@WebSocketGateway({ cors: { origin: '*' } })
+
+@UseGuards(WsJwtAuthGuard)
+@WebSocketGateway({
+  cors: { origin: '*' },
+  transports: ['websocket', 'polling'],
+})
 export class MapLocationGateway implements OnGatewayInit {
   @WebSocketServer() server: Server;
 
@@ -49,19 +56,45 @@ export class MapLocationGateway implements OnGatewayInit {
   }
   afterInit(server: Server) {
     console.log('WebSocket server initialized');
+    // Add authentication middleware (runs before connection established)
+    server.use((socket, next) => {
+      const token =
+        socket.handshake?.auth?.token?.replace('Bearer ', '') ||
+        socket.handshake?.headers?.authorization?.replace('Bearer ', '') ||
+        this.extractTokenFromUrl(socket);
+
+      if (!token) {
+        console.log('🚫 Missing token');
+        return next(new Error('Missing auth token'));
+      }
+
+      try {
+        const decoded = jwt.verify(
+          token,
+          process.env.JWT_SECRET || 'yourSecret',
+        );
+        (socket as any).user = decoded;
+        next();
+      } catch (err) {
+        console.log('❌ Invalid token:', err.message);
+        return next(new Error('Invalid or expired token'));
+      }
+    });
   }
 
   private handleOnlineStatus(driverId: string, status: 'ONLINE' | 'OFFLINE') {
-    
     this.server.emit('driver:status:change', { driverId, status });
   }
 
   emitDriverStatus(driverId: string, status: 'ONLINE' | 'OFFLINE' = 'ONLINE') {
-    console.log("Driver only status checks :::::::::::::::::::::::");
-    console.log("Driver only status checks ::::driver id :::", driverId);
-    console.log("Driver only status checks :::::status ::::", status);
-    console.log("Driver only status checks :::::server this server ::::: ", this.server);
-    
+    console.log('Driver only status checks :::::::::::::::::::::::');
+    console.log('Driver only status checks ::::driver id :::', driverId);
+    console.log('Driver only status checks :::::status ::::', status);
+    console.log(
+      'Driver only status checks :::::server this server ::::: ',
+      this.server,
+    );
+
     if (!this.server) return;
     this.server.emit('driver:status', { driverId, status });
   }
@@ -86,22 +119,21 @@ export class MapLocationGateway implements OnGatewayInit {
     await this.driverWs.updateDriverLocation(payload);
 
     // NEW: update route ETA if route exists
-   const route = await this.navigationWs.updateLiveRouteETA(
+    const route = await this.navigationWs.updateLiveRouteETA(
       payload.driverId,
       payload.lat,
       payload.lon,
       payload.speed,
     );
-    console.log("Gateway route over all finallllllllllllllllllll :::", route);
-    
+    console.log('Gateway route over all finallllllllllllllllllll :::', route);
 
-      // For each order in the route that is not yet delivered
-  // route.stops
-  //   .filter(stop => !stop.visited)  // only active stops
-  //   .forEach(nextStop => {
-  //     const driverInfo = { lat: payload.lat, lon: payload.lon, speed: payload.speed };
-  //     this.emitNextStopEta(payload.driverId, nextStop, driverInfo);
-  //   });
+    // For each order in the route that is not yet delivered
+    // route.stops
+    //   .filter(stop => !stop.visited)  // only active stops
+    //   .forEach(nextStop => {
+    //     const driverInfo = { lat: payload.lat, lon: payload.lon, speed: payload.speed };
+    //     this.emitNextStopEta(payload.driverId, nextStop, driverInfo);
+    //   });
     // Emit to subscribed clients
     this.wsEvent.emitLocationUpdate(this.server, payload);
 
@@ -116,17 +148,17 @@ export class MapLocationGateway implements OnGatewayInit {
     payload: { driverId: string; lat: number; lon: number; stops: any[] },
     @ConnectedSocket() client: Socket,
   ) {
-     console.log('Received driver:route:update', payload);
+    console.log('Received driver:route:update', payload);
     // Update the driver's route on the backend
     const route = await this.navigationWs.updateDriverNavigation(
       payload.driverId,
       { lat: payload.lat, lon: payload.lon },
       payload.stops,
     );
-    console.log("ROute loggggg :", route);
+    console.log('ROute loggggg :', route);
 
     // Acknowledge to the driver
-    client.emit('route:ack', { status: 'ok',  route });
+    client.emit('route:ack', { status: 'ok', route });
   }
 
   /** ================== SUBSCRIBE TO DRIVER LOCATION ================== */
@@ -161,7 +193,6 @@ export class MapLocationGateway implements OnGatewayInit {
   }
 
   public broadcastDriverRoute(driverId: string, route: any) {
-    
     this.server.emit(`driver:${driverId}:route:update`, route);
   }
 
@@ -171,7 +202,10 @@ export class MapLocationGateway implements OnGatewayInit {
     });
   }
 
-  public broadcastDriverLocationToDriver(driverId: string, recalculatedRoute: any) {
+  public broadcastDriverLocationToDriver(
+    driverId: string,
+    recalculatedRoute: any,
+  ) {
     this.server.emit(`driver:${driverId}:location:update`, recalculatedRoute);
   }
 
@@ -185,8 +219,19 @@ export class MapLocationGateway implements OnGatewayInit {
 
   public emitNextStopEta(driverId: string, nextStop: any, driverInfo: any) {
     for (const [clientId, subscription] of this.socketOrderWatchMap.entries()) {
-      if (subscription.driverId === driverId && subscription.orderId === nextStop.orderId) {
-        this.server.to(clientId).emit('navigation:eta:update', { driverId, orderId: nextStop.orderId, ...driverInfo, remainingDistanceKm: nextStop.distanceKm, etaMinutes: nextStop.eta });
+      if (
+        subscription.driverId === driverId &&
+        subscription.orderId === nextStop.orderId
+      ) {
+        this.server
+          .to(clientId)
+          .emit('navigation:eta:update', {
+            driverId,
+            orderId: nextStop.orderId,
+            ...driverInfo,
+            remainingDistanceKm: nextStop.distanceKm,
+            etaMinutes: nextStop.eta,
+          });
       }
     }
   }
@@ -231,8 +276,8 @@ export class MapLocationGateway implements OnGatewayInit {
     @MessageBody() payload: any,
     @ConnectedSocket() client: Socket,
   ) {
-    console.log("Calculating price and distance");
-    
+    console.log('Calculating price and distance');
+
     const { distance, priceData } =
       await this.orderWs.calculateDistanceAndPrice(payload);
     this.wsEvent.emitOrderDistance(this.server, {
@@ -243,9 +288,9 @@ export class MapLocationGateway implements OnGatewayInit {
       orderId: payload.orderId,
       ...priceData,
     });
-    console.log("Data for distance : ", distance);
-    console.log("Data for price : ", priceData);
-    
+    console.log('Data for distance : ', distance);
+    console.log('Data for price : ', priceData);
+
     client.emit('order:price:distance:result', {
       orderId: payload.orderId,
       ...priceData,
@@ -270,7 +315,37 @@ export class MapLocationGateway implements OnGatewayInit {
 
   /** ================== CONNECTION HANDLERS ================== */
   handleConnection(client: Socket) {
-    console.log(`✅ Client connected: ${client.id}`);
+    console.log(`🔗 Connected client: ${client.id}`);
+    this.emitMessage(client, {
+      event: 'authorized',
+      message: 'Connected successfully',
+    });
+  }
+  /** Detect if it’s Socket.IO or raw WebSocket */
+  private emitMessage(client: any, payload: any) {
+    try {
+      if (typeof client.emit === 'function') {
+        // Socket.IO client
+        client.emit(payload.event, payload);
+      } else if (typeof client.send === 'function') {
+        // Raw WebSocket client
+        client.send(JSON.stringify(payload));
+      } else {
+        console.warn('Unknown client type, cannot send message');
+      }
+    } catch (err) {
+      console.error('Error emitting message:', err);
+    }
+  }
+
+  private extractTokenFromUrl(client: any): string | null {
+    try {
+      const url = client?.handshake?.url || client?.url || '';
+      const params = new URLSearchParams(url.split('?')[1]);
+      return params.get('token')?.replace('Bearer ', '') || null;
+    } catch {
+      return null;
+    }
   }
 
   handleDisconnect(client: Socket) {
