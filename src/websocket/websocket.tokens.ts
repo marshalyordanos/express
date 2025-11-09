@@ -1,5 +1,0 @@
-// websocket.tokens.ts
-export const ORDER_DISTANCE_WS = 'ORDER_DISTANCE_WS';
-export const DRIVER_LOCATION_WS = 'DRIVER_LOCATION_WS';
-export const NAVIGATION_WS = 'NAVIGATION_WS';
-export const WEBSOCKET_EVENT_SERVICE = 'WEBSOCKET_EVENT_SERVICE';

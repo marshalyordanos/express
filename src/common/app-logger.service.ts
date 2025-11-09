@@ -7,20 +7,20 @@ import { CONTEXT } from '@nestjs/microservices';
  * A universal logger wrapper that matches NestJS Logger API
  * but internally uses our Winston + DailyRotate logger.
  */
-@Injectable({ scope: Scope.TRANSIENT })
+@Injectable()
 export class AppLogger {
   private logger: Logger;
 
-//   constructor() {
-//     // Default fallback (will be overridden by setContext)
-//       this.logger = createServiceLogger('App', 'General');
+  //   constructor() {
+  //     // Default fallback (will be overridden by setContext)
+  //       this.logger = createServiceLogger('App', 'General');
 
-// }
-constructor(@Inject(CONTEXT) private readonly context?: string) {
-      this.logger = createServiceLogger('App', 'General');
-  const serviceName = this.constructor.name.replace('Service', '');
-  this.logger = createServiceLogger(serviceName, 'DefaultModule');
-}
+  // }
+  constructor() {
+    this.logger = createServiceLogger('App', 'General');
+    const serviceName = this.constructor.name.replace('Service', '');
+    this.logger = createServiceLogger(serviceName, 'DefaultModule');
+  }
 
   /**
    * Set logger context dynamically (e.g. service and module)
@@ -43,7 +43,9 @@ constructor(@Inject(CONTEXT) private readonly context?: string) {
   }
 
   verbose(message: string, context?: string) {
-    this.logger.verbose ? this.logger.verbose(message, { context }) : this.logger.debug(message, { context });
+    this.logger.verbose
+      ? this.logger.verbose(message, { context })
+      : this.logger.debug(message, { context });
   }
 
   debug(message: string, context?: string) {

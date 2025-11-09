@@ -171,6 +171,12 @@ export class CreateOrderDto {
 
   @Type(() => Number)
   @IsOptional()
+  @IsNumber({}, { message: 'Quantity must be a number' })
+  @IsPositive({ message: 'Quantity must be positive' })
+  quantity: number = 1;
+
+  @Type(() => Number)
+  @IsOptional()
   @IsNumber({}, { message: 'Height must be a number' })
   @IsPositive({ message: 'Height must be positive' })
   height?: number;
@@ -263,7 +269,6 @@ export class ApproveOrderDto {
 // ---------------- MARK UNUSUAL ORDER ----------------
 
 export class MarkUnusualOrderDto {
-
   @IsNotEmpty({ message: 'Is Fragile field is required' })
   @IsBoolean({ message: 'Is Fragile Field must be a boolean' })
   @IsOptional()
@@ -273,14 +278,13 @@ export class MarkUnusualOrderDto {
   @IsNotEmpty({ message: 'Unusual Reason is required' })
   @Transform(({ value }) => sanitize(value))
   unusualReason: string;
-
 }
 
 // ---------------- VALIDATE ORDER ----------------
 
 export class ValidateOrderDto extends PartialType(CreateOrderDto) {
   @IsString({ message: 'Validated by must be a string' })
-  @IsNotEmpty({ message: 'Validated by field is required' })
+  @IsOptional()
   @Transform(({ value }) => sanitize(value))
   validatedBy?: string;
 

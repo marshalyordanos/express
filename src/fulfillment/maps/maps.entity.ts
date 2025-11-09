@@ -27,6 +27,6 @@ export interface RouteCache {
 
 export class OrderIdDto {
   @IsNotEmpty({ message: 'orderId is required' })
-  @IsString({ message: 'orderId must be a string' })
+  @IsString()
   orderId: string;
 }

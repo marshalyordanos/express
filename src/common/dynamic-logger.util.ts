@@ -1,54 +1,5 @@
-// import * as winston from 'winston';
-// import * as fs from 'fs';
-// import * as path from 'path';
-// import 'winston-daily-rotate-file';
-
-// export function createServiceLogger(serviceName: string, moduleName: string) {
-//   const baseDir = path.join('logs', serviceName, moduleName);
-//   if (!fs.existsSync(baseDir)) {
-//     fs.mkdirSync(baseDir, { recursive: true });
-//   }
-
-//   const fileFormat = winston.format.combine(
-//     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-//     winston.format.printf(({ timestamp, level, message, context }) => {
-//       return `[${timestamp}] [${level.toUpperCase()}] [${context ?? 'App'}]: ${message}`;
-//     }),
-//   );
-
-//   // 🔁 Daily rotate transport creator
-//   const makeRotate = (filename: string, level: string) =>
-//     new winston.transports.DailyRotateFile({
-//       filename: path.join(baseDir, `${filename}-%DATE%.log`),
-//       datePattern: 'YYYY-MM-DD',
-//       level,
-//       zippedArchive: true,
-//       maxSize: '10m',
-//       maxFiles: '30d', // Auto delete older than 30 days
-//     });
-
-//   return winston.createLogger({
-//     level: 'debug', // capture all levels
-//     format: fileFormat,
-//     transports: [
-//       makeRotate('info', 'info'),
-//       makeRotate('debug', 'debug'),
-//       makeRotate('error', 'error'),
-//       new winston.transports.Console({
-//         format: winston.format.combine(
-//           winston.format.colorize(),
-//           winston.format.printf(({ level, message, context }) => {
-//             return `[${level.toUpperCase()}] [${context ?? 'App'}]: ${message}`;
-//           }),
-//         ),
-//       }),
-//     ],
-//     exceptionHandlers: [makeRotate('exceptions', 'error')],
-//     rejectionHandlers: [makeRotate('rejections', 'error')],
-//   });
-// }
 import { createLogger, format, transports, Logger } from 'winston';
-import 'winston-daily-rotate-file';
+import * as DailyRotateFile from 'winston-daily-rotate-file';
 import * as chalk from 'chalk';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -78,7 +29,7 @@ export function createServiceLogger(
     verbose: chalk.greenBright,
     security: chalk.redBright,
     system: chalk.whiteBright,
-    log: chalk.white, // fallback for default Winston log
+    log: chalk.white,
   };
 
   // 🖨️ Console format (safe)
@@ -107,6 +58,23 @@ export function createServiceLogger(
     return `${ts} [${lvl}] ${msg}`;
   });
 
+  // Helper function to create rotate file transport with event listener
+  const createRotateTransport = (options: DailyRotateFile.DailyRotateFileTransportOptions) => {
+    const transport = new DailyRotateFile(options);
+    
+    // Listen for rotation events
+    transport.on('rotate', (oldFilename, newFilename) => {
+      console.log(chalk.gray(`📦 Rotated: ${path.basename(oldFilename)} → ${path.basename(newFilename)}`));
+    });
+
+    // Listen for archive events (when zipping completes)
+    transport.on('archive', (zipFilename) => {
+      console.log(chalk.green(`✅ Archived: ${path.basename(zipFilename)}`));
+    });
+
+    return transport;
+  };
+
   const logger = createLogger({
     level: 'debug',
     format: combine(timestamp({ format: 'YYYY-MM-DD HH:mm:ss' })),
@@ -116,8 +84,8 @@ export function createServiceLogger(
         format: combine(colorize(), consoleFormat),
       }),
 
-      // 📁 File transports
-      new transports.DailyRotateFile({
+      // 📁 File transports with rotation events
+      createRotateTransport({
         filename: path.join(logDir, 'info-%DATE%.log'),
         datePattern: 'YYYY-MM-DD',
         level: 'info',
@@ -125,7 +93,7 @@ export function createServiceLogger(
         zippedArchive: true,
         format: fileFormat,
       }),
-      new transports.DailyRotateFile({
+      createRotateTransport({
         filename: path.join(logDir, 'debug-%DATE%.log'),
         datePattern: 'YYYY-MM-DD',
         level: 'debug',
@@ -133,7 +101,7 @@ export function createServiceLogger(
         zippedArchive: true,
         format: fileFormat,
       }),
-      new transports.DailyRotateFile({
+      createRotateTransport({
         filename: path.join(logDir, 'warn-%DATE%.log'),
         datePattern: 'YYYY-MM-DD',
         level: 'warn',
@@ -141,7 +109,7 @@ export function createServiceLogger(
         zippedArchive: true,
         format: fileFormat,
       }),
-      new transports.DailyRotateFile({
+      createRotateTransport({
         filename: path.join(logDir, 'error-%DATE%.log'),
         datePattern: 'YYYY-MM-DD',
         level: 'error',
@@ -149,15 +117,15 @@ export function createServiceLogger(
         zippedArchive: true,
         format: fileFormat,
       }),
-      new transports.DailyRotateFile({
+      createRotateTransport({
         filename: path.join(logDir, 'security-%DATE%.log'),
         datePattern: 'YYYY-MM-DD',
-        level: 'warn', // security logs use warn level
+        level: 'warn',
         maxFiles: '90d',
         zippedArchive: true,
         format: fileFormat,
       }),
-      new transports.DailyRotateFile({
+      createRotateTransport({
         filename: path.join(logDir, 'system-%DATE%.log'),
         datePattern: 'YYYY-MM-DD',
         level: 'info',
@@ -170,8 +138,8 @@ export function createServiceLogger(
 
   // 🛠️ Add helper for system logs
   (logger as ServiceLogger).system = (msg: string) => {
-  logger.info(msg); // map to info so it goes into info + system file
-};
+    logger.info(msg);
+  };
 
   return logger as ServiceLogger;
 }

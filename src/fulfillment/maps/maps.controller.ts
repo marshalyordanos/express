@@ -8,6 +8,7 @@ import { MapsUseCasesImpl } from './maps.usecase.impl';
 import { RouteCacheService } from './navigation.service';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
 import { DriverLocationService } from './driver-location.service';
+import { IResponse } from '../../common/types';
 
 @Controller()
 export class MapMessageController {
@@ -21,9 +22,8 @@ export class MapMessageController {
   @CheckPermission('Maps', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.MAP_GET_ROUTE)
   async getRoute(@Payload() payoad: { driverId: string }): Promise<any> {
-    console.log('getRoute payload :', payoad.driverId);
-
-    return this.usecases.getRoute(payoad.driverId);
+    const result= await this.usecases.getRoute(payoad.driverId);
+    return IResponse.success('Route Fetched successfully', result);
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
@@ -32,18 +32,16 @@ export class MapMessageController {
   async markStopVisited(
     @Payload() payload: { driverId: string; orderId: string },
   ): Promise<any> {
-    console.log('markStopVisited payload :', payload.driverId);
-
-    return this.usecases.markStopVisited(payload.driverId, payload.orderId);
+    const result = await this.usecases.markStopVisited(payload.driverId, payload.orderId);
+    return IResponse.success('Stop visited successfully', result);
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Maps', PermissionActions.READ)
   @MessagePattern(PATTERNS.MAP_GET_CURRENT_ROUTE_STATUS)
   async getRouteStatus(@Payload() payoad: { driverId: string }): Promise<any> {
-    console.log('getRouteStatus payload :', payoad.driverId);
-
-    return this.usecases.getRouteStatus(payoad.driverId);
+    const result = await this.usecases.getRouteStatus(payoad.driverId);
+    return IResponse.success('Route Status Fetched successfully', result);
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
@@ -52,13 +50,14 @@ export class MapMessageController {
   async getNearbyDrivers(
     @Payload() payoad: { lat: any; lon: any; radius: any; user: any },
   ): Promise<any> {
-    console.log('getNearbyDrivers payload :', payoad);
-
     const userId = payoad.user?.sub;
-    return this.locationService.findNearbyDrivers(
+    const result= await
+     this.locationService.findNearbyDrivers(
       payoad.lon,
       payoad.lat,
       payoad.radius,
     );
+
+    return IResponse.success('Nearby Drivers Fetched successfully', result);
   }
 }

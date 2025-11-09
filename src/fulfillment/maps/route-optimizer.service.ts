@@ -180,6 +180,7 @@ export class RouteOptimizerService {
         remainingStops,
       );
 
+      
       this.logger.log(
         `✅ Recalculated new route for driver ${driverId}, total stops: ${remainingStops.length}`,
       );

@@ -13,6 +13,8 @@ import {
   Req,
   UploadedFiles,
   UseInterceptors,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PATTERNS } from '../contracts';
@@ -31,13 +33,15 @@ import {
 import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import cloudinary from '../common/cloudinary/cloudinary.config';
-import { memoryStorage } from 'multer';
+import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
+import { lastValueFrom } from 'rxjs';
+import { log } from 'console';
 
 @Controller('dispatch')
 export class DispatchGatewayController {
   constructor(
     @Inject('FULFILLMENT_SERVICE') private readonly dispatchClient: ClientProxy,
+    private readonly cloudinaryUploader: CloudinaryUploaderService,
   ) {}
 
   @Post()
@@ -320,13 +324,41 @@ export class DispatchGatewayController {
     );
   }
 
- @Post('/complete-delivery')
-  @UseInterceptors(FilesInterceptor('podImages', 5, { storage: memoryStorage() }))
+  @Post('/complete-delivery')
+  @UseInterceptors(FilesInterceptor('podImages', 5))
   async completeDelivery(
     @UploadedFiles() files: Express.Multer.File[],
     @Body() data: CompleteDeliveryDto,
     @Req() req,
   ) {
+    let uploadedImages = [];
+
+    // ✅ Upload only if files exist and are valid
+    if (files && files.length > 0) {
+      console.log('Uploading proof of delivery images...');
+      try {
+        const fileStreamsOrBuffers = files.map(
+          (file) => file.stream || file.buffer,
+        );
+        uploadedImages = await this.cloudinaryUploader.uploadFiles(
+          fileStreamsOrBuffers,
+          `pod_images/${data.driverId}/${data.orderId}`,
+        );
+        data.podImages = uploadedImages;
+        console.log('Proof of delivery images uploaded successfully.');
+      } catch (error) {
+        console.error('Cloudinary upload failed:', error);
+        throw new HttpException(
+          'Failed to upload proof of delivery images',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    } else {
+      console.log('No files provided — skipping upload.');
+      data.podImages = []; // keep consistent structure
+    }
+
+    // ✅ Decode JWT
     const authHeader = req.headers['authorization'] || null;
     let decodedUser = null;
     try {
@@ -336,45 +368,20 @@ export class DispatchGatewayController {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
 
-    // 1️⃣ Upload POD images to Cloudinary
-    const uploadedImages = [];
-    if (files && files.length > 0) {
-      for (const file of files) {
-        const uploaded = await new Promise<{
-          url: string;
-          publicId: string;
-          fileName: string;
-          fileType: string;
-        }>((resolve, reject) => {
-          const stream = cloudinary.uploader.upload_stream(
-            { folder: 'pod_images', resource_type: 'image' },
-            (err, res) => {
-              if (err) return reject(err);
-              resolve({
-                url: res.secure_url,
-                publicId: res.public_id,
-                fileName: file.originalname,
-                fileType: file.mimetype,
-              });
-            },
-          );
-          stream.end(file.buffer);
-        });
+    console.log('Sending to microservice');
 
-        uploadedImages.push(uploaded);
-      }
-    }
+    // ✅ Get IP address
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    console.log('Ip address :::', ip);
 
-    if (uploadedImages.length) {
-      data.podImages = uploadedImages;
-    }
+    // ✅ Call microservice
 
-    // 2️⃣ Send to microservice
-    return this.dispatchClient.send('DISPATCH_COMPLETE_DELIVERY', {
+    return this.dispatchClient.send(PATTERNS.DISPATCH_COMPLETE_DELIVERY, {
       data,
       headers: { authorization: authHeader },
       user: decodedUser,
-      ip: req.ip,
+      ip,
     });
   }
 

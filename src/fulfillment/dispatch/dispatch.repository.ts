@@ -105,46 +105,51 @@ export class DispatchRepository {
   }
 
   async collectBatchByCargoOfficer(batchIds: string[], officerId: string) {
-    return this.prisma.$transaction(async (tx) => {
-      // 1. Update batch status only for batches assigned to this officer
-      const updatedBatches = await tx.batchDispatch.updateMany({
-        where: {
-          id: { in: batchIds },
-          officerId, // filter by assigned officer
-        },
-        data: { status: 'COLLECTED' },
-      });
+    return this.prisma.$transaction(
+      async (tx) => {
+        // 1. Update batch status only for batches assigned to this officer
+        const collectedBatch = await tx.batchDispatch.updateMany({
+          where: {
+            id: { in: batchIds },
+            officerId, // filter by assigned officer
+          },
+          data: { status: 'COLLECTED' },
+        });
 
-      // 2. Update order status
-      const updateOrderStatus = await tx.order.updateMany({
-        where: { batchId: { in: batchIds } },
-        data: { status: 'DISPATCHED' },
-      });
-      // 3. Create order tracking/logging for all orders in these batches
-      const orders = await tx.order.findMany({
-        where: { batchId: { in: batchIds } },
-        select: { id: true },
-      });
+        // 2. Update order status
+        const updateOrderStatus = await tx.order.updateMany({
+          where: { batchId: { in: batchIds } },
+          data: { status: 'DISPATCHED' },
+        });
+        // 3. Create order tracking/logging for all orders in these batches
+        const orders = await tx.order.findMany({
+          where: { batchId: { in: batchIds } },
+          select: { id: true },
+        });
 
-      const orderLogs = orders.map((o) => ({
-        orderId: o.id,
-        status: 'COLLECTED',
-        updatedBy: officerId,
-        notes: 'Batch collected by cargo officer',
-      }));
+        const orderLogs = orders.map((o) => ({
+          orderId: o.id,
+          status: 'COLLECTED',
+          updatedBy: officerId,
+          notes: 'Batch collected by cargo officer',
+        }));
 
-      if (orderLogs.length > 0) {
-        await this.logBatchOrdersStatus(
-          tx,
-          batchIds,
-          'COLLECTED',
-          undefined,
-          officerId,
-          'Batch collected by cargo officer',
-        );
-      }
-      return { updatedBatches, updateOrderStatus, orderLogs };
-    });
+        if (orderLogs.length > 0) {
+          await this.logBatchOrdersStatus(
+            tx,
+            batchIds,
+            'COLLECTED',
+            undefined,
+            officerId,
+            'Batch collected by cargo officer',
+          );
+        }
+        return collectedBatch;
+      },
+      {
+        timeout: 60000,
+      },
+    );
   }
 
   async cancelDispatch(batchIds: string[]) {
@@ -171,37 +176,40 @@ export class DispatchRepository {
       location: string;
     },
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      // 1. Update batch status
-      const updatedBatches = await tx.batchDispatch.updateMany({
-        where: { id: { in: batchIds } },
-        data: { status: 'IN_TRANSIT' },
-      });
+    return this.prisma.$transaction(
+      async (tx) => {
+        // 1. Update batch status
+        const handOveredBatch = await tx.batchDispatch.updateMany({
+          where: { id: { in: batchIds } },
+          data: { status: 'IN_TRANSIT' },
+        });
 
-      // 2. Create BatchHandover record
-      const handover = await tx.batchHandover.create({
-        data: {
-          handedById,
-          method: options?.method,
-          reference: options?.reference,
-          notes: options?.notes,
-          batches: {
-            connect: batchIds.map((id) => ({ id })),
+        // 2. Create BatchHandover record
+        await tx.batchHandover.create({
+          data: {
+            handedById,
+            method: options?.method,
+            reference: options?.reference,
+            notes: options?.notes,
+            batches: {
+              connect: batchIds.map((id) => ({ id })),
+            },
           },
-        },
-      });
+        });
 
-      await this.logBatchOrdersStatus(
-        tx,
-        batchIds,
-        'IN_TRANSIT',
-        options.location,
-        handedById,
-        options.notes,
-      );
+        await this.logBatchOrdersStatus(
+          tx,
+          batchIds,
+          'IN_TRANSIT',
+          options.location,
+          handedById,
+          options.notes,
+        );
 
-      return { updatedBatches, handover };
-    });
+        return handOveredBatch;
+      },
+      { timeout: 60000 },
+    );
   }
 
   async receiveFromAirport(
@@ -481,9 +489,12 @@ export class DispatchRepository {
     });
   }
 
-  async findBatches(batchIds: string[], officerId: string) {
+  async findBatches(batchIds: string[], officerId?: string) {
     return this.prisma.batchDispatch.findMany({
-      where: { id: { in: batchIds }, officerId },
+      where: {
+        id: { in: batchIds },
+        ...(officerId && { officerId }), // only include if provided
+      },
     });
   }
 
@@ -607,90 +618,95 @@ export class DispatchRepository {
     newOrderIds: string[],
     updateData?: Partial<BatchDispatchDto>,
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      const batchUpdate: any = { ...updateData };
+    return this.prisma.$transaction(
+      async (tx) => {
+        const batchUpdate: any = { ...updateData };
 
-      // Connect origin/destination if included in updateData
-      if (updateData?.originId) {
-        batchUpdate.origin = { connect: { id: updateData.originId } };
-        delete batchUpdate.originId;
-      }
-      if (updateData?.destinationId) {
-        batchUpdate.destination = { connect: { id: updateData.destinationId } };
-        delete batchUpdate.destinationId;
-      }
+        // Connect origin/destination if included in updateData
+        if (updateData?.originId) {
+          batchUpdate.origin = { connect: { id: updateData.originId } };
+          delete batchUpdate.originId;
+        }
+        if (updateData?.destinationId) {
+          batchUpdate.destination = {
+            connect: { id: updateData.destinationId },
+          };
+          delete batchUpdate.destinationId;
+        }
 
-      // Update batch and connect new orders
-      const updatedBatch = await tx.batchDispatch.update({
-        where: { id: batchId },
-        data: {
-          ...batchUpdate,
-          orders: { connect: newOrderIds.map((id) => ({ id })) },
-        },
-        include: {
-          orders: {
-            select: {
-              id: true,
-              trackingCode: true,
-              status: true,
-              serviceType: true,
-              fulfillmentType: true,
-              category: true,
-              isFragile: true,
-              shipmentType: true,
-              shippingScope: true,
-              deliveryAddress: {
-                select: { addressLine: true, city: true },
+        // Update batch and connect new orders
+        const updatedBatch = await tx.batchDispatch.update({
+          where: { id: batchId },
+          data: {
+            ...batchUpdate,
+            orders: { connect: newOrderIds.map((id) => ({ id })) },
+          },
+          include: {
+            orders: {
+              select: {
+                id: true,
+                trackingCode: true,
+                status: true,
+                serviceType: true,
+                fulfillmentType: true,
+                category: true,
+                isFragile: true,
+                shipmentType: true,
+                shippingScope: true,
+                deliveryAddress: {
+                  select: { addressLine: true, city: true },
+                },
+              },
+            },
+            // createdBy: {
+            //   select: {
+            //     id: true,
+            //     name: true,
+            //     email: true,
+            //   },
+            // },
+            origin: {
+              select: {
+                id: true,
+                addressLine: true,
+                city: true,
+                country: true,
+              },
+            },
+            destination: {
+              select: {
+                id: true,
+                addressLine: true,
+                city: true,
+                country: true,
               },
             },
           },
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          origin: {
-            select: {
-              id: true,
-              addressLine: true,
-              city: true,
-              country: true,
-            },
-          },
-          destination: {
-            select: {
-              id: true,
-              addressLine: true,
-              city: true,
-              country: true,
-            },
-          },
-        },
-      });
+        });
 
-      // Update order statuses
-      const result = await tx.order.updateMany({
-        where: { id: { in: newOrderIds } },
-        data: { status: 'DISPATCHED' },
-      });
+        // Update order statuses
+        const result = await tx.order.updateMany({
+          where: { id: { in: newOrderIds } },
+          data: { status: 'DISPATCHED' },
+        });
 
-      const ordersLog = await this.logBatchOrdersStatus(
-        tx,
-        [batchId],
-        'PICKED_UP',
-        updatedBatch.origin.addressLine, // use originId for logs
-        updatedBatch.createdById,
-        updatedBatch.notes,
-      );
+        const ordersLog = await this.logBatchOrdersStatus(
+          tx,
+          [batchId],
+          'DISPATCHED',
+          updatedBatch.origin.addressLine, // use originId for logs
+          updatedBatch.createdById,
+          updatedBatch.notes,
+        );
 
-      return {
-        batch: updatedBatch,
-        ordersLog,
-        result,
-      };
-    });
+        return {
+          batch: updatedBatch,
+          ordersLog,
+          result,
+        };
+      },
+      { timeout: 60000 },
+    );
   }
 
   async findBatchById(batchId: string) {
@@ -708,8 +724,6 @@ export class DispatchRepository {
   }
 
   async getBatches(payload: ListQueryDto) {
-    console.log('params', payload);
-
     const feature = new PrismaQueryFeature({
       search: payload.search,
       filter: payload.filter,
@@ -720,7 +734,6 @@ export class DispatchRepository {
     });
 
     const query = feature.getQuery();
-    console.log('quest1: ', query);
 
     // 🔹 If there's a search term, extend query.where.OR with trackingCode search
     if (payload.search) {
@@ -758,7 +771,7 @@ export class DispatchRepository {
     const total = results[1] || 0;
     return {
       batches,
-      total,
+      pagination: feature.getPagination(total),
     };
   }
 

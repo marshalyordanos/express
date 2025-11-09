@@ -9,13 +9,18 @@ import * as fs from 'fs';
 import { SanitizePipe } from '../common/sanitize.pipe';
 import { NestSystemLogger } from '../common/nest-system-logger.util';
 
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(GatewayModule, {
     bufferLogs: true,
     logger: new NestSystemLogger('GatewayService', 'System'),
   });
+  // Get the SanitizePipe instance from DI container FIRST
+  // const sanitizePipe = app.get(SanitizePipe);
+  const sanitizePipe = await app.resolve(SanitizePipe);
+
   app.useGlobalPipes(
-    app.get(SanitizePipe),
+    sanitizePipe, // Use the DI instance
     new ValidationPipe({
       whitelist: true,
       transform: true,
