@@ -12,7 +12,7 @@ import { AppLogger } from './app-logger.service';
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
-  private readonly limit = 5; // max requests per window
+  private readonly limit = 500; // max requests per window
   private readonly windowMs = 60 * 1000; // 1 minute
   private readonly blockDuration = 5 * 60; // 5 minutes block
   // private readonly logger = new Logger('RateLimitGuard');
