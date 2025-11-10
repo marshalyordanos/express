@@ -33,6 +33,17 @@ export class StaffRepository {
     });
   }
 
+  async createNotificationPreferences(id: string) {
+    return this.prisma.userNotificationPreferences.create({
+      data: {
+        user: { connect: { id } },
+        email: true,
+        inApp: true,
+        push: false,
+      },
+    });
+  }
+
   async findStaffByEmailAndPhone(
     email: string,
     phone: string,

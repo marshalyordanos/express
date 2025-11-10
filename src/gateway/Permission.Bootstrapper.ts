@@ -24,6 +24,8 @@ export class PermissionBootstrapper {
     { resource: 'CustomerCategory', description: 'Used for managing and assigning customers to categories' },
     { resource: 'PermissionRole', description: 'Used to manage and assign permissions to roles and their relation to each other.' },
     { resource: 'CalculatePrice', description: 'Used to calculate the price of an order.' },
+    { resource: 'Preference', description: 'Managing user preference for notification, payment and other settings.' },
+
   ];
 
   async run() {

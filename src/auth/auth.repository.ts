@@ -24,6 +24,16 @@ export class AuthRepository {
     });
   }
 
+  async createNotificationPreferences(id: string) {
+    return this.prisma.userNotificationPreferences.create({
+      data: {
+        user: { connect: { id } },
+        email: true,
+        inApp: true,
+        push: false,
+      },
+    });
+  }
   async findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } });
   }

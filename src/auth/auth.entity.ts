@@ -8,6 +8,7 @@ import {
 import { Transform } from 'class-transformer';
 import { escape } from 'lodash';
 
+
 export class AuthRegisterDto {
   @IsNotEmpty({ message: 'Name is required' })
   @IsString({ message: 'Name must be a string' })

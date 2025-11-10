@@ -22,16 +22,31 @@ export class OrderRepository {
     phone: string;
     userId?: string;
   }) {
-    return this.prisma.user.create({
-      data: {
-        name: customerData.name,
-        email: customerData.email,
-        phone: customerData.phone ?? null,
-        password: '',
-        isStaff: false,
-        roleId: null,
-        createdBy: customerData.userId || 'system',
-      },
+    return this.prisma.$transaction(async (tx) => {
+      // 1️⃣ Create the user
+      const user = await tx.user.create({
+        data: {
+          name: customerData.name,
+          email: customerData.email,
+          phone: customerData.phone ?? null,
+          password: '', // or generate random if needed
+          isStaff: false,
+          roleId: null,
+          createdBy: customerData.userId || 'system',
+        },
+      });
+
+      // 2️⃣ Create default user preferences
+      await tx.userNotificationPreferences.create({
+        data: {
+          user: { connect: { id: user.id } },
+          email: true,
+          inApp: true,
+          push: false,
+        },
+      });
+
+      return user;
     });
   }
 
@@ -96,16 +111,31 @@ export class OrderRepository {
 
     // Step 3: If not exists, create new user
     try {
-      return await this.prisma.user.create({
-        data: {
-          name: customerData.name,
-          email: customerData.email,
-          phone: customerData.phone ?? null,
-          password: '', // or generate a random password
-          isStaff: false,
-          roleId: null,
-          createdBy: customerData.userId || 'system',
-        },
+      return this.prisma.$transaction(async (tx) => {
+        // 1️⃣ Create the user
+        const user = await tx.user.create({
+          data: {
+            name: customerData.name,
+            email: customerData.email,
+            phone: customerData.phone ?? null,
+            password: '', // or generate random password
+            isStaff: false,
+            roleId: null,
+            createdBy: customerData.userId || 'system',
+          },
+        });
+
+        // 2️⃣ Initialize user preferences
+        await tx.userNotificationPreferences.create({
+          data: {
+            user: { connect: { id: user.id } },
+            email: true,
+            inApp: true,
+            push: false,
+          },
+        });
+
+        return user; // return the created user
       });
     } catch (error) {
       // Step 4: Handle unique constraint errors gracefully (race condition)
@@ -718,6 +748,7 @@ export class OrderRepository {
       pageSize: payload.pageSize,
       searchableFields: ['trackingCode', 'notes', 'category'],
     });
+    
 
     const query = feature.getQuery();
     console.log('quest1: ', query);

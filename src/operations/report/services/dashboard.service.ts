@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DashboardReportRepository } from '../repositories/dashboard.repository';
 import { RedisService } from '../../../redis/redis.service';
+import { VehicleStatus } from '@prisma/client';
 
 @Injectable()
 export class DashboardReportService {
@@ -394,6 +395,154 @@ export class DashboardReportService {
 
     return report;
   }
+
+
+ // ✅ Full Fleet Summary
+  async getFleetSummary() {
+    return this.cacheWrap('fleet:summary', 60, async () => {
+      const vehicles = await this.dashboardRepo.getVehicles();
+
+      const total = vehicles.length;
+      // ✅ 1. In-house vs External
+      const inHouse = vehicles.filter(v => v.type === 'INTERNAL').length;
+      const external = vehicles.filter(v => v.type === 'EXTERNAL').length;
+
+      // ✅ 2. Active Vehicles
+      const active = vehicles.filter(v => v.status === VehicleStatus.ACTIVE).length;
+      const activePercentage = total > 0 ? +(active / total * 100).toFixed(1) : 0;
+
+      // ✅ 3. Under Maintenance
+      const maintenanceVehicles = vehicles
+        .filter(v => v.status === VehicleStatus.MAINTENANCE)
+        .map(v => v.plateNumber);
+
+      // ✅ 4. Avg Utilization (example: based on total logs cost)
+      const utilizationData = await this.dashboardRepo.getUtilizationStats();
+      const totalUtil = utilizationData.reduce((sum, v) => sum + v.fleetLogs.length, 0);
+      const avgUtilization = total > 0 ? +(totalUtil / total).toFixed(2) : 0;
+
+      // ✅ 5. Mock Change From Last Month (adjust as needed)
+      const utilizationChange = 5; // e.g. +5%
+
+      return {
+        totalVehicles: total,
+        inHouse,
+        external,
+
+        activeVehicles: active,
+        activePercentage,
+
+        underMaintenance: maintenanceVehicles.length,
+        maintenanceVehicles,
+
+        avgUtilization,
+        utilizationChange,
+      };
+    });
+  }
+
+async getDispatchSummary() {
+  return this.cacheWrap("dispatch:summary", 60, async () => {
+    const dispatches = await this.dashboardRepo.getDispatches();
+
+    // ✅ existing dispatch analytics
+    const totalDispatches = dispatches.length;
+    const byStatus = {};
+    const byScope = {};
+    const byServiceType = {};
+
+    for (const d of dispatches) {
+      byStatus[d.status] = (byStatus[d.status] || 0) + 1;
+      byScope[d.scope] = (byScope[d.scope] || 0) + 1;
+      byServiceType[d.serviceType] =
+        (byServiceType[d.serviceType] || 0) + 1;
+    }
+
+    const assignedToDrivers = dispatches.filter(d => d.driverId).length;
+    const unassigned = totalDispatches - assignedToDrivers;
+
+    const weights = dispatches.map(d => d.weight || 0);
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    const avgWeightPerDispatch = totalDispatches ? +(totalWeight / totalDispatches).toFixed(2) : 0;
+
+    let dispatchedOrders = 0;
+    let completedOrders = 0;
+    let failedOrders = 0;
+
+    for (const d of dispatches) {
+      dispatchedOrders += d.orders.length;
+      completedOrders += d.orders.filter(o => o.status === "DELIVERED").length;
+      failedOrders += d.orders.filter(o => o.status === "FAILED").length;
+    }
+
+    const vehicleSet = new Set(dispatches.map(d => d.vehicleId).filter(Boolean));
+    const driverSet = new Set(dispatches.map(d => d.driverId).filter(Boolean));
+
+    const vehiclesUsed = vehicleSet.size;
+    const driversUsed = driverSet.size;
+
+    const originBranches = new Set(dispatches.map(d => d.originId).filter(Boolean)).size;
+    const destinationBranches = new Set(dispatches.map(d => d.destinationId).filter(Boolean)).size;
+
+    const dispatchesToday = await this.dashboardRepo.getTodayDispatches();
+    const dispatchesThisWeek = await this.dashboardRepo.getWeekDispatches();
+
+    // ✅ NEW KPIs -------------------------------------------------
+
+    const activeDrivers = await this.dashboardRepo.getActiveDrivers();
+    const activeDriversYesterday = await this.dashboardRepo.getActiveDriversYesterday();
+    const activeDriverChange = activeDrivers - activeDriversYesterday;
+
+    const deliveriesToday = await this.dashboardRepo.getDeliveriesToday();
+    const deliveriesYesterday = await this.dashboardRepo.getDeliveriesYesterday();
+    const deliveryChange = deliveriesYesterday ? +(((deliveriesToday - deliveriesYesterday) / deliveriesYesterday) * 100).toFixed(2) : 0;
+
+    const onTime = await this.dashboardRepo.getOnTimeOrders();
+    const totalDelivered = await this.dashboardRepo.getTotalDelivered();
+    const onTimeRate = totalDelivered ? +(onTime / totalDelivered * 100).toFixed(2) : 0;
+    const onTimeImprovement = 2; // you can calculate historically if needed
+
+    const routeEfficiency = await this.dashboardRepo.getRouteEfficiency();
+    const routeEfficiencyChange = 5; // static for now
+
+    return {
+      // ✅ dispatch data
+      totalDispatches,
+      byStatus,
+      byScope,
+      byServiceType,
+      assignedToDrivers,
+      unassigned,
+      avgWeightPerDispatch,
+      totalWeight,
+      dispatchedOrders,
+      completedOrders,
+      failedOrders,
+      vehiclesUsed,
+      driversUsed,
+      originBranches,
+      destinationBranches,
+      dispatchesToday,
+      dispatchesThisWeek,
+
+      // ✅ new driver & delivery KPIs
+      activeDrivers,
+      activeDriverChange,
+
+      deliveriesToday,
+      deliveryChange,
+
+      onTimeRate,
+      onTimeImprovement,
+
+      routeEfficiency,
+      routeEfficiencyChange,
+
+      utilizationChange: 7
+    };
+  });
+}
+
   // Redis cache wrapper
   private async cacheWrap<T>(
     key: string,

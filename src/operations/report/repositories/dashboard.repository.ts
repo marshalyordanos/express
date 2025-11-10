@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { DispatchStatus, OrderStatus, PaymentStatus, ServiceType, ShippingScope, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 
+type OptimizedOrderPayload = {
+  optimizedDistance?: number;
+  optimizedTime?: number;
+  [key: string]: any;
+};
 @Injectable()
 export class DashboardReportRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -282,6 +287,209 @@ export class DashboardReportRepository {
     result.sort((a, b) => b.revenue - a.revenue);
 
     return { data: result };
+  }
+
+   async getVehicles(filter?: {
+    status?: VehicleStatus;
+    type?: string;
+    driverId?: string;
+  }) {
+    return this.prisma.vehicle.findMany({
+      where: {
+        status: filter?.status,
+        type: filter?.type,
+        driverId: filter?.driverId,
+      },
+      include: {
+        fleetLogs: true,
+        driver: true,
+      },
+    });
+  }
+
+  // ✅ Drivers that are active today
+async getActiveDrivers() {
+  return this.prisma.driver.count({
+    where: {
+      status: { in: ["ONLINE", "AVAILABLE", "ENROUTE"] }
+    }
+  });
+}
+
+// ✅ Active drivers yesterday
+async getActiveDriversYesterday() {
+  const start = new Date();
+  start.setDate(start.getDate() - 1);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setHours(23, 59, 59, 999);
+
+  return this.prisma.driver.count({
+    where: {
+      updatedAt: { gte: start, lte: end },
+      status: { in: ["ONLINE", "AVAILABLE", "ENROUTE"] }
+    }
+  });
+}
+
+// ✅ Deliveries today
+async getDeliveriesToday() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  return this.prisma.order.count({
+    where: {
+      status: "DELIVERED",
+      actualDeliveryAt: { gte: start }
+    }
+  });
+}
+
+// ✅ Deliveries yesterday
+async getDeliveriesYesterday() {
+  const start = new Date();
+  start.setDate(start.getDate() - 1);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setHours(23, 59, 59, 999);
+
+  return this.prisma.order.count({
+    where: {
+      status: "DELIVERED",
+      actualDeliveryAt: { gte: start, lte: end }
+    }
+  });
+}
+
+
+  // ✅ Fetch all dispatches (with optional filters)
+  async getDispatches(filters?: {
+    status?: DispatchStatus;
+    scope?: ShippingScope;
+    serviceType?: ServiceType;
+    driverId?: string;
+    vehicleId?: string;
+    from?: Date;
+    to?: Date;
+  }) {
+    return this.prisma.batchDispatch.findMany({
+      where: {
+        status: filters?.status,
+        scope: filters?.scope,
+        serviceType: filters?.serviceType,
+        driverId: filters?.driverId,
+        vehicleId: filters?.vehicleId,
+        createdAt: filters?.from
+          ? { gte: filters.from, lte: filters.to ?? new Date() }
+          : undefined,
+      },
+      include: {
+        orders: true,
+        driver: true,
+        vehicle: true,
+        origin: true,
+        destination: true,
+      },
+    });
+  }
+
+  // ✅ Quick count for today
+  async getTodayDispatches() {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    return this.prisma.batchDispatch.count({
+      where: {
+        createdAt: { gte: start },
+      },
+    });
+  }
+
+  // ✅ Quick count for this week
+  async getWeekDispatches() {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay()); // Sunday → start of week
+    weekStart.setHours(0, 0, 0, 0);
+
+    return this.prisma.batchDispatch.count({
+      where: {
+        createdAt: { gte: weekStart },
+      },
+    });
+  }
+
+  // ✅ Query for order status analytics
+  async getOrderStats() {
+    return this.prisma.order.groupBy({
+      by: ['status'],
+      _count: true,
+    });
+  }
+
+// ✅ On-time orders
+async getOnTimeOrders() {
+  return this.prisma.order.count({
+    where: {
+      status: "DELIVERED",
+      actualDeliveryAt: { lte: new Date() },
+      NOT: { estimatedDeliveryAt: null },
+      AND: { actualDeliveryAt: { lte: this.prisma.order.fields.estimatedDeliveryAt } }
+    }
+  });
+}
+
+// ✅ Total delivered orders
+async getTotalDelivered() {
+  return this.prisma.order.count({
+    where: {
+      status: "DELIVERED"
+    }
+  });
+}
+
+// ✅ Route efficiency: optimized vs actual
+async getRouteEfficiency() {
+  const jobs = await this.prisma.optimizationJob.findMany({
+    where: { status: "COMPLETED" },
+    select: {
+      totalDistance: true,
+      optimizedOrder: true
+    }
+  });
+
+let optimized = 0;
+let actual = 0;
+
+for (const job of jobs) {
+  const data = (job.optimizedOrder ?? {}) as Record<string, any>;
+
+  const optDist = typeof data.optimizedDistance === 'number' ? data.optimizedDistance : 0;
+  const actualDist = typeof job.totalDistance === 'number' ? job.totalDistance : 0;
+
+  optimized += optDist;
+  actual += actualDist;
+}
+
+  if (actual === 0) return 0;
+  return +(optimized / actual * 100).toFixed(2);
+}
+
+  // Fetch last month utilization (example query — modify if needed)
+  async getUtilizationStats() {
+    return this.prisma.vehicle.findMany({
+      select: {
+        id: true,
+        fleetLogs: {
+          where: {
+            date: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+          },
+          select: { cost: true },
+        },
+      },
+    });
   }
 
   async findBranchName() {

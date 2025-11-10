@@ -13,7 +13,6 @@ import {
 import { PATTERNS } from '../contracts';
 import { ClientProxy } from '@nestjs/microservices';
 import * as jwt from 'jsonwebtoken';
-import { SanitizePipe } from '../common/sanitize.pipe';
 import { OrderIdDto } from '../fulfillment/maps/maps.entity';
 
 @Controller('maps')
@@ -23,7 +22,6 @@ export class MapGatewayController {
   ) {}
 
   // constructor(private readonly mapsService: DriverLocationService) {}
-
   
   @Get('nearby-drivers')
   async nearbyDrivers(

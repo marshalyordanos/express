@@ -3,7 +3,9 @@ import { UserRepository } from './user.repository';
 import {
   AddressDto,
   AddressUpdateDto,
+  CreateDriver,
   CustomerCategoryDto,
+  NotificationPreferencesDto,
   PreferencesDto,
   UpdateCorporateInfoDto,
   UpdateCustomerCategoryDto,
@@ -501,6 +503,135 @@ export class UserUseCasesImp implements UserUsecase {
       throw new RpcException(
         error.message || 'Failed to remove customers from category',
       );
+    }
+  }
+
+  async createUserNotificationPreference(
+    userId: string,
+  ) {
+    try {
+      this.logger.log(
+        `Creating user notification preference requested by user: ${userId}`,
+      );
+      const preference = await this.userRepo.createUserNotificationPreferences(
+        userId,
+      );
+      this.logger.log(
+        `User notification preference created successfully: ${preference.id}`,
+      );
+      return preference;
+    } catch (error) {
+      this.logger.error(
+        'Error creating user notification preference',
+        error.stack,
+      );
+      throw new RpcException(
+        error.message || 'Failed to create user notification preference',
+      );
+    }
+  } 
+
+  async updateUserNotificationPreference(
+    data: NotificationPreferencesDto,
+    userId: string,){
+      try {
+        this.logger.log(
+          `Updating user notification preference with data: ${JSON.stringify(data)}. and requested by user: ${userId}`,
+        );
+        const preference = await this.userRepo.updateUserNotificationPreferences(
+          userId,
+          data,
+        );
+        this.logger.log(
+          `User notification preference updated successfully: ${preference.id}`,
+        );
+        return preference;
+      } catch (error) {
+        this.logger.error(
+          'Error updating user notification preference',
+          error.stack,
+        );
+        throw new RpcException(
+          error.message || 'Failed to update user notification preference',
+        );
+    }
+  }
+
+  async getUserNotificationPreference(userId: string) {
+    try {
+      this.logger.log(
+        `Fetching user notification preference for user: ${userId}`,
+      );
+      const preference = await this.userRepo.getUserNotificationPreferences(
+        userId,
+      );
+      this.logger.log(
+        `User notification preference fetched successfully: ${preference?.id || null}`,
+      );
+      return preference;
+    } catch (error) {
+      this.logger.error(
+        'Error fetching user notification preference',
+        error.stack,
+      );
+      throw new RpcException(
+        error.message || 'Failed to fetch user notification preference',
+      );
+    }
+  }
+
+  // Create Driver
+  async createDriver(data: CreateDriver) {
+    this.logger.log(
+      `Creating driver for user ${data.userId} with vehicle ${data.vehicleId}`,
+    );
+
+    try {
+      const user = await this.userRepo.findUserById(data.userId);
+      if (!user) {
+        this.logger.warn(`User not found: ${data.userId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `User with ID ${data.userId} not found and cannot create driver.`,
+        });
+      }
+      this.logger.verbose(`User validated: ${user.id}`);
+
+      const vehicle = await this.userRepo.findVehicleById(data.vehicleId);
+      if (!vehicle) {
+        this.logger.warn(`Vehicle not found: ${data.vehicleId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Vehicle with ID ${data.vehicleId} not found and cannot create driver.`,
+        });
+      }
+      this.logger.verbose(`Vehicle validated: ${vehicle.id}`);
+
+      const driver = await this.userRepo.createDriver(data);
+      this.logger.log(`Driver created successfully for user ${data.userId}`);
+      return driver;
+    } catch (error) {
+      this.logger.error(
+        `Failed to create driver: ${error.message}`,
+        error.stack,
+      );
+      throw error instanceof RpcException
+        ? error
+        : new RpcException(error.message);
+    }
+  }
+
+  // Find Driver
+  async findDriver(query: ListQueryDto) {
+    this.logger.log(`Finding drivers with query: ${JSON.stringify(query)}`);
+
+    try {
+      const drivers = await this.userRepo.findDriver(query);
+      this.logger.verbose(`Found ${drivers.pagination.total} drivers`);
+      return drivers;
+    } catch (error) {
+      this.logger.error(`Find driver failed: ${error.message}`, error.stack);
+      throw new RpcException(error.message);
     }
   }
 }

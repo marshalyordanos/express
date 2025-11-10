@@ -4,7 +4,9 @@ import { PATTERNS } from '../../contracts';
 import { UserUseCasesImp } from './user.usecase.impl';
 import {
   AddressDto,
+  CreateDriver,
   CustomerCategoryDto,
+  NotificationPreferencesDto,
   PreferencesDto,
   UpdateCorporateInfoDto,
   UpdateCustomerCategoryDto,
@@ -15,7 +17,10 @@ import { handleCatch } from '../../common/handleCatch';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { CheckPermission } from '../../common/decorator/check-permission.decorator';
 import { PermissionGuard } from '../../common/permission.guard';
-import { PermissionActions, ScopeAction } from '../../contracts/permission-actions.enum';
+import {
+  PermissionActions,
+  ScopeAction,
+} from '../../contracts/permission-actions.enum';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
 
 @Controller()
@@ -45,8 +50,8 @@ export class UserMessageController {
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('User', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.USER_UPDATE)
-  async update(@Payload() payload: { data: Partial<UserDto> , user: any }) {
-    const userId=payload.user.sub
+  async update(@Payload() payload: { data: Partial<UserDto>; user: any }) {
+    const userId = payload.user.sub;
     const user = await this.usecases.updateUser(userId, payload.data);
     return IResponse.success(' user updated successfully', user);
   }
@@ -88,9 +93,15 @@ export class UserMessageController {
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('User', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.ADDRESS_UPDATE)
-  async updateAddress(@Payload() payload: { id: string; data: any , user: any}) {
+  async updateAddress(
+    @Payload() payload: { id: string; data: any; user: any },
+  ) {
     const userId = payload.user.sub;
-    const address = await this.usecases.updateAddress(payload.id, payload.data, userId);
+    const address = await this.usecases.updateAddress(
+      payload.id,
+      payload.data,
+      userId,
+    );
     return IResponse.success('Address updated successfully', address);
   }
 
@@ -106,13 +117,13 @@ export class UserMessageController {
   @CheckPermission('User', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.PREFERENCES_UPDATE)
   async updatePreferences(
-    @Payload() payload: { userId: string; data: PreferencesDto , user: any},
+    @Payload() payload: { userId: string; data: PreferencesDto; user: any },
   ) {
     const user = payload.user.sub;
     const preff = await this.usecases.updatePreferences(
       payload.userId,
       payload.data,
-      user
+      user,
     );
     return IResponse.success('Preferences updated  successfully', preff);
   }
@@ -246,6 +257,67 @@ export class UserMessageController {
     );
     return IResponse.success('Category unassigned successfully', category);
   }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Preference', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.USER_CREATE_NOTIFICATION_PREFERENCE)
+  async createUserNotificationPreference(
+    @Payload() payload: { user: any; },
+  ) {
+    const userId = payload.user.sub;
+    const preference = await this.usecases.createUserNotificationPreference(
+      userId,
+    );
+    return IResponse.success('User Notification Preference created successfully', preference);
+  }
+    @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Preference', PermissionActions.UPDATE)
+  @MessagePattern(PATTERNS.USER_UPDATE_NOTIFICATION_PREFERENCE)
+  async updateUserNotificationPreference(
+    @Payload() payload: { user: any; data: NotificationPreferencesDto },
+  ) {
+    const userId = payload.user.sub;
+    const preference = await this.usecases.updateUserNotificationPreference(
+      payload.data,
+      userId,
+    );
+    return IResponse.success('User Notification Preference Updated successfully', preference);
+  }
+    @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Preference', PermissionActions.READ)
+  @MessagePattern(PATTERNS.USER_FIND_NOTIFICATION_PREFERENCE)
+  async getUserNotificationPreference(
+    @Payload() payload: { user: any},
+  ) {
+    const userId = payload.user.sub;
+    const preference = await this.usecases.getUserNotificationPreference(
+      userId,
+    );
+    return IResponse.success('User Notification Preference Fetched successfully', preference);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+    @CheckPermission('User', PermissionActions.CREATE, ScopeAction.APPROVE)
+    @MessagePattern(PATTERNS.USER_CREATE_DRIVER)
+    async createDriver(@Payload() payload: { data: CreateDriver }) {
+      const result = await this.usecases.createDriver(payload.data);
+      return IResponse.success(
+        'Driver with id [' +
+          payload.data.userId +
+          '] is successfully created for vehicle with id [' +
+          payload.data.vehicleId +
+          '].',
+        result,
+      );
+    }
+  
+    @UseGuards(PermissionGuard, RateLimitGuard)
+    @CheckPermission('User', PermissionActions.READ)
+    @MessagePattern(PATTERNS.USER_FIND_DRIVER)
+    async findDriver(@Payload() payload: { query: ListQueryDto }) {
+      const result = await this.usecases.findDriver(payload.query);
+      return IResponse.success('Officer created successfully', result);
+    }
 }
 
 // import { Controller, Get, Post, Put, Param, Body } from '@nestjs/common';

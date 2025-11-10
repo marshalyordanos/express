@@ -22,6 +22,7 @@ import { MapsRepository } from './maps/maps.repository';
 import { MapMessageController } from './maps/maps.controller';
 import { RouteCacheService } from './maps/navigation.service';
 import { AppLogger } from '../common/app-logger.service';
+import { NotificationPublisher } from '../common/notification-publisher';
 
 @Module({
   imports: [
@@ -54,7 +55,8 @@ import { AppLogger } from '../common/app-logger.service';
     RouteCacheService,
     MapsUseCasesImpl,
     MapsRepository,
-    AppLogger
+    AppLogger,
+    NotificationPublisher,
   ],
   exports: [
     OrderUseCasesImpl,

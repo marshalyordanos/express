@@ -111,7 +111,7 @@ export class DashboardReportMessageController {
   ) {
     return this.reportsService.getCustomerAnalytics();
   }
-    @UseGuards(PermissionGuard, RateLimitGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Dashboard-Report', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_REVENUE_SUMMARY)
   async getReportOverview(
@@ -121,5 +121,29 @@ export class DashboardReportMessageController {
     },
   ) {
     return this.reportsService.getReportOverview();
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @MessagePattern(PATTERNS.REPORT_DASHBOARD_FLEET_SUMMARY)
+  async getFleetSummary(
+    @Payload()
+    payload: {
+      headers: { authorization: string };
+    },
+  ) {
+    return this.reportsService.getFleetSummary();
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @MessagePattern(PATTERNS.REPORT_DASHBOARD_DISPATCH_SUMMARY)
+  async getDispatchSummary(
+    @Payload()
+    payload: {
+      headers: { authorization: string };
+    },
+  ) {
+    return this.reportsService.getDispatchSummary();
   }
 }

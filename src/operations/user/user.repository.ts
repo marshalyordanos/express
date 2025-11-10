@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AddressDto,
+  CreateDriver,
   CustomerCategoryDto,
+  NotificationPreferencesDto,
   PreferencesDto,
   UpdateCorporateInfoDto,
   UpdateCustomerCategoryDto,
@@ -12,16 +14,16 @@ import { CorporateInfo, User } from '@prisma/client';
 import { RpcException } from '@nestjs/microservices';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
+import { connect } from 'http2';
 
 @Injectable()
 export class UserRepository {
-
   constructor(private prisma: PrismaService) {}
 
   async findUserById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } });
   }
-   async findAddressById(id: string) {
+  async findAddressById(id: string) {
     return this.prisma.address.findUnique({ where: { id } });
   }
 
@@ -298,9 +300,6 @@ export class UserRepository {
     customerIds: string[],
     customerCategoryId: string,
   ) {
-    console.log('customerIds repo: ', customerIds);
-    console.log('customerCategoryId repo: ', customerCategoryId);
-
     return this.prisma.$transaction(async (tx) => {
       const updates = customerIds.map((customerId) =>
         tx.user.update({
@@ -325,4 +324,183 @@ export class UserRepository {
       return Promise.all(updates);
     });
   }
+
+  async updateUserNotificationPreferences(userId: string, data: NotificationPreferencesDto) {
+    return this.prisma.userNotificationPreferences.update({
+      where: { userId },
+      data: {
+        userId,
+        email: data.email,
+        inApp: data.inApp,
+        push: data.push,
+      },
+    });
+  }
+
+  async getUserNotificationPreferences(userId: string){
+    return this.prisma.userNotificationPreferences.findUnique({ where: { userId } });
+  }
+
+    async createUserNotificationPreferences(userId: string) {
+    return this.prisma.userNotificationPreferences.create({
+      data: {
+        // userId,
+        email: true,
+        inApp: true,
+        push: false,
+       user: { connect: { id: userId } }
+      },
+    });
+  }
+
+   async createDriver(data: CreateDriver) {
+      return this.prisma.$transaction(async (tx) => {
+        // Step 1: Create driver
+        const driver = await tx.driver.create({
+          data: {
+            user: { connect: { id: data.userId } },
+            vehicleId: data.vehicleId,
+            status: data.status,
+            type: data.type,
+            currentLat: data.currentLat,
+            currentLon: data.currentLong,
+            updatedAt: new Date(),
+          },
+        });
+  
+        // Step 2: Create location log
+        await tx.driverLocationLog.create({
+          data: {
+            driverId: driver.id,
+            latitude: data.currentLat,
+            longitude: data.currentLong,
+            speed: 0,
+            heading: 0,
+          },
+        });
+  
+        // Step 3: Update vehicle
+        await tx.vehicle.update({
+          where: { id: data.vehicleId },
+          data: { driverId: driver.id },
+        });
+  
+        return driver;
+      });
+    }
+  
+    async findVehicleById(vehicleId: string) {
+      return await this.prisma.vehicle.findUnique({
+        where: { id: vehicleId },
+      });
+    }
+  
+    async findDriver(payload: ListQueryDto) {
+      // Start building dynamic filters
+      const where: any = {
+        AND: [],
+      };
+  
+      // Apply general search (text)
+      if (payload.search) {
+        where.AND.push({
+          OR: [
+            { user: { name: { contains: payload.search, mode: 'insensitive' } } },
+            {
+              user: { email: { contains: payload.search, mode: 'insensitive' } },
+            },
+            {
+              user: { phone: { contains: payload.search, mode: 'insensitive' } },
+            },
+            {
+              vehicles: {
+                some: {
+                  plateNumber: { contains: payload.search, mode: 'insensitive' },
+                },
+              },
+            },
+            {
+              vehicles: {
+                some: {
+                  model: { contains: payload.search, mode: 'insensitive' },
+                },
+              },
+            },
+          ],
+        });
+      }
+  
+      let filters: any = {};
+      if (typeof payload.filter === 'string') {
+        try {
+          filters = JSON.parse(payload.filter);
+        } catch {
+          filters = {};
+        }
+      } else if (typeof payload.filter === 'object' && payload.filter !== null) {
+        filters = payload.filter;
+      }
+  
+      // Apply optional filters
+      if (filters.status) {
+        where.AND.push({ status: filters.status });
+      }
+      if (filters.type) {
+        where.AND.push({ type: filters.type });
+      }
+      if (filters.vehicleStatus) {
+        where.AND.push({
+          vehicles: { some: { status: filters.vehicleStatus } },
+        });
+      }
+      if (filters.userId) {
+        where.AND.push({ userId: filters.userId });
+      }
+      if (filters.vehicleId) {
+        where.AND.push({
+          vehicles: { some: { id: filters.vehicleId } },
+        });
+      }
+  
+      const feature = new PrismaQueryFeature({
+        search: payload.search,
+        filter: payload.filter,
+        sort: payload.sort,
+        page: payload.page,
+        pageSize: payload.pageSize,
+        searchableFields: [
+          'user.name',
+          'user.email',
+          'user.phone',
+          'vehicles.plateNumber',
+          'vehicles.model',
+        ],
+      });
+  
+      // Construct Prisma query
+      const query = {
+        ...feature.getQuery(),
+        where,
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, phone: true },
+          },
+          vehicles: {
+            select: { id: true, plateNumber: true, model: true, status: true },
+          },
+        },
+      };
+  
+      // Run queries in parallel transaction
+      const [drivers, total] = await this.prisma.$transaction([
+        this.prisma.driver.findMany(query),
+        this.prisma.driver.count({ where }),
+      ]);
+  
+      return {
+        drivers,
+        pagination: feature.getPagination(total),
+      };
+    }
+
 }

@@ -6,6 +6,7 @@ import { createClient, RedisClientType } from 'redis';
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: RedisClientType;
   public client2: RedisClientType;
+  private readyPromise: Promise<void>;
 
   async onModuleInit() {
     this.client = createClient({
@@ -19,8 +20,19 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     });
 
     this.client.on('connect', () => console.log('✅ Connected to Redis Cloud'));
-    this.client.on('error', (err) => console.error('❌ Redis error:', err));
+    // this.client.on('error', (err) => console.error('❌ Redis error:', err));
 
+    this.readyPromise = new Promise((resolve, reject) => {
+      this.client.on('connect', () => {
+        console.log('✅ Redis connected');
+        resolve();
+      });
+
+      this.client.on('error', (err) => {
+        console.error('❌ Redis error:', err);
+        reject(err);
+      });
+    });
     await this.client.connect();
   }
 
@@ -39,15 +51,22 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     const result = await this.client.get(key);
     return typeof result === 'string' ? result : null; // ensure string or null
   }
-  
+
   async del(key: string) {
     return this.client.del(key);
   }
 
-  getClient() {
-    return this.client;
+  // getClient() {
+  //   return this.client;
+  // }
+  /** ✅ Wait until Redis is fully initialized */
+  async waitUntilReady(): Promise<void> {
+    return this.readyPromise;
   }
 
+  getClient(): RedisClientType {
+    return this.client;
+  }
   async onModuleDestroy() {
     await this.client.quit();
   }

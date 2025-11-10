@@ -12,13 +12,14 @@ import {
   ServiceType,
   Order,
   ShippingScope,
-} from '@prisma/client'; 
+} from '@prisma/client';
 import { RpcException } from '@nestjs/microservices';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { MapsService } from '../maps/maps.service';
 import { handleCatch } from '../../common/handleCatch';
 import { AppLogger } from '../../common/app-logger.service';
 import { PricingUseCasesImpl } from '../pricing/pricing.usecase.impl';
+import { NotificationPublisher } from '../../common/notification-publisher';
 
 @Injectable()
 export class OrderUseCasesImpl implements OrderUseCases {
@@ -28,6 +29,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
     // private readonly mapsService: MapsService,
     private readonly pricingUseCases: PricingUseCasesImpl,
     private readonly logger: AppLogger,
+    private readonly notificationPublisher: NotificationPublisher,
   ) {
     this.logger.setContext('FulfillmentService', 'OrderUsecaseImpl');
   }
@@ -83,7 +85,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
           phone: data.phone,
           userId,
         });
-        this.logger.verbose(`Customer created with id: ${customer.id}`);
+        this.logger.verbose(`Customer with id: ${customer.id} created with notification preference`);
       }
 
       // 🔹 Create receiver if not found
@@ -165,6 +167,16 @@ export class OrderUseCasesImpl implements OrderUseCases {
       this.logger.log(
         `Order created successfully with id: ${order.id}, trackingCode: ${trackingCode}`,
       );
+
+      await this.notificationPublisher.publish('order.created', {
+        type: 'order.created',
+        userId,
+        userEmail: customer.email,
+        subject: 'New Order created',
+        message: `Your order ${order.trackingCode} has been created.`,
+        payload: { orderId: order.id, tracking: trackingCode }, // extra metadata
+      });
+
       return order;
     } catch (error) {
       // ✅ Handle known and unknown errors
@@ -282,7 +294,10 @@ export class OrderUseCasesImpl implements OrderUseCases {
         data.deliveryAddress.lat,
         data.deliveryAddress.long,
       );
-      this.logger.verbose('Delivery address resolved ::: ', deliveryAddress as string);
+      this.logger.verbose(
+        'Delivery address resolved ::: ',
+        deliveryAddress as string,
+      );
 
       // 🔹 Create order with addresses
       const order = await this.orderRepo.createOrderWithAddresses(
@@ -379,10 +394,8 @@ export class OrderUseCasesImpl implements OrderUseCases {
         });
       }
 
-      console.log(
-        "Pickup driver branch id :: ", order.pickupDriver?.branchId
-      );
-      
+      console.log('Pickup driver branch id :: ', order.pickupDriver?.branchId);
+
       const branchId = order.branchId ?? order.pickupDriver?.branchId;
       if (!branchId) {
         this.logger.warn(

@@ -1,11 +1,14 @@
-import { AddressPurpose } from '@prisma/client';
+import { AddressPurpose, DriverStatus, DriverType } from '@prisma/client';
 import {
   ArrayNotEmpty,
   IsArray,
+  IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export interface UserDto {
   name: string;
@@ -134,4 +137,39 @@ export class UnAssignCustomerToCategory {
   @ArrayNotEmpty()
   @IsString({ each: true })
   customerIds: string[];
+}
+
+
+export class NotificationPreferencesDto{
+  email?: boolean;
+  inApp?: boolean;
+  push?: boolean;
+  userId: string;
+}
+export class CreateDriver {
+  @IsNotEmpty()
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  userId: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  vehicleId: string;
+
+  @IsNotEmpty()
+  @IsEnum(DriverStatus, { message: 'Invalid driver status' })
+  status: DriverStatus;
+
+  @IsNotEmpty()
+  @IsEnum(DriverType, { message: 'Invalid driver type' })
+  type: DriverType;
+
+  @IsOptional()
+  @IsNumber({}, { message: 'Latitude must be a number' })
+  currentLat: number;
+
+  @IsOptional()
+  @IsNumber({}, { message: 'Longitude must be a number' })
+  currentLong: number;
 }

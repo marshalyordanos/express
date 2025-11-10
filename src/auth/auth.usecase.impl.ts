@@ -19,16 +19,17 @@ import { RpcException } from '@nestjs/microservices';
 import { PasswordValidator } from '../common/password-validator';
 import { handleCatch } from '../common/handleCatch';
 import { AppLogger } from '../common/app-logger.service';
+import { NotificationPublisher } from '../common/notification-publisher';
 
 @Injectable()
 export class AuthUseCaseImpl implements AuthUseCase {
   constructor(
     private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
-    private readonly logger: AppLogger
+    private readonly logger: AppLogger,
+    private readonly notificationPublisher: NotificationPublisher,
   ) {
     this.logger.setContext('AuthService', 'AuthModule');
-
   }
 
   // ----------------- Core Authentication -----------------
@@ -73,7 +74,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
         this.logger.warn(
           `⚠️ Weak password attempt by user email/phone: ${data.email}, ${data.phone}`,
         );
-         throw new RpcException({
+        throw new RpcException({
           statusCode: 400,
           message: valid.message,
         });
@@ -93,7 +94,14 @@ export class AuthUseCaseImpl implements AuthUseCase {
           await this.authRepository.sendVerificationPhone(user.id, user.email);
           this.logger.verbose(`Verification phone sent to user ${user.id}`);
         } else {
-          await this.authRepository.sendVerificationEmail(user.id, user.email);
+          await this.notificationPublisher.publish('user.registration', {
+            type: 'user.registration',
+            userId: user.id,
+            userEmail: user.email,
+            // message: `Please verify your email by clicking the link.`,
+            // payload: { orderId: order.id, tracking: trackingCode }, // extra metadata
+          });
+
           this.logger.verbose(`Verification email sent to user ${user.id}`);
         }
       } catch (notifyErr) {
@@ -106,13 +114,16 @@ export class AuthUseCaseImpl implements AuthUseCase {
       delete user.password;
       this.logger.log(`Registration completed for user ${user.id}`);
 
+      await this.authRepository.createNotificationPreferences(user.id);
+
+      this.logger.log(`Notification preferences created for user ${user.id}`);
       return user;
     } catch (error) {
       this.logger.error(
         `User registration failed: ${error.message}`,
         // error.stack,
       );
-      throw handleCatch(error)
+      throw handleCatch(error);
     }
   }
   async login(data: AuthLoginDto): Promise<{ user: User; tokens: AuthTokens }> {
@@ -431,7 +442,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
         this.logger.warn(`Attempt to access non-existent user: ${sub}`);
         throw new RpcException({ statusCode: 404, message: 'User not found' });
       }
-      delete user.password
+      delete user.password;
       this.logger.log(`Fetching authenticated user: ${sub}`);
       return user;
     } catch (error) {

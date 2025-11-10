@@ -180,9 +180,72 @@ export class BranchRepository {
 
     const branches = results[0] || [];
     const total = results[1] || 0;
+    const enhancedBranches = [];
+
+    for (const branch of branches) {
+      const branchId = branch.id;
+
+      // ✅ 1. Total Orders (dropoff)
+      const totalOrders = await this.prisma.order.count({
+        where: { branchId },
+      });
+
+      // ✅ 2. Active Orders (not delivered/failed/canceled)
+      const activeOrders = await this.prisma.order.count({
+        where: {
+          branchId,
+          status: {
+            notIn: ['DELIVERED', 'FAILED', 'CANCELED'],
+          },
+        },
+      });
+
+      // ✅ 3. Exception Orders
+      const exceptionOrders = await this.prisma.order.count({
+        where: {
+          branchId,
+          status: 'EXCEPTION',
+        },
+      });
+
+      // ✅ 4. Active Inter-Branch Orders
+      const interbranchActive = await this.prisma.order.count({
+        where: {
+          status: { notIn: ['DELIVERED', 'FAILED', 'CANCELED'] },
+          branchId: branchId,
+          deliveryAddress: {
+            branchId: { not: branchId },
+          },
+        },
+      });
+
+      // ✅ 5. Staff Count
+      const staffCount = branch.staff.length;
+
+      // ✅ 6. Revenue from price logs
+      const revenueResult = await this.prisma.priceCalculationLog.aggregate({
+        _sum: { finalPrice: true },
+        where: { order: { branchId } },
+      });
+
+      const revenue = revenueResult._sum.finalPrice || 0;
+
+      // ✅ 7. Build clean return object
+      enhancedBranches.push({
+        ...branch,
+        analytics: {
+          totalOrders,
+          activeOrders,
+          exceptionOrders,
+          interbranchActive,
+          staffCount,
+          revenue,
+        },
+      });
+    }
 
     return {
-      branches,
+      branches: enhancedBranches,
       pagination: feature.getPagination(total),
     };
   }

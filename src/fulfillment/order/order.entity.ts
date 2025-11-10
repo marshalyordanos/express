@@ -14,13 +14,14 @@ import {
   IsLatitude,
   IsLongitude,
   ValidateNested,
+  ArrayNotEmpty,
+  IsArray,
 } from 'class-validator';
 import {
   ServiceType,
   FulfillmentType,
   ShipmentType,
   ShippingScope,
-  ParcelCategory,
   OrderStatus,
 } from '@prisma/client';
 import { PartialType } from '@nestjs/mapped-types';
@@ -141,9 +142,16 @@ export class CreateOrderDto {
   @IsPositive({ message: 'Weight must be greater than zero' })
   weight: number;
 
-  @IsEnum(ParcelCategory, { message: 'Invalid parcel category' })
-  @IsOptional()
-  category?: ParcelCategory;
+  // @IsEnum(ParcelCategory, { message: 'Invalid parcel category' })
+  // @IsOptional()
+  // category?: ParcelCategory;
+
+  @IsNotEmpty()
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  @Transform(({ value }) => value.map((v: string) => v.trim()))
+  category: string[];
 
   @IsBoolean({ message: 'isFragile must be a boolean' })
   @IsOptional()

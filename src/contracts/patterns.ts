@@ -14,7 +14,12 @@ export const PATTERNS = {
   USER_FIND_BY_EMAIL: 'user.findByEmail',
   USER_CHANGE_ROLE: 'user.changeRole',
   USER_ALL_CUSTOMERS: 'user.allCustomers',
+  USER_CREATE_NOTIFICATION_PREFERENCE: 'user.createNotificationPreference',
+  USER_FIND_NOTIFICATION_PREFERENCE: 'user.findNotificationPreference',
+  USER_UPDATE_NOTIFICATION_PREFERENCE: 'user.updateNotificationPreference',
   CUSTOMER_ORDERS: 'customer.orders',
+  USER_FIND_DRIVER: 'user.findDrivers',
+  USER_CREATE_DRIVER: 'user.createDriver',
 
   ADDRESS_CREATE: 'address.create',
   ADDRESS_LIST: 'address.list',
@@ -183,7 +188,7 @@ export const PATTERNS = {
   PRICE_AIRPORT_FEE_FIND_BY_ID: 'price.airportFee.findById',
   PRICE_AIRPORT_FEE_UPDATE: 'price.airportFee.update',
   PRICE_AIRPORT_FEE_DELETE: 'price.airportFee.delete',
-  
+
   //Mescellanous Fees
   PRICE_MISC_FEE_CREATE: 'price.miscFee.create',
   PRICE_MISC_FEE_FIND_ALL: 'price.miscFee.findAll',
@@ -228,6 +233,8 @@ export const PATTERNS = {
   REPORT_DASHBOARD_ORDER_SUMMARY: 'report.dashboardOrderSummary',
   REPORT_DASHBOARD_CUSTOMER_SUMMARY: 'report.dashboardCustomerSummary',
   REPORT_DASHBOARD_REVENUE_SUMMARY: 'report.dashboardRevenueSummary',
+  REPORT_DASHBOARD_FLEET_SUMMARY: 'report.dashboardFleetSummary',
+  REPORT_DASHBOARD_DISPATCH_SUMMARY: 'report.dashboardDispatchSummary',
 
   REPORT_SHIPMENT_SUMMARY: 'report.shipmentSummary',
   REPORT_SHIPMENT_STATUS_BREAKDOWN: 'report.shipmentStatusBreakdown',
@@ -242,5 +249,4 @@ export const PATTERNS = {
   REPORT_PERFORMANCE_TOP_BRANCHES: 'report.performanceTopBranches',
   REPORT_PERFORMANCE_TOP_DRIVERS: 'report.performanceTopDrivers',
   REPORT_PERFORMANCE_TOP_SHIPMENTS: 'report.performanceTopShipments',
-
 } as const;

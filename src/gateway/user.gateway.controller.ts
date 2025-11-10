@@ -19,7 +19,9 @@ import {
   AddressUpdateDto,
   AssignCustomerToCategory,
   ChangeRoleDto,
+  CreateDriver,
   CustomerCategoryDto,
+  NotificationPreferencesDto,
   PreferencesDto,
   UnAssignCustomerToCategory,
   UpdateCorporateInfoDto,
@@ -203,6 +205,119 @@ export class UserGatewayController {
     }
     return this.usersClient.send(PATTERNS.USER_FIND_BY_ID, {
       id,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  @Get('notification/preference')
+  async getNotificationPreference(@Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.usersClient.send(PATTERNS.USER_FIND_NOTIFICATION_PREFERENCE, {
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+    @Post('/driver')
+    async createDriver(@Body() data: CreateDriver, @Req() req) {
+      const authHeader = req.headers['authorization'] || null;
+      let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+  
+      const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+      const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+      let decodedUser = null;
+      try {
+        decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+        // decodedUser = this.jwtService.verify(token);
+      } catch (err) {
+        throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+      }
+      console.log('Create driver datas : ', data);
+  
+      return this.usersClient.send(PATTERNS.USER_CREATE_DRIVER, {
+        data,
+        headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+      });
+    }
+  
+    @Get('/driver')
+    async findDriver(@Query() query: ListQueryDto, @Req() req) {
+      const authHeader = req.headers['authorization'] || null;
+      let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+  
+      const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+      const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+      let decodedUser = null;
+      try {
+        decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+        // decodedUser = this.jwtService.verify(token);
+      } catch (err) {
+        throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+      }
+      console.log('FInd driver querys: ', query);
+  
+      return this.usersClient.send(PATTERNS.USER_FIND_DRIVER, {
+        query,
+        headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+      });
+    }
+
+  @Post('notification/preference')
+  async createNotificationPreference(@Req() req, @Body() dto: NotificationPreferencesDto) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.usersClient.send(PATTERNS.USER_CREATE_NOTIFICATION_PREFERENCE, {
+      data: dto,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  @Patch('notification/preference')
+  async updateNotificationPreference(@Req() req, @Body() dto: NotificationPreferencesDto) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.usersClient.send(PATTERNS.USER_UPDATE_NOTIFICATION_PREFERENCE, {
+      data: dto,
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
       ip,

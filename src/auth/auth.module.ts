@@ -7,6 +7,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthRepository } from './auth.repository';
 import { RedisService } from '../redis/redis.service';
 import { AppLogger } from '../common/app-logger.service';
+import { NotificationPublisher } from '../common/notification-publisher';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { AppLogger } from '../common/app-logger.service';
     }),
   ],
   controllers: [AuthMessageController],
-  providers: [AuthRepository, AuthUseCaseImpl, PrismaService, RedisService, AppLogger],
+  providers: [AuthRepository, AuthUseCaseImpl,NotificationPublisher,  PrismaService, RedisService, AppLogger],
   exports: [AuthUseCaseImpl],
 })
 export class AuthModule {}

@@ -15,7 +15,8 @@ export interface OrderUseCases {
   getOrderById(id: string): Promise<any>;
   updateOrder(id: string, data: any, userId: string): Promise<any>;
   deleteOrder(id: string): Promise<any>;
-  // updateOrderStatus(id: string, data: any): Promise<any>;
+  // updateOrderStatus(id:
+  //  string, data: any): Promise<any>;
   // updateOrderType(id: string, data: any): Promise<any>;
   // updateOrderDriver(id: string, data: any): Promise<any>;
   confirmPickupOrder(orderId: string, driverId: string, userId: string): Promise<any>;

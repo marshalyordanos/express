@@ -735,6 +735,7 @@ export class DispatchRepository {
 
     const query = feature.getQuery();
 
+    
     // 🔹 If there's a search term, extend query.where.OR with trackingCode search
     if (payload.search) {
       query.where = {

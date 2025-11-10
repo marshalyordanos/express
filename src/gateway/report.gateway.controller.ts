@@ -18,6 +18,7 @@ export class ReportGatewayController {
   constructor(
     @Inject('USER_SERVICE') private readonly reportClient: ClientProxy,
   ) {}
+  
 
   @Get('dashboard/overview')
   async getOverview(@Req() req) {
@@ -254,6 +255,50 @@ export class ReportGatewayController {
     }
 
     return this.reportClient.send(PATTERNS.REPORT_DASHBOARD_REVENUE_SUMMARY, {
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+      @Get('dashboard/fleet-summary')
+  async getFleetDashboardSummary(@Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+
+    return this.reportClient.send(PATTERNS.REPORT_DASHBOARD_FLEET_SUMMARY, {
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+      @Get('dashboard/dispatch-summary')
+  async getDispatchDashboardSummary(@Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+
+    return this.reportClient.send(PATTERNS.REPORT_DASHBOARD_DISPATCH_SUMMARY, {
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
       ip,

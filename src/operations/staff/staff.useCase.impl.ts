@@ -89,7 +89,10 @@ export class StaffUseCasesImpl implements StaffUsecase {
 
       this.logger.log(`✅ Staff created successfully with ID: ${staff.id}`);
       delete staff.password;
-
+      await this.staffRepo.createNotificationPreferences(staff.id);
+      this.logger.log(
+        `✅ Notification preferences created successfully for staff with ID: ${staff.id}`,
+      );
       return staff;
     } catch (error) {
       this.logger.error(
@@ -131,7 +134,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
       this.logger.log(
         `📋 Fetching all staff with filters: ${JSON.stringify(query)}`,
       );
-      return  await this.staffRepo.findAllStaff(query);;
+      return await this.staffRepo.findAllStaff(query);
     } catch (error) {
       this.logger.error(
         `🚨 Error fetching all staff: ${error.message}`,
@@ -191,7 +194,11 @@ export class StaffUseCasesImpl implements StaffUsecase {
     try {
       this.logger.log(`🗑️ Fetching staff with id: ${id}`);
       const staff = await this.staffRepo.findStaffById(id);
-      if (!staff) throw new RpcException('User not found') && this.logger.warn(`🗑️ Staff not founf with id: ${id}`);;
+      if (!staff)
+        throw (
+          new RpcException('User not found') &&
+          this.logger.warn(`🗑️ Staff not founf with id: ${id}`)
+        );
 
       this.logger.log(`🗑️ Fetched staff successfuly with id: ${id}`);
       return staff;

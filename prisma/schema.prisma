@@ -43,20 +43,21 @@ model User {
 
   addresses              Address[]
   preferences            UserPreferences?
-  createdBatches         BatchDispatch[]  @relation("CreatedBatches")
-  driverBatches          BatchDispatch[]  @relation("BatchDispatchDriver")
-  officerBatches         BatchDispatch[]  @relation("BatchDispatchOfficer")
-  handOverBatchesOfficer BatchHandover[]  @relation("HandoverBatchesOfficer")
+  notificationPreference UserNotificationPreferences?
+  createdBatches         BatchDispatch[]              @relation("CreatedBatches")
+  driverBatches          BatchDispatch[]              @relation("BatchDispatchDriver")
+  officerBatches         BatchDispatch[]              @relation("BatchDispatchOfficer")
+  handOverBatchesOfficer BatchHandover[]              @relation("HandoverBatchesOfficer")
 
-pickupOrders  Order[]  @relation("PickupDriverOrders")
-deliveryOrders Order[] @relation("DeliveryDriverOrders")
-profilePictures ProfilePicture[]
-podImages PodImage[] 
+  pickupOrders    Order[]          @relation("PickupDriverOrders")
+  deliveryOrders  Order[]          @relation("DeliveryDriverOrders")
+  profilePictures ProfilePicture[]
+  podImages       PodImage[]
 
   corporateInfo CorporateInfo?
   driver        Driver?
 
-  createdBy        String?
+  createdBy String?
 
   @@index([isStaff])
   @@index([branchId])
@@ -100,13 +101,13 @@ model Address {
   userId      String?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
-  branchId    String?        @unique 
-  createdBy     String?
+  branchId    String?        @unique
+  createdBy   String?
 
   user           User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
   pickupOrders   Order[] @relation("PickupAddress")
   deliveryOrders Order[] @relation("DeliveryAddress")
-  branch         Branch?  @relation("BranchAddress", fields: [branchId], references: [id], onDelete: Cascade)
+  branch         Branch? @relation("BranchAddress", fields: [branchId], references: [id], onDelete: Cascade)
 
   originBatches      BatchDispatch[] @relation("BatchOrigin")
   destinationBatches BatchDispatch[] @relation("BatchDestination")
@@ -125,6 +126,18 @@ model UserPreferences {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   createdBy            String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserNotificationPreferences {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  email     Boolean  @default(true)
+  inApp     Boolean  @default(true)
+  push      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -165,9 +178,9 @@ model RolePermission {
   updateAction Boolean @default(false)
   deleteAction Boolean @default(false)
 
-  scope      String[] @default([])
+  scope String[] @default([])
 
-  createdBy    String?
+  createdBy String?
 
   @@unique([roleId, permissionId]) // prevent duplicates
 }
@@ -184,7 +197,7 @@ model Branch {
   staff     User[]
   address   Address? @relation("BranchAddress")
 
-  createdBy    String?
+  createdBy String?
 }
 
 model Vehicle {
@@ -197,7 +210,7 @@ model Vehicle {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   fleetLogs   FleetLog[]
-  createdBy    String?
+  createdBy   String?
 
   // driver      User?         @relation(fields: [driverId], references: [id])
   batchDispatches BatchDispatch[] @relation("BatchDispatchVehicle")
@@ -218,27 +231,27 @@ model FleetLog {
 }
 
 model Order {
-  id              String          @id @default(cuid())
-  trackingCode    String          @unique
-  customerId      String
-  receiverId      String?
-  branchId        String?
-  pickupDriverId  String?        
-  deliveryDriverId String? 
-  status          OrderStatus     @default(PENDING)
-  serviceType     ServiceType
-  fulfillmentType FulfillmentType @default(PICKUP)
+  id               String          @id @default(cuid())
+  trackingCode     String          @unique
+  customerId       String
+  receiverId       String?
+  branchId         String?
+  pickupDriverId   String?
+  deliveryDriverId String?
+  status           OrderStatus     @default(PENDING)
+  serviceType      ServiceType
+  fulfillmentType  FulfillmentType @default(PICKUP)
 
   // 📦 Parcel details
   weight        Float
   length        Float?
   width         Float?
   height        Float?
-  category      ParcelCategory?
-  isFragile     Boolean         @default(false)
+  category      String[]       @default([])
+  isFragile     Boolean        @default(false)
   shipmentType  ShipmentType?
   shippingScope ShippingScope?
-  isUnusual     Boolean         @default(false)
+  isUnusual     Boolean        @default(false)
   unusualReason String?
 
   // Delivery info
@@ -259,16 +272,16 @@ model Order {
   quantity          Float?
 
   // Analaytics
-  pickupAssignedBy      String?   
-  pickupAssignedAt      DateTime? 
-  deliveryAssignedBy    String?   
-  deliveryAssignedAt    DateTime? 
-  estimatedDeliveryAt   DateTime?
-  actualDeliveryAt      DateTime? 
+  pickupAssignedBy    String?
+  pickupAssignedAt    DateTime?
+  deliveryAssignedBy  String?
+  deliveryAssignedAt  DateTime?
+  estimatedDeliveryAt DateTime?
+  actualDeliveryAt    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  createdBy  String?
+  createdBy String?
   batchId   String?
 
   // Tariff & Pricing
@@ -281,7 +294,7 @@ model Order {
   // Relations
   branch          Branch?          @relation(fields: [branchId], references: [id])
   customer        User             @relation("CustomerOrders", fields: [customerId], references: [id])
-  receiver        User?             @relation("ReceiverOrders", fields: [receiverId], references: [id])
+  receiver        User?            @relation("ReceiverOrders", fields: [receiverId], references: [id])
   validator       User?            @relation("ValidateOrders", fields: [validatedBy], references: [id])
   exceptions      OrderException[]
   payment         Payment?
@@ -293,14 +306,14 @@ model Order {
   pickupAddress   Address? @relation("PickupAddress", fields: [pickupAddressId], references: [id])
   deliveryAddress Address? @relation("DeliveryAddress", fields: [deliveryAddressId], references: [id])
 
-  pickupDriver    User?  @relation("PickupDriverOrders", fields: [pickupDriverId], references: [id])
-  deliveryDriver  User?  @relation("DeliveryDriverOrders", fields: [deliveryDriverId], references: [id])
+  pickupDriver   User? @relation("PickupDriverOrders", fields: [pickupDriverId], references: [id])
+  deliveryDriver User? @relation("DeliveryDriverOrders", fields: [deliveryDriverId], references: [id])
 
   optimizationJob OptimizationJob?      @relation("OptimizationJobOrders", fields: [optimizationJobId], references: [id])
- // driver          User?                 @relation("DriverOrders", fields: [driverId], references: [id], map: "Order_driver_fk_user")
+  // driver          User?                 @relation("DriverOrders", fields: [driverId], references: [id], map: "Order_driver_fk_user")
   //orderDriver     Driver?               @relation("DriverAssignedOrders", fields: [driverId], references: [id], map: "Order_driver_fk_driver")
   priceLogs       PriceCalculationLog[]
-  podImages PodImage[] 
+  podImages       PodImage[]
 
   @@index([pickupAddressId, deliveryAddressId], name: "idx_order_addresses") // compound index for route optimization
   @@index([branchId, status], name: "idx_branch_status") // filter orders by branch + status
@@ -326,15 +339,15 @@ model PodImage {
   id         String   @id @default(cuid())
   driverId   String
   orderId    String
-  url        String   // Cloudinary or S3 URL
-  publicId   String?  // Optional: Cloudinary public ID for deletion
-  fileName   String?  // Original file name
-  fileType   String?  // e.g., 'image/jpeg', 'image/png'
+  url        String // Cloudinary or S3 URL
+  publicId   String? // Optional: Cloudinary public ID for deletion
+  fileName   String? // Original file name
+  fileType   String? // e.g., 'image/jpeg', 'image/png'
   uploadedAt DateTime @default(now())
 
   // Relations (optional)
-  driver     User   @relation(fields: [driverId], references: [id])
-  order      Order    @relation(fields: [orderId], references: [id])
+  driver User  @relation(fields: [driverId], references: [id])
+  order  Order @relation(fields: [orderId], references: [id])
 
   @@index([driverId])
   @@index([orderId])
@@ -342,18 +355,19 @@ model PodImage {
 
 model ProfilePicture {
   id         String   @id @default(cuid())
-  userId     String   // Could be driver or customer
-  url        String   // Cloudinary or S3 URL
-  publicId   String?  // Optional: Cloudinary public ID
-  fileName   String?  // Original file name
-  fileType   String?  // e.g., 'image/jpeg', 'image/png'
+  userId     String // Could be driver or customer
+  url        String // Cloudinary or S3 URL
+  publicId   String? // Optional: Cloudinary public ID
+  fileName   String? // Original file name
+  fileType   String? // e.g., 'image/jpeg', 'image/png'
   uploadedAt DateTime @default(now())
 
   // Relation
-  user       User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
+
 model ParcelApproval {
   id         String         @id @default(cuid())
   orderId    String         @unique
@@ -402,7 +416,7 @@ model BatchDispatch {
   batchCode    String         @unique
   scope        ShippingScope // IN_TOWN, REGIONAL, INTERNATIONAL
   serviceType  ServiceType // SAME_DAY, EXPRESS, etc.
-  category     String? // e.g., Electronics, Documents, Mixed
+  category     String[]       @default([])
   isFragile    Boolean        @default(false)
   status       DispatchStatus @default(PENDING)
   createdAt    DateTime       @default(now())
@@ -411,13 +425,13 @@ model BatchDispatch {
   notes        String?
   weight       Float?
   shipmentDate DateTime?      @db.Date
-  createdUser    String?
+  createdUser  String?
 
   // Relations
-  originId      String?
-  destinationId String?
-  origin        Address?       @relation("BatchOrigin", fields: [originId], references: [id], onDelete: SetNull)
-  destination   Address?       @relation("BatchDestination", fields: [destinationId], references: [id], onDelete: SetNull)
+  originId         String?
+  destinationId    String?
+  origin           Address?          @relation("BatchOrigin", fields: [originId], references: [id], onDelete: SetNull)
+  destination      Address?          @relation("BatchDestination", fields: [destinationId], references: [id], onDelete: SetNull)
   orders           Order[]           @relation("BatchOrders")
   createdBy        User?             @relation("CreatedBatches", fields: [createdById], references: [id])
   driverId         String?
@@ -671,6 +685,7 @@ model Notification {
   type      String
   message   String
   read      Boolean  @default(false)
+  payload   Json?
   createdAt DateTime @default(now())
   createdBy String?
   user      User     @relation(fields: [userId], references: [id])
@@ -765,9 +780,9 @@ model Location {
   originRoutes      Route[] @relation("RouteOrigin")
   destinationRoutes Route[] @relation("RouteDestination")
 
+  @@unique([latitude, longitude], name: "latitude_longitude")
   @@index([latitude])
   @@index([longitude])
-@@unique([latitude, longitude], name: "latitude_longitude")
 }
 
 model Route {
@@ -976,15 +991,6 @@ enum PaymentStatus {
 enum FulfillmentType {
   PICKUP
   DROPOFF
-}
-
-enum ParcelCategory {
-  DOCUMENT
-  ELECTRONICS
-  FOOD
-  FRAGILE_ITEM
-  CHEMICAL
-  OTHER
 }
 
 enum ShipmentType {

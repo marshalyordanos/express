@@ -1,7 +1,6 @@
 import {
   DriverStatus,
   DriverType,
-  ParcelCategory,
   ServiceType,
   ShippingScope,
 } from '@prisma/client';
@@ -40,10 +39,13 @@ export class BatchDispatchDto {
   @IsNotEmpty()
   @IsEnum(ServiceType)
   serviceType: ServiceType; // ServiceType (SAME_DAY, EXPRESS, etc.)
-
+  
   @IsOptional()
-  @IsEnum(ParcelCategory)
-  category?: ParcelCategory; // e.g., Electronics, Documents, Mixed
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  @Transform(({ value }) => value.map((v: string) => v.trim()))
+    category: string[]; // IDs of batches being handed over
 
   @IsOptional()
   @IsBoolean()
