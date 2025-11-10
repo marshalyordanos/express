@@ -1,0 +1,468 @@
+import { DispatchUseCases } from './dispatch.usecase';
+import { DispatchRepository } from './dispatch.repository';
+import { AssignDriverForPickup, AssignOfficerForBatch, BatchDispatchDto, BatchHandoverDto, CompleteDeliveryDto, ConfirmBatchHandoverDto, CreateDriver } from './dispatch.entity';
+import { ShippingScope, ServiceType } from '@prisma/client';
+import { IResponse } from '../../common/types';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ListQueryDto } from '../../common/query/query.dto';
+import { AppLogger } from '../../common/app-logger.service';
+export declare class DispatchUseCasesImpl implements DispatchUseCases {
+    private readonly dispatchRepo;
+    private readonly qrCodeService;
+    private readonly logger;
+    constructor(dispatchRepo: DispatchRepository, qrCodeService: PrismaService, logger: AppLogger);
+    assignDriverForPickup(data: AssignDriverForPickup, userId: string): Promise<any>;
+    confirmDispatch(data: AssignOfficerForBatch, userId: string): Promise<any>;
+    collectBatchByCargoOfficer(data: AssignOfficerForBatch, userId: string): Promise<any>;
+    deliverBatchToAirport(data: BatchHandoverDto, userId: string): Promise<any>;
+    assignDriverForDelivery(data: AssignDriverForPickup): Promise<any>;
+    assignDriverToOrder(data: AssignDriverForPickup, userId: string): Promise<any>;
+    lastMileDelivery(orderId: string, driverId: string, userId: string, notes?: string): Promise<{
+        success: boolean;
+        message: string;
+        result: {
+            length: number | null;
+            status: import(".prisma/client").$Enums.OrderStatus;
+            id: string;
+            branchId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            notes: string | null;
+            cost: number | null;
+            trackingCode: string;
+            customerId: string;
+            receiverId: string | null;
+            pickupDriverId: string | null;
+            deliveryDriverId: string | null;
+            serviceType: import(".prisma/client").$Enums.ServiceType;
+            fulfillmentType: import(".prisma/client").$Enums.FulfillmentType;
+            weight: number;
+            width: number | null;
+            height: number | null;
+            category: string[];
+            isFragile: boolean;
+            shipmentType: import(".prisma/client").$Enums.ShipmentType | null;
+            shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
+            isUnusual: boolean;
+            unusualReason: string | null;
+            pickupAddressId: string | null;
+            pickupDate: Date | null;
+            deliveryAddressId: string | null;
+            deliveryDate: Date | null;
+            pickupConfirmed: boolean;
+            dropoffConfirmed: boolean;
+            actualPickupDate: Date | null;
+            actualDropoffDate: Date | null;
+            distance: number | null;
+            validatedBy: string | null;
+            validatedAt: Date | null;
+            validatedNotes: string | null;
+            quantity: number | null;
+            pickupAssignedBy: string | null;
+            pickupAssignedAt: Date | null;
+            deliveryAssignedBy: string | null;
+            deliveryAssignedAt: Date | null;
+            estimatedDeliveryAt: Date | null;
+            actualDeliveryAt: Date | null;
+            batchId: string | null;
+            tariffId: string | null;
+            finalPrice: number | null;
+            currency: string | null;
+            optimizationJobId: string | null;
+        };
+    }>;
+    completeDelivery(dto: CompleteDeliveryDto, userId: string): Promise<{
+        deliveryAddress: {
+            label: string;
+            id: string;
+            branchId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            userId: string | null;
+            addressLine: string;
+            city: string;
+            state: string | null;
+            country: string;
+            postalCode: string | null;
+            lat: string | null;
+            long: string | null;
+            purpose: import(".prisma/client").$Enums.AddressPurpose;
+        };
+    } & {
+        length: number | null;
+        status: import(".prisma/client").$Enums.OrderStatus;
+        id: string;
+        branchId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        createdBy: string | null;
+        notes: string | null;
+        cost: number | null;
+        trackingCode: string;
+        customerId: string;
+        receiverId: string | null;
+        pickupDriverId: string | null;
+        deliveryDriverId: string | null;
+        serviceType: import(".prisma/client").$Enums.ServiceType;
+        fulfillmentType: import(".prisma/client").$Enums.FulfillmentType;
+        weight: number;
+        width: number | null;
+        height: number | null;
+        category: string[];
+        isFragile: boolean;
+        shipmentType: import(".prisma/client").$Enums.ShipmentType | null;
+        shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
+        isUnusual: boolean;
+        unusualReason: string | null;
+        pickupAddressId: string | null;
+        pickupDate: Date | null;
+        deliveryAddressId: string | null;
+        deliveryDate: Date | null;
+        pickupConfirmed: boolean;
+        dropoffConfirmed: boolean;
+        actualPickupDate: Date | null;
+        actualDropoffDate: Date | null;
+        distance: number | null;
+        validatedBy: string | null;
+        validatedAt: Date | null;
+        validatedNotes: string | null;
+        quantity: number | null;
+        pickupAssignedBy: string | null;
+        pickupAssignedAt: Date | null;
+        deliveryAssignedBy: string | null;
+        deliveryAssignedAt: Date | null;
+        estimatedDeliveryAt: Date | null;
+        actualDeliveryAt: Date | null;
+        batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
+        optimizationJobId: string | null;
+    }>;
+    removeDriverFromOrder(orderId: string): Promise<any>;
+    changeDriverForOrder(data: AssignDriverForPickup): Promise<any>;
+    createBatchDispatch(dto: BatchDispatchDto, userId: string): Promise<{
+        batch: {
+            createdBy: {
+                name: string;
+                id: string;
+                email: string;
+            };
+            orders: {
+                status: import(".prisma/client").$Enums.OrderStatus;
+                id: string;
+                trackingCode: string;
+                serviceType: import(".prisma/client").$Enums.ServiceType;
+                fulfillmentType: import(".prisma/client").$Enums.FulfillmentType;
+                category: string[];
+                isFragile: boolean;
+                shipmentType: import(".prisma/client").$Enums.ShipmentType;
+                shippingScope: import(".prisma/client").$Enums.ShippingScope;
+                deliveryAddress: {
+                    addressLine: string;
+                    city: string;
+                };
+            }[];
+            origin: {
+                id: string;
+                addressLine: string;
+                city: string;
+                country: string;
+            };
+            destination: {
+                id: string;
+                addressLine: string;
+                city: string;
+                country: string;
+            };
+        } & {
+            scope: import(".prisma/client").$Enums.ShippingScope;
+            status: import(".prisma/client").$Enums.DispatchStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            notes: string | null;
+            driverId: string | null;
+            vehicleId: string | null;
+            serviceType: import(".prisma/client").$Enums.ServiceType;
+            weight: number | null;
+            category: string[];
+            isFragile: boolean;
+            batchCode: string;
+            createdById: string | null;
+            shipmentDate: Date | null;
+            createdUser: string | null;
+            originId: string | null;
+            destinationId: string | null;
+            awbNumber: string | null;
+            officerId: string | null;
+        };
+        orderLogs: {
+            message: string;
+        };
+    }>;
+    addOrdersToBatch(batchId: string, newOrderIds: string[], userId: string, updateData?: Partial<BatchDispatchDto>): Promise<IResponse<{
+        batch: {
+            orders: {
+                status: import(".prisma/client").$Enums.OrderStatus;
+                id: string;
+                trackingCode: string;
+                serviceType: import(".prisma/client").$Enums.ServiceType;
+                fulfillmentType: import(".prisma/client").$Enums.FulfillmentType;
+                category: string[];
+                isFragile: boolean;
+                shipmentType: import(".prisma/client").$Enums.ShipmentType;
+                shippingScope: import(".prisma/client").$Enums.ShippingScope;
+                deliveryAddress: {
+                    addressLine: string;
+                    city: string;
+                };
+            }[];
+            origin: {
+                id: string;
+                addressLine: string;
+                city: string;
+                country: string;
+            };
+            destination: {
+                id: string;
+                addressLine: string;
+                city: string;
+                country: string;
+            };
+        } & {
+            scope: import(".prisma/client").$Enums.ShippingScope;
+            status: import(".prisma/client").$Enums.DispatchStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            notes: string | null;
+            driverId: string | null;
+            vehicleId: string | null;
+            serviceType: import(".prisma/client").$Enums.ServiceType;
+            weight: number | null;
+            category: string[];
+            isFragile: boolean;
+            batchCode: string;
+            createdById: string | null;
+            shipmentDate: Date | null;
+            createdUser: string | null;
+            originId: string | null;
+            destinationId: string | null;
+            awbNumber: string | null;
+            officerId: string | null;
+        };
+        ordersLog: {
+            message: string;
+        };
+        result: import(".prisma/client").Prisma.BatchPayload;
+    }>>;
+    getBatches(query: ListQueryDto): Promise<{
+        batches: ({
+            createdBy: {
+                password: string;
+                name: string;
+                id: string;
+                email: string;
+                phone: string | null;
+                branchId: string | null;
+                createdAt: Date;
+                updatedAt: Date;
+                emailVerified: boolean;
+                roleId: string | null;
+                isStaff: boolean;
+                isSuperAdmin: boolean;
+                customerType: import(".prisma/client").$Enums.CustomerType | null;
+                customerCategoryId: string | null;
+                createdBy: string | null;
+            };
+            orders: {
+                length: number | null;
+                status: import(".prisma/client").$Enums.OrderStatus;
+                id: string;
+                branchId: string | null;
+                createdAt: Date;
+                updatedAt: Date;
+                createdBy: string | null;
+                notes: string | null;
+                cost: number | null;
+                trackingCode: string;
+                customerId: string;
+                receiverId: string | null;
+                pickupDriverId: string | null;
+                deliveryDriverId: string | null;
+                serviceType: import(".prisma/client").$Enums.ServiceType;
+                fulfillmentType: import(".prisma/client").$Enums.FulfillmentType;
+                weight: number;
+                width: number | null;
+                height: number | null;
+                category: string[];
+                isFragile: boolean;
+                shipmentType: import(".prisma/client").$Enums.ShipmentType | null;
+                shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
+                isUnusual: boolean;
+                unusualReason: string | null;
+                pickupAddressId: string | null;
+                pickupDate: Date | null;
+                deliveryAddressId: string | null;
+                deliveryDate: Date | null;
+                pickupConfirmed: boolean;
+                dropoffConfirmed: boolean;
+                actualPickupDate: Date | null;
+                actualDropoffDate: Date | null;
+                distance: number | null;
+                validatedBy: string | null;
+                validatedAt: Date | null;
+                validatedNotes: string | null;
+                quantity: number | null;
+                pickupAssignedBy: string | null;
+                pickupAssignedAt: Date | null;
+                deliveryAssignedBy: string | null;
+                deliveryAssignedAt: Date | null;
+                estimatedDeliveryAt: Date | null;
+                actualDeliveryAt: Date | null;
+                batchId: string | null;
+                tariffId: string | null;
+                finalPrice: number | null;
+                currency: string | null;
+                optimizationJobId: string | null;
+            }[];
+            driver: {
+                password: string;
+                name: string;
+                id: string;
+                email: string;
+                phone: string | null;
+                branchId: string | null;
+                createdAt: Date;
+                updatedAt: Date;
+                emailVerified: boolean;
+                roleId: string | null;
+                isStaff: boolean;
+                isSuperAdmin: boolean;
+                customerType: import(".prisma/client").$Enums.CustomerType | null;
+                customerCategoryId: string | null;
+                createdBy: string | null;
+            };
+        } & {
+            scope: import(".prisma/client").$Enums.ShippingScope;
+            status: import(".prisma/client").$Enums.DispatchStatus;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            notes: string | null;
+            driverId: string | null;
+            vehicleId: string | null;
+            serviceType: import(".prisma/client").$Enums.ServiceType;
+            weight: number | null;
+            category: string[];
+            isFragile: boolean;
+            batchCode: string;
+            createdById: string | null;
+            shipmentDate: Date | null;
+            createdUser: string | null;
+            originId: string | null;
+            destinationId: string | null;
+            awbNumber: string | null;
+            officerId: string | null;
+        })[];
+        pagination: {
+            total: number;
+            page: number;
+            pageSize: number;
+            totalPages: number;
+        };
+    }>;
+    prepareQRCodes(input: {
+        orderIds?: string[];
+        batchId?: string;
+        branchId?: string;
+        serviceType?: ServiceType;
+        shippingScope?: ShippingScope;
+    }): Promise<any[]>;
+    scanOrder(officerId: string, scannedToken: string, userId: string): Promise<any>;
+    compareOrders(officerId: string, userId: string): Promise<{
+        message: string;
+        missingOrders: any[];
+        scannedOrders: any[];
+        branchId?: undefined;
+        officerId?: undefined;
+        totalExpected?: undefined;
+        totalScanned?: undefined;
+        mismatchedOrders?: undefined;
+    } | {
+        branchId: string;
+        officerId: string;
+        totalExpected: number;
+        totalScanned: number;
+        missingOrders: {
+            orderId: string;
+            trackingCode: string;
+        }[];
+        mismatchedOrders: {
+            orderId: string;
+            trackingCode: string;
+        }[];
+        message?: undefined;
+        scannedOrders?: undefined;
+    }>;
+    confirmHandover(dto: ConfirmBatchHandoverDto): Promise<{
+        handover: {
+            reference: string | null;
+            method: string | null;
+            id: string;
+            createdBy: string | null;
+            notes: string | null;
+            handedById: string;
+            handedAt: Date;
+        };
+        confirmedOrders: string[];
+        success: boolean;
+        message: string;
+    }>;
+    createDriver(data: CreateDriver): Promise<{
+        type: import(".prisma/client").$Enums.DriverType;
+        status: import(".prisma/client").$Enums.DriverStatus;
+        id: string;
+        updatedAt: Date | null;
+        createdBy: string | null;
+        userId: string;
+        vehicleId: string | null;
+        currentLat: number | null;
+        currentLon: number | null;
+    }>;
+    findDriver(query: ListQueryDto): Promise<{
+        drivers: ({
+            user: {
+                name: string;
+                id: string;
+                email: string;
+                phone: string;
+            };
+            vehicles: {
+                status: import(".prisma/client").$Enums.VehicleStatus;
+                id: string;
+                model: string;
+                plateNumber: string;
+            }[];
+        } & {
+            type: import(".prisma/client").$Enums.DriverType;
+            status: import(".prisma/client").$Enums.DriverStatus;
+            id: string;
+            updatedAt: Date | null;
+            createdBy: string | null;
+            userId: string;
+            vehicleId: string | null;
+            currentLat: number | null;
+            currentLon: number | null;
+        })[];
+        pagination: {
+            total: number;
+            page: number;
+            pageSize: number;
+            totalPages: number;
+        };
+    }>;
+}
