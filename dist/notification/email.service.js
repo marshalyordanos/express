@@ -19,11 +19,14 @@ let EmailService = class EmailService {
         this.oAuth2Client.setCredentials({
             refresh_token: process.env.EMAIL_REFRESH_TOKEN,
         });
+        console.log('Email Refresh Token Length:', process.env.EMAIL_REFRESH_TOKEN?.length);
+        if (!process.env.EMAIL_REFRESH_TOKEN) {
+            console.error('❌ EMAIL_REFRESH_TOKEN is MISSING in Render!');
+        }
     }
     async createTransporter() {
         try {
-            const accessTokenResponse = await this.oAuth2Client.getAccessToken();
-            const accessToken = accessTokenResponse?.token;
+            const { token: accessToken } = await this.oAuth2Client.getAccessToken();
             if (!accessToken) {
                 throw new Error('Failed to get access token from Google OAuth2');
             }
@@ -43,7 +46,7 @@ let EmailService = class EmailService {
             });
         }
         catch (err) {
-            console.error('Error creating transporter:', err);
+            console.error('❌ Error creating transporter:', err);
             throw new common_1.InternalServerErrorException('Failed to create email transporter');
         }
     }

@@ -39,17 +39,72 @@ import { google } from 'googleapis';
 
 @Injectable()
 export class EmailService {
-  private oAuth2Client = new google.auth.OAuth2(
-    process.env.EMAIL_CLIENT_ID,
-    process.env.EMAIL_CLIENT_SECRET,
-    'https://developers.google.com/oauthplayground', // redirect URI
-  );
+  // private oAuth2Client = new google.auth.OAuth2(
+  //   process.env.EMAIL_CLIENT_ID,
+  //   process.env.EMAIL_CLIENT_SECRET,
+  //   'https://developers.google.com/oauthplayground', // redirect URI
+  // );
 
-  constructor() {
-    // Set refresh token once
+  // constructor() {
+  //   // Set refresh token once
+  //   this.oAuth2Client.setCredentials({
+  //     refresh_token: process.env.EMAIL_REFRESH_TOKEN,
+  //   });
+  // }
+
+  // /**
+  //  * Create transporter with fresh access token
+  //  */
+  // private async createTransporter(): Promise<nodemailer.Transporter> {
+  //   try {
+  //     const accessTokenResponse = await this.oAuth2Client.getAccessToken();
+  //     const accessToken = accessTokenResponse?.token;
+
+  //     if (!accessToken) {
+  //       throw new Error('Failed to get access token from Google OAuth2');
+  //     }
+
+  //     return nodemailer.createTransport({
+  //       service: 'gmail',
+  //       auth: {
+  //         type: 'OAuth2',
+  //         user: process.env.EMAIL_USER,
+  //         clientId: process.env.EMAIL_CLIENT_ID,
+  //         clientSecret: process.env.EMAIL_CLIENT_SECRET,
+  //         refreshToken: process.env.EMAIL_REFRESH_TOKEN,
+  //         accessToken,
+  //       },
+  //       connectionTimeout: 20000, // 20s
+  //       greetingTimeout: 20000,
+  //       socketTimeout: 20000,
+  //     });
+  //   } catch (err) {
+  //     console.error('Error creating transporter:', err);
+  //     throw new InternalServerErrorException(
+  //       'Failed to create email transporter',
+  //     );
+  //   }
+  // }
+   private oAuth2Client: any;
+
+    constructor() {
+    // ✅ Create OAuth2 client inside constructor (Render fix)
+    this.oAuth2Client = new google.auth.OAuth2(
+      process.env.EMAIL_CLIENT_ID,
+      process.env.EMAIL_CLIENT_SECRET,
+      'https://developers.google.com/oauthplayground',
+    );
+
+    // ✅ Set credentials AFTER env variables are loaded
     this.oAuth2Client.setCredentials({
       refresh_token: process.env.EMAIL_REFRESH_TOKEN,
     });
+
+    // ✅ Debug (enable during deployment)
+    console.log('Email Refresh Token Length:', process.env.EMAIL_REFRESH_TOKEN?.length);
+    if (!process.env.EMAIL_REFRESH_TOKEN) {
+      console.error('❌ EMAIL_REFRESH_TOKEN is MISSING in Render!');
+    }
   }
 
   /**
@@ -57,8 +112,8 @@ export class EmailService {
    */
   private async createTransporter(): Promise<nodemailer.Transporter> {
     try {
-      const accessTokenResponse = await this.oAuth2Client.getAccessToken();
-      const accessToken = accessTokenResponse?.token;
+      // ✅ Get fresh access token
+      const { token: accessToken } = await this.oAuth2Client.getAccessToken();
 
       if (!accessToken) {
         throw new Error('Failed to get access token from Google OAuth2');
@@ -74,18 +129,15 @@ export class EmailService {
           refreshToken: process.env.EMAIL_REFRESH_TOKEN,
           accessToken,
         },
-        connectionTimeout: 20000, // 20s
+        connectionTimeout: 20000,
         greetingTimeout: 20000,
         socketTimeout: 20000,
       });
     } catch (err) {
-      console.error('Error creating transporter:', err);
-      throw new InternalServerErrorException(
-        'Failed to create email transporter',
-      );
+      console.error('❌ Error creating transporter:', err);
+      throw new InternalServerErrorException('Failed to create email transporter');
     }
   }
-
   /**
    * Retry sending email up to 3 times
    */

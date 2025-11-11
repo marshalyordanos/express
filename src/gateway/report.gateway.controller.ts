@@ -18,7 +18,6 @@ export class ReportGatewayController {
   constructor(
     @Inject('USER_SERVICE') private readonly reportClient: ClientProxy,
   ) {}
-  
 
   @Get('dashboard/overview')
   async getOverview(@Req() req) {
@@ -239,7 +238,7 @@ export class ReportGatewayController {
     });
   }
 
-    @Get('dashboard/revenue-summary')
+  @Get('dashboard/revenue-summary')
   async getRevenueDashboardSummary(@Req() req) {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
@@ -261,7 +260,7 @@ export class ReportGatewayController {
     });
   }
 
-      @Get('dashboard/fleet-summary')
+  @Get('dashboard/fleet-summary')
   async getFleetDashboardSummary(@Req() req) {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
@@ -283,7 +282,7 @@ export class ReportGatewayController {
     });
   }
 
-      @Get('dashboard/dispatch-summary')
+  @Get('dashboard/dispatch-summary')
   async getDispatchDashboardSummary(@Req() req) {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
@@ -305,7 +304,6 @@ export class ReportGatewayController {
     });
   }
 
-  
   @Get('shipment/summary')
   async getShipmentSummary(@Req() req) {
     const authHeader = req.headers['authorization'] || null;
