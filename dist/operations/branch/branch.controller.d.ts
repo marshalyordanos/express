@@ -69,5 +69,20 @@ export declare class BranchMessageController {
     }): Promise<IResponse<string>>;
     findAllBranches(payload: {
         query: ListQueryDto;
-    }): Promise<IResponse<any[]>>;
+    }): Promise<IResponse<{
+        id: string;
+        name: string;
+        location: string;
+        manager: {
+            name: string;
+            id: string;
+        };
+        totalOrders: number;
+        activeOrders: number;
+        interbranchActive: number;
+        staffCount: number;
+        revenue: number;
+        efficiency: number;
+        status: string;
+    }[]>>;
 }

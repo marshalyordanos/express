@@ -10,6 +10,7 @@ export interface DispatchUseCases {
     changeDriverForOrder(data: AssignDriverForPickup): Promise<any>;
     createBatchDispatch(dto: BatchDispatchDto, userId: string): Promise<any>;
     getBatches(query: ListQueryDto): Promise<any>;
+    getDeliveredAndOnGoingDispatches(userId: any): Promise<any>;
     confirmDispatch(data: AssignOfficerForBatch, userId: string): Promise<any>;
     collectBatchByCargoOfficer(data: AssignOfficerForBatch, userId: string): Promise<any>;
     deliverBatchToAirport(data: BatchHandoverDto, userId: string): Promise<any>;

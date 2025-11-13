@@ -376,36 +376,53 @@ let UserUseCasesImp = class UserUseCasesImp {
             throw new microservices_1.RpcException(error.message || 'Failed to fetch user notification preference');
         }
     }
-    async createDriver(data) {
-        this.logger.log(`Creating driver for user ${data.userId} with vehicle ${data.vehicleId}`);
+    async createDriver(data, userId) {
+        this.logger.log(`Creating driver for Email ${data.email} with vehicle ${data.vehicleId}, requested by user: ${userId}`);
         try {
-            const user = await this.userRepo.findUserById(data.userId);
-            if (!user) {
-                this.logger.warn(`User not found: ${data.userId}`);
+            if (!data.vehicleId || !data.roleId) {
                 throw new microservices_1.RpcException({
-                    statusCode: 404,
-                    message: `User with ID ${data.userId} not found and cannot create driver.`,
+                    statusCode: 400,
+                    message: 'Vehicle ID and Role ID are required to create a driver.',
                 });
             }
-            this.logger.verbose(`User validated: ${user.id}`);
-            const vehicle = await this.userRepo.findVehicleById(data.vehicleId);
+            const [vehicle, role] = await Promise.all([
+                this.userRepo.findVehicleById(data.vehicleId),
+                this.userRepo.findRoleById(data.roleId),
+            ]);
             if (!vehicle) {
                 this.logger.warn(`Vehicle not found: ${data.vehicleId}`);
                 throw new microservices_1.RpcException({
                     statusCode: 404,
-                    message: `Vehicle with ID ${data.vehicleId} not found and cannot create driver.`,
+                    message: `Vehicle with ID ${data.vehicleId} not found.`,
                 });
             }
-            this.logger.verbose(`Vehicle validated: ${vehicle.id}`);
-            const driver = await this.userRepo.createDriver(data);
-            this.logger.log(`Driver created successfully for user ${data.userId}`);
-            return driver;
+            if (!role) {
+                this.logger.warn(`Role not found: ${data.roleId}`);
+                throw new microservices_1.RpcException({
+                    statusCode: 404,
+                    message: `Role with ID ${data.roleId} not found.`,
+                });
+            }
+            const { user, driver } = await this.userRepo.createDriver(data, userId);
+            this.logger.log(`Driver created successfully for ${data.email}`);
+            return {
+                success: true,
+                message: 'Driver created successfully',
+                data: {
+                    ...user,
+                    driver: {
+                        ...driver,
+                        vehicleId: data.vehicleId,
+                        roleId: data.roleId,
+                    },
+                },
+            };
         }
         catch (error) {
             this.logger.error(`Failed to create driver: ${error.message}`, error.stack);
             throw error instanceof microservices_1.RpcException
                 ? error
-                : new microservices_1.RpcException(error.message);
+                : new microservices_1.RpcException({ message: error.message, statusCode: 500 });
         }
     }
     async findDriver(query) {

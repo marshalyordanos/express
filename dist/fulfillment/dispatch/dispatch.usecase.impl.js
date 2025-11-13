@@ -94,6 +94,18 @@ let DispatchUseCasesImpl = class DispatchUseCasesImpl {
             throw (0, handleCatch_1.handleCatch)(error);
         }
     }
+    async getDeliveredAndOnGoingDispatches(userId) {
+        this.logger.log(`Getting delivered and on going dispatches for user ${userId}`);
+        try {
+            const dispatches = await this.dispatchRepo.getDeliveredAndOnGoingDispatches(userId);
+            this.logger.log(`Delivered and on going dispatches found ${dispatches.length} for user ${userId}`);
+            return types_1.IResponse.success(`Delivered and on going dispatches found for officer ${userId}`, dispatches);
+        }
+        catch (error) {
+            this.logger.error(`Failed to get delivered and on going dispatches for user ${userId}: ${error.message}`);
+            throw (0, handleCatch_1.handleCatch)(error);
+        }
+    }
     async confirmDispatch(data, userId) {
         this.logger.log(`Confirm dispatch request received for officer ${data.officerId}`);
         try {
@@ -198,7 +210,7 @@ let DispatchUseCasesImpl = class DispatchUseCasesImpl {
                 method: data.method,
                 reference: data.reference,
                 notes: data.notes,
-                location: "At Airport",
+                location: 'At Airport',
             });
             this.logger.verbose(`Successfully handed over ${batches.length} batches to the airport by officer ${officer.name ?? officer.id}.`);
             return {

@@ -13,7 +13,6 @@ import {
   UserDto,
 } from './user.entity';
 import { IResponse } from '../../common/types';
-import { handleCatch } from '../../common/handleCatch';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { CheckPermission } from '../../common/decorator/check-permission.decorator';
 import { PermissionGuard } from '../../common/permission.guard';
@@ -261,16 +260,16 @@ export class UserMessageController {
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Preference', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.USER_CREATE_NOTIFICATION_PREFERENCE)
-  async createUserNotificationPreference(
-    @Payload() payload: { user: any; },
-  ) {
+  async createUserNotificationPreference(@Payload() payload: { user: any }) {
     const userId = payload.user.sub;
-    const preference = await this.usecases.createUserNotificationPreference(
-      userId,
+    const preference =
+      await this.usecases.createUserNotificationPreference(userId);
+    return IResponse.success(
+      'User Notification Preference created successfully',
+      preference,
     );
-    return IResponse.success('User Notification Preference created successfully', preference);
   }
-    @UseGuards(PermissionGuard, RateLimitGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Preference', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.USER_UPDATE_NOTIFICATION_PREFERENCE)
   async updateUserNotificationPreference(
@@ -281,43 +280,42 @@ export class UserMessageController {
       payload.data,
       userId,
     );
-    return IResponse.success('User Notification Preference Updated successfully', preference);
+    return IResponse.success(
+      'User Notification Preference Updated successfully',
+      preference,
+    );
   }
-    @UseGuards(PermissionGuard, RateLimitGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Preference', PermissionActions.READ)
   @MessagePattern(PATTERNS.USER_FIND_NOTIFICATION_PREFERENCE)
-  async getUserNotificationPreference(
-    @Payload() payload: { user: any},
-  ) {
+  async getUserNotificationPreference(@Payload() payload: { user: any }) {
     const userId = payload.user.sub;
-    const preference = await this.usecases.getUserNotificationPreference(
-      userId,
+    const preference =
+      await this.usecases.getUserNotificationPreference(userId);
+    return IResponse.success(
+      'User Notification Preference Fetched successfully',
+      preference,
     );
-    return IResponse.success('User Notification Preference Fetched successfully', preference);
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-    @CheckPermission('User', PermissionActions.CREATE, ScopeAction.APPROVE)
-    @MessagePattern(PATTERNS.USER_CREATE_DRIVER)
-    async createDriver(@Payload() payload: { data: CreateDriver }) {
-      const result = await this.usecases.createDriver(payload.data);
-      return IResponse.success(
-        'Driver with id [' +
-          payload.data.userId +
-          '] is successfully created for vehicle with id [' +
-          payload.data.vehicleId +
-          '].',
-        result,
-      );
-    }
-  
-    @UseGuards(PermissionGuard, RateLimitGuard)
-    @CheckPermission('User', PermissionActions.READ)
-    @MessagePattern(PATTERNS.USER_FIND_DRIVER)
-    async findDriver(@Payload() payload: { query: ListQueryDto }) {
-      const result = await this.usecases.findDriver(payload.query);
-      return IResponse.success('Officer created successfully', result);
-    }
+  @CheckPermission('User', PermissionActions.CREATE, ScopeAction.APPROVE)
+  @MessagePattern(PATTERNS.USER_CREATE_DRIVER)
+  async createDriver(@Payload() payload: { data: CreateDriver; user: any }) {
+    const userId = payload.user.sub;
+    const result = await this.usecases.createDriver(payload.data, userId);
+    return IResponse.success(
+      `Driver with email ${payload.data.email} created successfully`,
+      result,
+    );
+  }
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('User', PermissionActions.READ)
+  @MessagePattern(PATTERNS.USER_FIND_DRIVER)
+  async findDriver(@Payload() payload: { query: ListQueryDto }) {
+    const result = await this.usecases.findDriver(payload.query);
+    return IResponse.success('Officer created successfully', result);
+  }
 }
 
 // import { Controller, Get, Post, Put, Param, Body } from '@nestjs/common';

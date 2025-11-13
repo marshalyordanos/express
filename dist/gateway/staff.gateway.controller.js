@@ -83,7 +83,6 @@ let StaffGatewayController = class StaffGatewayController {
         });
     }
     async findStaff(req, query) {
-        console.log('gateway query :: ', query);
         const authHeader = req.headers['authorization'] || null;
         let token = req.headers['authorization']?.replace('Bearer ', '') || null;
         const forwarded = req.headers['x-forwarded-for'] || '';
@@ -202,6 +201,44 @@ let StaffGatewayController = class StaffGatewayController {
             query,
         });
     }
+    async createDriver(data, req) {
+        const authHeader = req.headers['authorization'] || null;
+        let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+        const forwarded = req.headers['x-forwarded-for'] || '';
+        const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+        let decodedUser = null;
+        try {
+            decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+        }
+        catch (err) {
+            throw new common_1.HttpException('Invalid token', common_1.HttpStatus.UNAUTHORIZED);
+        }
+        return this.staffClient.send(contracts_1.PATTERNS.STAFF_CREATE_DRIVER, {
+            data,
+            headers: { authorization: authHeader },
+            user: decodedUser,
+            ip,
+        });
+    }
+    async findDriver(query, req) {
+        const authHeader = req.headers['authorization'] || null;
+        let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+        const forwarded = req.headers['x-forwarded-for'] || '';
+        const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+        let decodedUser = null;
+        try {
+            decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+        }
+        catch (err) {
+            throw new common_1.HttpException('Invalid token', common_1.HttpStatus.UNAUTHORIZED);
+        }
+        return this.staffClient.send(contracts_1.PATTERNS.STAFF_FIND_DRIVER, {
+            query,
+            headers: { authorization: authHeader },
+            user: decodedUser,
+            ip,
+        });
+    }
     async assignBranch(dto, req) {
         const authHeader = req.headers['authorization'] || null;
         let token = req.headers['authorization']?.replace('Bearer ', '') || null;
@@ -298,6 +335,22 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, query_dto_1.ListQueryDto]),
     __metadata("design:returntype", Promise)
 ], StaffGatewayController.prototype, "findStaffByBranch", null);
+__decorate([
+    (0, common_1.Post)('/driver'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [staff_entity_1.CreateDriver, Object]),
+    __metadata("design:returntype", Promise)
+], StaffGatewayController.prototype, "createDriver", null);
+__decorate([
+    (0, common_1.Get)('/driver'),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [query_dto_1.ListQueryDto, Object]),
+    __metadata("design:returntype", Promise)
+], StaffGatewayController.prototype, "findDriver", null);
 __decorate([
     (0, common_1.Post)('assign-branch'),
     __param(0, (0, common_1.Body)()),

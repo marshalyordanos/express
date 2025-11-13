@@ -106,6 +106,29 @@ let DispatchRepository = class DispatchRepository {
             timeout: 60000,
         });
     }
+    async getDeliveredAndOnGoingDispatches(userId) {
+        return this.prisma.batchDispatch.findMany({
+            where: {
+                officerId: userId,
+                NOT: {
+                    status: { in: ['PENDING', 'READY'] },
+                },
+            },
+            select: {
+                id: true,
+                status: true,
+                _count: {
+                    select: { orders: true },
+                },
+                awbNumber: true,
+                serviceType: true,
+                shipmentDate: true,
+                scope: true,
+                destinationId: true,
+                originId: true,
+            },
+        });
+    }
     async cancelDispatch(batchIds) {
         return this.prisma.batchDispatch.updateMany({
             where: { id: { in: batchIds } },

@@ -5,6 +5,14 @@ import { ListQueryDto } from '../../common/query/query.dto';
 export declare class UserRepository {
     private prisma;
     constructor(prisma: PrismaService);
+    findRoleById(roleId: string): Promise<{
+        name: string;
+        id: string;
+        description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        createdBy: string | null;
+    }>;
     findUserById(id: string): Promise<User | null>;
     findAddressById(id: string): Promise<{
         label: string;
@@ -270,6 +278,7 @@ export declare class UserRepository {
                 password: string;
                 name: string;
                 id: string;
+                customId: string | null;
                 email: string;
                 phone: string | null;
                 branchId: string | null;
@@ -279,6 +288,9 @@ export declare class UserRepository {
                 roleId: string | null;
                 isStaff: boolean;
                 isSuperAdmin: boolean;
+                emergencyContactName: string | null;
+                emergencyContactPhone: string | null;
+                isActive: boolean;
                 customerType: import(".prisma/client").$Enums.CustomerType | null;
                 customerCategoryId: string | null;
                 createdBy: string | null;
@@ -288,6 +300,7 @@ export declare class UserRepository {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
+                isActive: boolean;
                 customerCategoryId: string | null;
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
@@ -296,7 +309,6 @@ export declare class UserRepository {
                 baseFee: number;
                 perKmRate: number;
                 perKgRate: number;
-                isActive: boolean;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             }[];
@@ -320,12 +332,12 @@ export declare class UserRepository {
                 description: string | null;
                 createdAt: Date;
                 updatedAt: Date;
+                isActive: boolean;
                 customerCategoryId: string | null;
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType | null;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
                 tariffId: string;
-                isActive: boolean;
                 validFrom: Date;
                 validTo: Date | null;
             }[];
@@ -380,6 +392,7 @@ export declare class UserRepository {
         password: string;
         name: string;
         id: string;
+        customId: string | null;
         email: string;
         phone: string | null;
         branchId: string | null;
@@ -389,6 +402,9 @@ export declare class UserRepository {
         roleId: string | null;
         isStaff: boolean;
         isSuperAdmin: boolean;
+        emergencyContactName: string | null;
+        emergencyContactPhone: string | null;
+        isActive: boolean;
         customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
@@ -397,6 +413,7 @@ export declare class UserRepository {
         password: string;
         name: string;
         id: string;
+        customId: string | null;
         email: string;
         phone: string | null;
         branchId: string | null;
@@ -406,6 +423,9 @@ export declare class UserRepository {
         roleId: string | null;
         isStaff: boolean;
         isSuperAdmin: boolean;
+        emergencyContactName: string | null;
+        emergencyContactPhone: string | null;
+        isActive: boolean;
         customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
@@ -437,16 +457,22 @@ export declare class UserRepository {
         userId: string;
         inApp: boolean;
     }>;
-    createDriver(data: CreateDriver): Promise<{
-        type: import(".prisma/client").$Enums.DriverType;
-        status: import(".prisma/client").$Enums.DriverStatus;
-        id: string;
-        updatedAt: Date | null;
-        createdBy: string | null;
-        userId: string;
-        vehicleId: string | null;
-        currentLat: number | null;
-        currentLon: number | null;
+    createDriver(data: CreateDriver, userId: string): Promise<{
+        user: {
+            name: string;
+            id: string;
+            email: string;
+            phone: string;
+            roleId: string;
+        };
+        driver: {
+            type: import(".prisma/client").$Enums.DriverType;
+            status: import(".prisma/client").$Enums.DriverStatus;
+            id: string;
+            vehicleId: string;
+            licenseNumber: string;
+            licenseExpiry: Date;
+        };
     }>;
     findVehicleById(vehicleId: string): Promise<{
         type: string;
@@ -481,6 +507,8 @@ export declare class UserRepository {
             createdBy: string | null;
             userId: string;
             vehicleId: string | null;
+            licenseNumber: string | null;
+            licenseExpiry: Date | null;
             currentLat: number | null;
             currentLon: number | null;
         })[];

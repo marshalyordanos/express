@@ -315,6 +315,25 @@ let DispatchGatewayController = class DispatchGatewayController {
             query,
         });
     }
+    async getDispatchesForOfficer(req, query) {
+        const authHeader = req.headers['authorization'] || null;
+        let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+        const forwarded = req.headers['x-forwarded-for'] || '';
+        const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+        let decodedUser = null;
+        try {
+            decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+        }
+        catch (err) {
+            throw new common_1.HttpException('Invalid token', common_1.HttpStatus.UNAUTHORIZED);
+        }
+        return this.dispatchClient.send(contracts_1.PATTERNS.DISPATCH_FIND_DELIVERED_AND_ONGOING, {
+            headers: { authorization: authHeader },
+            user: decodedUser,
+            ip,
+            query,
+        });
+    }
     async addOrderToBatch(batchId, data, req) {
         const authHeader = req.headers['authorization'] || null;
         let token = req.headers['authorization']?.replace('Bearer ', '') || null;
@@ -524,6 +543,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, query_dto_1.ListQueryDto]),
     __metadata("design:returntype", Promise)
 ], DispatchGatewayController.prototype, "getAllDispatches", null);
+__decorate([
+    (0, common_1.Get)("/officer"),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, query_dto_1.ListQueryDto]),
+    __metadata("design:returntype", Promise)
+], DispatchGatewayController.prototype, "getDispatchesForOfficer", null);
 __decorate([
     (0, common_1.Patch)('/add-order/:batchId'),
     __param(0, (0, common_1.Param)('batchId')),

@@ -44,6 +44,8 @@ export const PATTERNS = {
   STAFF_UPDATE: 'staff.update',
   STAFF_FIND_BY_BRANCH: 'staff.findByBranch',
   STAFF_ASSIGN_BRANCH: 'staff.assignBranch',
+  STAFF_CREATE_DRIVER: 'staff.createDriver',
+  STAFF_FIND_DRIVER: 'staff.findDriver',
 
   BRANCH_CREATE: 'branch.create',
   BRANCH_FIND_BY_ID: 'branch.findById',
@@ -161,6 +163,7 @@ export const PATTERNS = {
   DISPATCH_GENERATE_QR_CODE: 'dispatch.generateQrCode',
   DISPATCH_CREATE_DRIVER: 'dispatch.createDriver',
   DISPATCH_FIND_DRIVER: 'dispatch.findDriver',
+  DISPATCH_FIND_DELIVERED_AND_ONGOING: 'dispatch.findDeliveredAndOngoing',
 
   MAP_GET_ROUTE: 'map.getRoute',
   MAP_MARK_STOP_VISITED: 'map.markStopVisited',

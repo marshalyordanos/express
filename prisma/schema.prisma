@@ -10,6 +10,7 @@ datasource db {
 
 model User {
   id                 String             @id @default(cuid())
+  customId           String?            @unique
   name               String
   email              String             @unique
   password           String
@@ -21,6 +22,9 @@ model User {
   roleId             String?
   isStaff            Boolean            @default(false)
   isSuperAdmin       Boolean            @default(false)
+  emergencyContactName   String?
+  emergencyContactPhone   String?
+  isActive           Boolean           @default(true)
   logs               AuditLog[]
   bookmarks          Bookmark[]
   managedBranch      Branch?            @relation("BranchManager")
@@ -838,6 +842,8 @@ model Driver {
   vehicleId  String?
   status     DriverStatus @default(OFFLINE)
   type       DriverType   @default(INTERNAL)
+  licenseNumber   String?
+  licenseExpiry   DateTime?
   currentLat Float?
   currentLon Float?
   updatedAt  DateTime?

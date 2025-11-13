@@ -51,6 +51,7 @@ export declare class NotificationRepository {
         password: string;
         name: string;
         id: string;
+        customId: string | null;
         email: string;
         phone: string | null;
         branchId: string | null;
@@ -60,6 +61,9 @@ export declare class NotificationRepository {
         roleId: string | null;
         isStaff: boolean;
         isSuperAdmin: boolean;
+        emergencyContactName: string | null;
+        emergencyContactPhone: string | null;
+        isActive: boolean;
         customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
@@ -72,6 +76,7 @@ export declare class NotificationRepository {
         password: string;
         name: string;
         id: string;
+        customId: string | null;
         email: string;
         phone: string | null;
         branchId: string | null;
@@ -81,6 +86,9 @@ export declare class NotificationRepository {
         roleId: string | null;
         isStaff: boolean;
         isSuperAdmin: boolean;
+        emergencyContactName: string | null;
+        emergencyContactPhone: string | null;
+        isActive: boolean;
         customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;

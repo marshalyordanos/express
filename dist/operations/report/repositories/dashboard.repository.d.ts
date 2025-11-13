@@ -55,6 +55,8 @@ export declare class DashboardReportRepository {
             createdBy: string | null;
             userId: string;
             vehicleId: string | null;
+            licenseNumber: string | null;
+            licenseExpiry: Date | null;
             currentLat: number | null;
             currentLon: number | null;
         };
@@ -145,6 +147,7 @@ export declare class DashboardReportRepository {
             password: string;
             name: string;
             id: string;
+            customId: string | null;
             email: string;
             phone: string | null;
             branchId: string | null;
@@ -154,6 +157,9 @@ export declare class DashboardReportRepository {
             roleId: string | null;
             isStaff: boolean;
             isSuperAdmin: boolean;
+            emergencyContactName: string | null;
+            emergencyContactPhone: string | null;
+            isActive: boolean;
             customerType: import(".prisma/client").$Enums.CustomerType | null;
             customerCategoryId: string | null;
             createdBy: string | null;

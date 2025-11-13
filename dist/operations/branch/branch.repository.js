@@ -119,10 +119,10 @@ let BranchRepository = class BranchRepository {
             sort: payload.sort,
             page: payload.page,
             pageSize: payload.pageSize,
-            searchableFields: ['name', 'description', 'location'],
+            searchableFields: ['name', 'location'],
         });
         const query = feature.getQuery();
-        const results = await Promise.all([
+        const [branches, totalBranches] = await Promise.all([
             this.prisma.branch.findMany({
                 ...query,
                 where: query.where || {},
@@ -130,97 +130,66 @@ let BranchRepository = class BranchRepository {
                     id: true,
                     name: true,
                     location: true,
-                    createdAt: true,
-                    updatedAt: true,
-                    manager: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true,
-                            phone: true,
-                        },
-                    },
-                    orders: {
-                        select: {
-                            id: true,
-                            trackingCode: true,
-                        },
-                    },
-                    staff: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true,
-                            phone: true,
-                        },
-                    },
-                    address: {
-                        select: {
-                            id: true,
-                            label: true,
-                            city: true,
-                            country: true,
-                            state: true,
-                        },
-                    },
+                    manager: { select: { id: true, name: true } },
+                    _count: { select: { staff: true } },
                 },
             }),
-            this.prisma.branch.count({
-                where: query.where || {},
-            }),
+            this.prisma.branch.count({ where: query.where || {} }),
         ]);
-        const branches = results[0] || [];
-        const total = results[1] || 0;
-        const enhancedBranches = [];
-        for (const branch of branches) {
-            const branchId = branch.id;
-            const totalOrders = await this.prisma.order.count({
-                where: { branchId },
-            });
-            const activeOrders = await this.prisma.order.count({
-                where: {
-                    branchId,
-                    status: {
-                        notIn: ['DELIVERED', 'FAILED', 'CANCELED'],
-                    },
-                },
-            });
-            const exceptionOrders = await this.prisma.order.count({
-                where: {
-                    branchId,
-                    status: 'EXCEPTION',
-                },
-            });
-            const interbranchActive = await this.prisma.order.count({
-                where: {
-                    status: { notIn: ['DELIVERED', 'FAILED', 'CANCELED'] },
-                    branchId: branchId,
-                    deliveryAddress: {
-                        branchId: { not: branchId },
-                    },
-                },
-            });
-            const staffCount = branch.staff.length;
-            const revenueResult = await this.prisma.priceCalculationLog.aggregate({
-                _sum: { finalPrice: true },
-                where: { order: { branchId } },
-            });
-            const revenue = revenueResult._sum.finalPrice || 0;
-            enhancedBranches.push({
-                ...branch,
-                analytics: {
-                    totalOrders,
-                    activeOrders,
-                    exceptionOrders,
-                    interbranchActive,
-                    staffCount,
-                    revenue,
-                },
-            });
-        }
+        const branchIds = branches.map((b) => b.id);
+        const branchAnalytics = await this.prisma.$queryRaw `
+    SELECT 
+      o."branchId",
+      COUNT(*) AS "totalOrders",
+      COUNT(*) FILTER (
+        WHERE o."status" NOT IN ('DELIVERED', 'FAILED', 'CANCELED')
+      ) AS "activeOrders",
+      COUNT(*) FILTER (
+        WHERE o."status" NOT IN ('DELIVERED', 'FAILED', 'CANCELED') 
+          AND o."branchId" <> da."branchId"
+      ) AS "interbranchActive",
+      SUM(p."finalPrice") AS "revenue"
+    FROM "Order" o
+    LEFT JOIN "PriceCalculationLog" p ON p."orderId" = o.id
+    LEFT JOIN "Address" da ON da.id = o."deliveryAddressId"
+    WHERE o."branchId" = ANY(${branchIds})
+    GROUP BY o."branchId"
+  `;
+        const analyticsMap = {};
+        branchAnalytics.forEach((a) => {
+            analyticsMap[a.branchId] = {
+                totalOrders: Number(a.totalOrders),
+                activeOrders: Number(a.activeOrders),
+                interbranchActive: Number(a.interbranchActive),
+                revenue: Number(a.revenue || 0),
+            };
+        });
+        const enhancedBranches = branches.map((b) => {
+            const analytics = analyticsMap[b.id] || {
+                totalOrders: 0,
+                activeOrders: 0,
+                interbranchActive: 0,
+                revenue: 0,
+            };
+            return {
+                id: b.id,
+                name: b.name,
+                location: b.location,
+                manager: b.manager,
+                totalOrders: analytics.totalOrders,
+                activeOrders: analytics.activeOrders,
+                interbranchActive: analytics.interbranchActive,
+                staffCount: b._count.staff,
+                revenue: analytics.revenue,
+                efficiency: analytics.totalOrders
+                    ? +(analytics.revenue / analytics.totalOrders).toFixed(2)
+                    : 0,
+                status: analytics.activeOrders > 0 ? 'Active' : 'Inactive',
+            };
+        });
         return {
             branches: enhancedBranches,
-            pagination: feature.getPagination(total),
+            pagination: feature.getPagination(totalBranches),
         };
     }
     async createBranch(data, address, userId) {

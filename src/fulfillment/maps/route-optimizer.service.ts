@@ -146,7 +146,7 @@ export class RouteOptimizerService {
     driverId: string,
     driverLocation: LatLon,
     currentRoute: RouteLike,
-    deviationThresholdMeters = 100, // customize threshold
+    deviationThresholdMeters = 300, // customize threshold
   ): Promise<{ route: any; recalculated: boolean }> {
     try {
       // 1️⃣ Get driver distance from the existing route line

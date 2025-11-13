@@ -40,6 +40,8 @@ export declare const PATTERNS: {
     readonly STAFF_UPDATE: "staff.update";
     readonly STAFF_FIND_BY_BRANCH: "staff.findByBranch";
     readonly STAFF_ASSIGN_BRANCH: "staff.assignBranch";
+    readonly STAFF_CREATE_DRIVER: "staff.createDriver";
+    readonly STAFF_FIND_DRIVER: "staff.findDriver";
     readonly BRANCH_CREATE: "branch.create";
     readonly BRANCH_FIND_BY_ID: "branch.findById";
     readonly BRANCH_FIND_ALL: "branch.findAll";
@@ -146,6 +148,7 @@ export declare const PATTERNS: {
     readonly DISPATCH_GENERATE_QR_CODE: "dispatch.generateQrCode";
     readonly DISPATCH_CREATE_DRIVER: "dispatch.createDriver";
     readonly DISPATCH_FIND_DRIVER: "dispatch.findDriver";
+    readonly DISPATCH_FIND_DELIVERED_AND_ONGOING: "dispatch.findDeliveredAndOngoing";
     readonly MAP_GET_ROUTE: "map.getRoute";
     readonly MAP_MARK_STOP_VISITED: "map.markStopVisited";
     readonly MAP_GET_CURRENT_ROUTE_STATUS: "map.getCurrentRouteStatus";

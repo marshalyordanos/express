@@ -18,6 +18,9 @@ let UserRepository = class UserRepository {
     constructor(prisma) {
         this.prisma = prisma;
     }
+    async findRoleById(roleId) {
+        return this.prisma.role.findUnique({ where: { id: roleId } });
+    }
     async findUserById(id) {
         return this.prisma.user.findUnique({ where: { id } });
     }
@@ -280,7 +283,9 @@ let UserRepository = class UserRepository {
         });
     }
     async getUserNotificationPreferences(userId) {
-        return this.prisma.userNotificationPreferences.findUnique({ where: { userId } });
+        return this.prisma.userNotificationPreferences.findUnique({
+            where: { userId },
+        });
     }
     async createUserNotificationPreferences(userId) {
         return this.prisma.userNotificationPreferences.create({
@@ -288,37 +293,70 @@ let UserRepository = class UserRepository {
                 email: true,
                 inApp: true,
                 push: false,
-                user: { connect: { id: userId } }
+                user: { connect: { id: userId } },
             },
         });
     }
-    async createDriver(data) {
+    async createDriver(data, userId) {
         return this.prisma.$transaction(async (tx) => {
+            const user = await tx.user.create({
+                data: {
+                    name: data.name,
+                    email: data.email,
+                    phone: data.phone ?? null,
+                    password: '',
+                    isStaff: data.type === 'INTERNAL',
+                    isActive: true,
+                    roleId: data.roleId,
+                    emergencyContactName: data.emergencyContactName,
+                    emergencyContactPhone: data.emergencyContactPhone,
+                    createdBy: userId || 'system',
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true,
+                    roleId: true,
+                },
+            });
             const driver = await tx.driver.create({
                 data: {
-                    user: { connect: { id: data.userId } },
+                    userId: user.id,
                     vehicleId: data.vehicleId,
                     status: data.status,
                     type: data.type,
-                    currentLat: data.currentLat,
-                    currentLon: data.currentLong,
-                    updatedAt: new Date(),
+                    licenseNumber: data.licenseNumber,
+                    licenseExpiry: data.licenseExpiry,
+                    currentLat: data.currentLat ?? null,
+                    currentLon: data.currentLong ?? null,
+                    createdBy: userId || 'system',
+                },
+                select: {
+                    id: true,
+                    vehicleId: true,
+                    status: true,
+                    type: true,
+                    licenseNumber: true,
+                    licenseExpiry: true,
                 },
             });
-            await tx.driverLocationLog.create({
-                data: {
-                    driverId: driver.id,
-                    latitude: data.currentLat,
-                    longitude: data.currentLong,
-                    speed: 0,
-                    heading: 0,
-                },
-            });
+            if (data.currentLat && data.currentLong) {
+                await tx.driverLocationLog.create({
+                    data: {
+                        driverId: driver.id,
+                        latitude: data.currentLat,
+                        longitude: data.currentLong,
+                        speed: 0,
+                        heading: 0,
+                    },
+                });
+            }
             await tx.vehicle.update({
                 where: { id: data.vehicleId },
                 data: { driverId: driver.id },
             });
-            return driver;
+            return { user, driver };
         });
     }
     async findVehicleById(vehicleId) {

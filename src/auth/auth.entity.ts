@@ -15,6 +15,7 @@ export class AuthRegisterDto {
   @Transform(({ value }) => escape(value.trim()))
   name: string;
 
+  
   @IsNotEmpty({ message: 'Email is required' })
   @IsEmail({}, { message: 'Email must be valid' })
   @Transform(({ value }) => value.trim().toLowerCase())

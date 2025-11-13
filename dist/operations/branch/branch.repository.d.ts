@@ -9,6 +9,7 @@ export declare class BranchRepository {
         password: string;
         name: string;
         id: string;
+        customId: string | null;
         email: string;
         phone: string | null;
         branchId: string | null;
@@ -18,6 +19,9 @@ export declare class BranchRepository {
         roleId: string | null;
         isStaff: boolean;
         isSuperAdmin: boolean;
+        emergencyContactName: string | null;
+        emergencyContactPhone: string | null;
+        isActive: boolean;
         customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
@@ -26,6 +30,7 @@ export declare class BranchRepository {
             password: string;
             name: string;
             id: string;
+            customId: string | null;
             email: string;
             phone: string | null;
             branchId: string | null;
@@ -35,6 +40,9 @@ export declare class BranchRepository {
             roleId: string | null;
             isStaff: boolean;
             isSuperAdmin: boolean;
+            emergencyContactName: string | null;
+            emergencyContactPhone: string | null;
+            isActive: boolean;
             customerType: import(".prisma/client").$Enums.CustomerType | null;
             customerCategoryId: string | null;
             createdBy: string | null;
@@ -94,7 +102,22 @@ export declare class BranchRepository {
         managerId: string | null;
     }>;
     findAllBranch(payload: ListQueryDto): Promise<{
-        branches: any[];
+        branches: {
+            id: string;
+            name: string;
+            location: string;
+            manager: {
+                name: string;
+                id: string;
+            };
+            totalOrders: number;
+            activeOrders: number;
+            interbranchActive: number;
+            staffCount: number;
+            revenue: number;
+            efficiency: number;
+            status: string;
+        }[];
         pagination: {
             total: number;
             page: number;

@@ -125,12 +125,13 @@ export class BranchRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['name', 'description', 'location'],
+      searchableFields: ['name', 'location'],
     });
 
     const query = feature.getQuery();
 
-    const results = await Promise.all([
+    // 1️⃣ Fetch branches with manager & staff count
+    const [branches, totalBranches] = await Promise.all([
       this.prisma.branch.findMany({
         ...query,
         where: query.where || {},
@@ -138,115 +139,90 @@ export class BranchRepository {
           id: true,
           name: true,
           location: true,
-          createdAt: true,
-          updatedAt: true,
-          manager: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-            },
-          },
-          orders: {
-            select: {
-              id: true,
-              trackingCode: true,
-            },
-          },
-          staff: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-            },
-          },
-          address: {
-            select: {
-              id: true,
-              label: true,
-              city: true,
-              country: true,
-              state: true,
-            },
-          },
+          manager: { select: { id: true, name: true } },
+          _count: { select: { staff: true } },
         },
       }),
-      this.prisma.branch.count({
-        where: query.where || {},
-      }),
+      this.prisma.branch.count({ where: query.where || {} }),
     ]);
 
-    const branches = results[0] || [];
-    const total = results[1] || 0;
-    const enhancedBranches = [];
+    const branchIds = branches.map((b) => b.id);
 
-    for (const branch of branches) {
-      const branchId = branch.id;
+    // 2️⃣ Aggregate orders + revenue + interbranchActive per branch in **one query**
+    const branchAnalytics = await this.prisma.$queryRaw<
+      {
+        branchId: string;
+        totalOrders: number;
+        activeOrders: number;
+        interbranchActive: number;
+        revenue: number;
+      }[]
+    >`
+    SELECT 
+      o."branchId",
+      COUNT(*) AS "totalOrders",
+      COUNT(*) FILTER (
+        WHERE o."status" NOT IN ('DELIVERED', 'FAILED', 'CANCELED')
+      ) AS "activeOrders",
+      COUNT(*) FILTER (
+        WHERE o."status" NOT IN ('DELIVERED', 'FAILED', 'CANCELED') 
+          AND o."branchId" <> da."branchId"
+      ) AS "interbranchActive",
+      SUM(p."finalPrice") AS "revenue"
+    FROM "Order" o
+    LEFT JOIN "PriceCalculationLog" p ON p."orderId" = o.id
+    LEFT JOIN "Address" da ON da.id = o."deliveryAddressId"
+    WHERE o."branchId" = ANY(${branchIds})
+    GROUP BY o."branchId"
+  `;
 
-      // ✅ 1. Total Orders (dropoff)
-      const totalOrders = await this.prisma.order.count({
-        where: { branchId },
-      });
+    // 3️⃣ Map analytics for fast lookup
+    const analyticsMap: Record<
+      string,
+      {
+        totalOrders: number;
+        activeOrders: number;
+        interbranchActive: number;
+        revenue: number;
+      }
+    > = {};
+    branchAnalytics.forEach((a) => {
+      analyticsMap[a.branchId] = {
+        totalOrders: Number(a.totalOrders),
+        activeOrders: Number(a.activeOrders),
+        interbranchActive: Number(a.interbranchActive),
+        revenue: Number(a.revenue || 0),
+      };
+    });
 
-      // ✅ 2. Active Orders (not delivered/failed/canceled)
-      const activeOrders = await this.prisma.order.count({
-        where: {
-          branchId,
-          status: {
-            notIn: ['DELIVERED', 'FAILED', 'CANCELED'],
-          },
-        },
-      });
-
-      // ✅ 3. Exception Orders
-      const exceptionOrders = await this.prisma.order.count({
-        where: {
-          branchId,
-          status: 'EXCEPTION',
-        },
-      });
-
-      // ✅ 4. Active Inter-Branch Orders
-      const interbranchActive = await this.prisma.order.count({
-        where: {
-          status: { notIn: ['DELIVERED', 'FAILED', 'CANCELED'] },
-          branchId: branchId,
-          deliveryAddress: {
-            branchId: { not: branchId },
-          },
-        },
-      });
-
-      // ✅ 5. Staff Count
-      const staffCount = branch.staff.length;
-
-      // ✅ 6. Revenue from price logs
-      const revenueResult = await this.prisma.priceCalculationLog.aggregate({
-        _sum: { finalPrice: true },
-        where: { order: { branchId } },
-      });
-
-      const revenue = revenueResult._sum.finalPrice || 0;
-
-      // ✅ 7. Build clean return object
-      enhancedBranches.push({
-        ...branch,
-        analytics: {
-          totalOrders,
-          activeOrders,
-          exceptionOrders,
-          interbranchActive,
-          staffCount,
-          revenue,
-        },
-      });
-    }
+    // 4️⃣ Merge into branch results
+    const enhancedBranches = branches.map((b) => {
+      const analytics = analyticsMap[b.id] || {
+        totalOrders: 0,
+        activeOrders: 0,
+        interbranchActive: 0,
+        revenue: 0,
+      };
+      return {
+        id: b.id,
+        name: b.name,
+        location: b.location,
+        manager: b.manager,
+        totalOrders: analytics.totalOrders,
+        activeOrders: analytics.activeOrders,
+        interbranchActive: analytics.interbranchActive,
+        staffCount: b._count.staff,
+        revenue: analytics.revenue,
+        efficiency: analytics.totalOrders
+          ? +(analytics.revenue / analytics.totalOrders).toFixed(2)
+          : 0,
+        status: analytics.activeOrders > 0 ? 'Active' : 'Inactive',
+      };
+    });
 
     return {
       branches: enhancedBranches,
-      pagination: feature.getPagination(total),
+      pagination: feature.getPagination(totalBranches),
     };
   }
 

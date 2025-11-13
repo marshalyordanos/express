@@ -150,6 +150,25 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       throw handleCatch(error);
     }
   }
+
+  async getDeliveredAndOnGoingDispatches(userId: any): Promise<any> {
+    this.logger.log(
+      `Getting delivered and on going dispatches for user ${userId}`,
+    );
+    try {
+      const dispatches =
+        await this.dispatchRepo.getDeliveredAndOnGoingDispatches(userId);
+      this.logger.log(
+        `Delivered and on going dispatches found ${dispatches.length} for user ${userId}`,
+      );
+      return IResponse.success(`Delivered and on going dispatches found for officer ${userId}`,dispatches);
+    } catch (error) {
+      this.logger.error(
+        `Failed to get delivered and on going dispatches for user ${userId}: ${error.message}`,
+      );
+      throw handleCatch(error);
+    }
+  }
   async confirmDispatch(
     data: AssignOfficerForBatch,
     userId: string,
@@ -219,9 +238,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     data: AssignOfficerForBatch,
     userId: string,
   ): Promise<any> {
-    this.logger.log(
-      `Collect batch request initiated by user ${userId}.`,
-    );
+    this.logger.log(`Collect batch request initiated by user ${userId}.`);
 
     try {
       // Step 1: Authorization check
@@ -363,7 +380,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
           method: data.method,
           reference: data.reference,
           notes: data.notes,
-          location: "At Airport",
+          location: 'At Airport',
         },
       );
 
@@ -653,8 +670,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
   //   }
   // }
 
-
-   /**
+  /**
    * Complete delivery for an order
    * @param dto CompleteDeliveryDto
    * @param files Optional POD images from frontend (express file array)
@@ -804,7 +820,9 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
 
   async completeDelivery(dto: CompleteDeliveryDto, userId: string) {
     const { orderId, driverId, notes, podImages } = dto;
-    this.logger.log(`Completing delivery for order ${orderId} by driver ${driverId}`);
+    this.logger.log(
+      `Completing delivery for order ${orderId} by driver ${driverId}`,
+    );
 
     if (userId !== driverId) {
       throw new RpcException('Unauthorized action');

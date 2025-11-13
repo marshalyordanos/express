@@ -246,8 +246,6 @@ export class UserGatewayController {
       } catch (err) {
         throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
       }
-      console.log('Create driver datas : ', data);
-  
       return this.usersClient.send(PATTERNS.USER_CREATE_DRIVER, {
         data,
         headers: { authorization: authHeader },
@@ -270,8 +268,6 @@ export class UserGatewayController {
       } catch (err) {
         throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
       }
-      console.log('FInd driver querys: ', query);
-  
       return this.usersClient.send(PATTERNS.USER_FIND_DRIVER, {
         query,
         headers: { authorization: authHeader },

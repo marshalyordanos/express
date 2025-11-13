@@ -132,12 +132,9 @@ let UserMessageController = class UserMessageController {
         return types_1.IResponse.success('User Notification Preference Fetched successfully', preference);
     }
     async createDriver(payload) {
-        const result = await this.usecases.createDriver(payload.data);
-        return types_1.IResponse.success('Driver with id [' +
-            payload.data.userId +
-            '] is successfully created for vehicle with id [' +
-            payload.data.vehicleId +
-            '].', result);
+        const userId = payload.user.sub;
+        const result = await this.usecases.createDriver(payload.data, userId);
+        return types_1.IResponse.success(`Driver with email ${payload.data.email} created successfully`, result);
     }
     async findDriver(payload) {
         const result = await this.usecases.findDriver(payload.query);

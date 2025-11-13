@@ -6,6 +6,8 @@ export interface UserDto {
     role?: string;
     branchId?: string;
     phone?: string;
+    emergencyContactPhone: string;
+    emergencyContactName: string;
 }
 export declare class UserUpdateDto {
     name: string;
@@ -79,7 +81,16 @@ export declare class NotificationPreferencesDto {
     userId: string;
 }
 export declare class CreateDriver {
-    userId: string;
+    name: string;
+    email: string;
+    password: string;
+    roleId?: string;
+    branchId?: string;
+    phone?: string;
+    licenseNumber: string;
+    licenseExpiry: string;
+    emergencyContactPhone: string;
+    emergencyContactName: string;
     vehicleId: string;
     status: DriverStatus;
     type: DriverType;

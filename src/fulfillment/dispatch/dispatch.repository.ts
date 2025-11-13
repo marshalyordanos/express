@@ -12,6 +12,7 @@ import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class DispatchRepository {
+
   constructor(private prisma: PrismaService) {}
 
   async assignDriverForPickup(
@@ -151,6 +152,30 @@ export class DispatchRepository {
       },
     );
   }
+
+async getDeliveredAndOnGoingDispatches(userId: string): Promise<any> {
+  return this.prisma.batchDispatch.findMany({
+    where: {
+      officerId: userId,
+      NOT: {
+        status: { in: ['PENDING', 'READY'] },
+      },
+    },
+    select: {
+      id: true,
+      status: true,
+      _count: {
+        select: { orders: true },
+      },
+      awbNumber: true,
+      serviceType: true,
+      shipmentDate: true,
+      scope: true,
+      destinationId: true,
+      originId: true,
+    },
+  });
+}
 
   async cancelDispatch(batchIds: string[]) {
     return this.prisma.batchDispatch.updateMany({

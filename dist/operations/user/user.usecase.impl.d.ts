@@ -207,6 +207,7 @@ export declare class UserUseCasesImp implements UserUsecase {
                 password: string;
                 name: string;
                 id: string;
+                customId: string | null;
                 email: string;
                 phone: string | null;
                 branchId: string | null;
@@ -216,6 +217,9 @@ export declare class UserUseCasesImp implements UserUsecase {
                 roleId: string | null;
                 isStaff: boolean;
                 isSuperAdmin: boolean;
+                emergencyContactName: string | null;
+                emergencyContactPhone: string | null;
+                isActive: boolean;
                 customerType: import(".prisma/client").$Enums.CustomerType | null;
                 customerCategoryId: string | null;
                 createdBy: string | null;
@@ -225,6 +229,7 @@ export declare class UserUseCasesImp implements UserUsecase {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
+                isActive: boolean;
                 customerCategoryId: string | null;
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
@@ -233,7 +238,6 @@ export declare class UserUseCasesImp implements UserUsecase {
                 baseFee: number;
                 perKmRate: number;
                 perKgRate: number;
-                isActive: boolean;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             }[];
@@ -257,12 +261,12 @@ export declare class UserUseCasesImp implements UserUsecase {
                 description: string | null;
                 createdAt: Date;
                 updatedAt: Date;
+                isActive: boolean;
                 customerCategoryId: string | null;
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType | null;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
                 tariffId: string;
-                isActive: boolean;
                 validFrom: Date;
                 validTo: Date | null;
             }[];
@@ -301,6 +305,7 @@ export declare class UserUseCasesImp implements UserUsecase {
         password: string;
         name: string;
         id: string;
+        customId: string | null;
         email: string;
         phone: string | null;
         branchId: string | null;
@@ -310,6 +315,9 @@ export declare class UserUseCasesImp implements UserUsecase {
         roleId: string | null;
         isStaff: boolean;
         isSuperAdmin: boolean;
+        emergencyContactName: string | null;
+        emergencyContactPhone: string | null;
+        isActive: boolean;
         customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
@@ -318,6 +326,7 @@ export declare class UserUseCasesImp implements UserUsecase {
         password: string;
         name: string;
         id: string;
+        customId: string | null;
         email: string;
         phone: string | null;
         branchId: string | null;
@@ -327,6 +336,9 @@ export declare class UserUseCasesImp implements UserUsecase {
         roleId: string | null;
         isStaff: boolean;
         isSuperAdmin: boolean;
+        emergencyContactName: string | null;
+        emergencyContactPhone: string | null;
+        isActive: boolean;
         customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
@@ -358,16 +370,25 @@ export declare class UserUseCasesImp implements UserUsecase {
         userId: string;
         inApp: boolean;
     }>;
-    createDriver(data: CreateDriver): Promise<{
-        type: import(".prisma/client").$Enums.DriverType;
-        status: import(".prisma/client").$Enums.DriverStatus;
-        id: string;
-        updatedAt: Date | null;
-        createdBy: string | null;
-        userId: string;
-        vehicleId: string | null;
-        currentLat: number | null;
-        currentLon: number | null;
+    createDriver(data: CreateDriver, userId: string): Promise<{
+        success: boolean;
+        message: string;
+        data: {
+            driver: {
+                vehicleId: string;
+                roleId: string;
+                type: import(".prisma/client").$Enums.DriverType;
+                status: import(".prisma/client").$Enums.DriverStatus;
+                id: string;
+                licenseNumber: string;
+                licenseExpiry: Date;
+            };
+            name: string;
+            id: string;
+            email: string;
+            phone: string;
+            roleId: string;
+        };
     }>;
     findDriver(query: ListQueryDto): Promise<{
         drivers: ({
@@ -391,6 +412,8 @@ export declare class UserUseCasesImp implements UserUsecase {
             createdBy: string | null;
             userId: string;
             vehicleId: string | null;
+            licenseNumber: string | null;
+            licenseExpiry: Date | null;
             currentLat: number | null;
             currentLon: number | null;
         })[];

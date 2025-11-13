@@ -1,37 +1,3 @@
-// // src/notification/email.service.ts
-// import { Injectable } from '@nestjs/common';
-// import * as nodemailer from 'nodemailer';
-
-// @Injectable()
-// export class EmailService {
-//   private transporter;
-
-//   constructor() {
-//     this.transporter = nodemailer.createTransport({
-//       host: process.env.EMAIL_HOST,
-//       port: Number(process.env.EMAIL_PORT),
-//       secure: Boolean(process.env.EMAIL_SECURE),
-//       auth: {
-//         user: process.env.EMAIL_USER,
-//         pass: process.env.EMAIL_PASS,
-//       },
-//     });
-//   }
-
-//   async sendEmail(to: string, subject: string, text: string) {
-//     try {
-//       await this.transporter.sendMail({
-//         from: process.env.EMAIL_FROM,
-//         to,
-//         subject,
-//         text,
-//       });
-//       console.log(`📧 Email sent to ${to}`);
-//     } catch (error) {
-//       console.error('❌ Email send failed:', error);
-//     }
-//   }
-// }
 
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';

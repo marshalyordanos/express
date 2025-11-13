@@ -506,16 +506,13 @@ export class UserUseCasesImp implements UserUsecase {
     }
   }
 
-  async createUserNotificationPreference(
-    userId: string,
-  ) {
+  async createUserNotificationPreference(userId: string) {
     try {
       this.logger.log(
         `Creating user notification preference requested by user: ${userId}`,
       );
-      const preference = await this.userRepo.createUserNotificationPreferences(
-        userId,
-      );
+      const preference =
+        await this.userRepo.createUserNotificationPreferences(userId);
       this.logger.log(
         `User notification preference created successfully: ${preference.id}`,
       );
@@ -529,31 +526,32 @@ export class UserUseCasesImp implements UserUsecase {
         error.message || 'Failed to create user notification preference',
       );
     }
-  } 
+  }
 
   async updateUserNotificationPreference(
     data: NotificationPreferencesDto,
-    userId: string,){
-      try {
-        this.logger.log(
-          `Updating user notification preference with data: ${JSON.stringify(data)}. and requested by user: ${userId}`,
-        );
-        const preference = await this.userRepo.updateUserNotificationPreferences(
-          userId,
-          data,
-        );
-        this.logger.log(
-          `User notification preference updated successfully: ${preference.id}`,
-        );
-        return preference;
-      } catch (error) {
-        this.logger.error(
-          'Error updating user notification preference',
-          error.stack,
-        );
-        throw new RpcException(
-          error.message || 'Failed to update user notification preference',
-        );
+    userId: string,
+  ) {
+    try {
+      this.logger.log(
+        `Updating user notification preference with data: ${JSON.stringify(data)}. and requested by user: ${userId}`,
+      );
+      const preference = await this.userRepo.updateUserNotificationPreferences(
+        userId,
+        data,
+      );
+      this.logger.log(
+        `User notification preference updated successfully: ${preference.id}`,
+      );
+      return preference;
+    } catch (error) {
+      this.logger.error(
+        'Error updating user notification preference',
+        error.stack,
+      );
+      throw new RpcException(
+        error.message || 'Failed to update user notification preference',
+      );
     }
   }
 
@@ -562,9 +560,8 @@ export class UserUseCasesImp implements UserUsecase {
       this.logger.log(
         `Fetching user notification preference for user: ${userId}`,
       );
-      const preference = await this.userRepo.getUserNotificationPreferences(
-        userId,
-      );
+      const preference =
+        await this.userRepo.getUserNotificationPreferences(userId);
       this.logger.log(
         `User notification preference fetched successfully: ${preference?.id || null}`,
       );
@@ -581,35 +578,60 @@ export class UserUseCasesImp implements UserUsecase {
   }
 
   // Create Driver
-  async createDriver(data: CreateDriver) {
+  async createDriver(data: CreateDriver, userId: string) {
     this.logger.log(
-      `Creating driver for user ${data.userId} with vehicle ${data.vehicleId}`,
+      `Creating driver for Email ${data.email} with vehicle ${data.vehicleId}, requested by user: ${userId}`,
     );
 
     try {
-      const user = await this.userRepo.findUserById(data.userId);
-      if (!user) {
-        this.logger.warn(`User not found: ${data.userId}`);
+      // Validate input first
+      if (!data.vehicleId || !data.roleId) {
         throw new RpcException({
-          statusCode: 404,
-          message: `User with ID ${data.userId} not found and cannot create driver.`,
+          statusCode: 400,
+          message: 'Vehicle ID and Role ID are required to create a driver.',
         });
       }
-      this.logger.verbose(`User validated: ${user.id}`);
 
-      const vehicle = await this.userRepo.findVehicleById(data.vehicleId);
+      // ✅ Run both lookups in parallel (faster)
+      const [vehicle, role] = await Promise.all([
+        this.userRepo.findVehicleById(data.vehicleId),
+        this.userRepo.findRoleById(data.roleId),
+      ]);
+
       if (!vehicle) {
         this.logger.warn(`Vehicle not found: ${data.vehicleId}`);
         throw new RpcException({
           statusCode: 404,
-          message: `Vehicle with ID ${data.vehicleId} not found and cannot create driver.`,
+          message: `Vehicle with ID ${data.vehicleId} not found.`,
         });
       }
-      this.logger.verbose(`Vehicle validated: ${vehicle.id}`);
 
-      const driver = await this.userRepo.createDriver(data);
-      this.logger.log(`Driver created successfully for user ${data.userId}`);
-      return driver;
+      if (!role) {
+        this.logger.warn(`Role not found: ${data.roleId}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: `Role with ID ${data.roleId} not found.`,
+        });
+      }
+
+      // ✅ Create user + driver + log + vehicle update in single transaction
+      const { user, driver } = await this.userRepo.createDriver(data, userId);
+
+      this.logger.log(`Driver created successfully for ${data.email}`);
+
+      // ✅ Merge response for efficiency & convenience
+      return {
+        success: true,
+        message: 'Driver created successfully',
+        data: {
+          ...user,
+          driver: {
+            ...driver,
+            vehicleId: data.vehicleId,
+            roleId: data.roleId,
+          },
+        },
+      };
     } catch (error) {
       this.logger.error(
         `Failed to create driver: ${error.message}`,
@@ -617,7 +639,7 @@ export class UserUseCasesImp implements UserUsecase {
       );
       throw error instanceof RpcException
         ? error
-        : new RpcException(error.message);
+        : new RpcException({ message: error.message, statusCode: 500 });
     }
   }
 

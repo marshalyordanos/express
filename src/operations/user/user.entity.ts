@@ -2,6 +2,7 @@ import { AddressPurpose, DriverStatus, DriverType } from '@prisma/client';
 import {
   ArrayNotEmpty,
   IsArray,
+  IsEmail,
   IsEnum,
   IsNotEmpty,
   IsNumber,
@@ -17,6 +18,8 @@ export interface UserDto {
   role?: string; // SUPER_ADMIN, CUSTOMER, DRIVER etc.
   branchId?: string;
   phone?: string;
+  emergencyContactPhone: string;
+  emergencyContactName: string;
 }
 
 export class UserUpdateDto {
@@ -139,8 +142,7 @@ export class UnAssignCustomerToCategory {
   customerIds: string[];
 }
 
-
-export class NotificationPreferencesDto{
+export class NotificationPreferencesDto {
   email?: boolean;
   inApp?: boolean;
   push?: boolean;
@@ -149,10 +151,45 @@ export class NotificationPreferencesDto{
 export class CreateDriver {
   @IsNotEmpty()
   @IsString()
-  @Transform(({ value }) => value.trim())
-  userId: string;
+  name: string;
 
   @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
+  @IsOptional()
+  @IsString()
+  password: string;
+
+  @IsNotEmpty()
+  @IsOptional()
+  roleId?: string; // SUPER_ADMIN, CUSTOMER, DRIVER etc.
+
+  @IsNotEmpty()
+  @IsOptional()
+  branchId?: string;
+
+  @IsNotEmpty()
+  @IsOptional()
+  phone?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  licenseNumber: string;
+
+  @IsNotEmpty()
+  @IsString()
+  licenseExpiry: string;
+
+  @IsNotEmpty()
+  @IsString()
+  emergencyContactPhone: string;
+
+  @IsNotEmpty()
+  @IsString()
+  emergencyContactName: string;
+
+  @IsOptional()
   @IsString()
   @Transform(({ value }) => value.trim())
   vehicleId: string;

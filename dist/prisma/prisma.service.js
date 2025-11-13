@@ -22,23 +22,14 @@ let PrismaService = class PrismaService extends client_1.PrismaClient {
         const redactedUrl = databaseUrl.replace(/:(.*?)@/, ':[REDACTED]@');
         console.log('DATABASE_URL (redacted):', redactedUrl);
         super({
-            datasources: {
-                db: {
-                    url: databaseUrl,
-                },
-            },
+            datasources: { db: { url: databaseUrl } },
             errorFormat: 'pretty',
         });
+        this.config = config;
     }
     async onModuleInit() {
-        try {
-            await this.$connect();
-            console.log('✅ Prisma connected to Supabase (pooled connection)');
-        }
-        catch (error) {
-            console.error('❌ Prisma connection failed:', error.message);
-            throw error;
-        }
+        await this.$connect();
+        console.log('✅ Prisma connected to Supabase (pooled connection)');
     }
     async onModuleDestroy() {
         await this.$disconnect();

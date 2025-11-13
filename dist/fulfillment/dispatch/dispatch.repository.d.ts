@@ -34,10 +34,13 @@ export declare class DispatchRepository {
         createdBy: string | null;
         userId: string;
         vehicleId: string | null;
+        licenseNumber: string | null;
+        licenseExpiry: Date | null;
         currentLat: number | null;
         currentLon: number | null;
     }>;
     collectBatchByCargoOfficer(batchIds: string[], officerId: string): Promise<Prisma.BatchPayload>;
+    getDeliveredAndOnGoingDispatches(userId: string): Promise<any>;
     cancelDispatch(batchIds: string[]): Promise<Prisma.BatchPayload>;
     confirmPickupByCargoOfficer(batchIds: string[]): Promise<Prisma.BatchPayload>;
     handoverBatchToAirport(batchIds: string[], handedById: string, options?: {
@@ -417,6 +420,7 @@ export declare class DispatchRepository {
         password: string;
         name: string;
         id: string;
+        customId: string | null;
         email: string;
         phone: string | null;
         branchId: string | null;
@@ -426,6 +430,9 @@ export declare class DispatchRepository {
         roleId: string | null;
         isStaff: boolean;
         isSuperAdmin: boolean;
+        emergencyContactName: string | null;
+        emergencyContactPhone: string | null;
+        isActive: boolean;
         customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
@@ -854,6 +861,7 @@ export declare class DispatchRepository {
                 password: string;
                 name: string;
                 id: string;
+                customId: string | null;
                 email: string;
                 phone: string | null;
                 branchId: string | null;
@@ -863,6 +871,9 @@ export declare class DispatchRepository {
                 roleId: string | null;
                 isStaff: boolean;
                 isSuperAdmin: boolean;
+                emergencyContactName: string | null;
+                emergencyContactPhone: string | null;
+                isActive: boolean;
                 customerType: import(".prisma/client").$Enums.CustomerType | null;
                 customerCategoryId: string | null;
                 createdBy: string | null;
@@ -922,6 +933,7 @@ export declare class DispatchRepository {
                 password: string;
                 name: string;
                 id: string;
+                customId: string | null;
                 email: string;
                 phone: string | null;
                 branchId: string | null;
@@ -931,6 +943,9 @@ export declare class DispatchRepository {
                 roleId: string | null;
                 isStaff: boolean;
                 isSuperAdmin: boolean;
+                emergencyContactName: string | null;
+                emergencyContactPhone: string | null;
+                isActive: boolean;
                 customerType: import(".prisma/client").$Enums.CustomerType | null;
                 customerCategoryId: string | null;
                 createdBy: string | null;
@@ -1279,6 +1294,8 @@ export declare class DispatchRepository {
         createdBy: string | null;
         userId: string;
         vehicleId: string | null;
+        licenseNumber: string | null;
+        licenseExpiry: Date | null;
         currentLat: number | null;
         currentLon: number | null;
     }>;
@@ -1315,6 +1332,8 @@ export declare class DispatchRepository {
             createdBy: string | null;
             userId: string;
             vehicleId: string | null;
+            licenseNumber: string | null;
+            licenseExpiry: Date | null;
             currentLat: number | null;
             currentLon: number | null;
         })[];

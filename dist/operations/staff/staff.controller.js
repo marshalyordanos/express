@@ -64,6 +64,15 @@ let StaffMessageController = class StaffMessageController {
         const result = await this.usecases.assignStaffToBranch(staffIds, branchId);
         return types_1.IResponse.success('Staffs assigned successfully', result);
     }
+    async createDriver(payload) {
+        const userId = payload.user.sub;
+        const result = await this.usecases.createDriver(payload.data, userId);
+        return types_1.IResponse.success(`Driver with email ${payload.data.email} created successfully`, result);
+    }
+    async findDriver(payload) {
+        const result = await this.usecases.findDriver(payload.query);
+        return types_1.IResponse.success('Officer created successfully', result);
+    }
 };
 exports.StaffMessageController = StaffMessageController;
 __decorate([
@@ -147,6 +156,24 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], StaffMessageController.prototype, "assignStaffToBranch", null);
+__decorate([
+    (0, common_1.UseGuards)(permission_guard_1.PermissionGuard, rate_limit_guard_1.RateLimitGuard),
+    (0, check_permission_decorator_1.CheckPermission)('User', permission_actions_enum_1.PermissionActions.CREATE, permission_actions_enum_1.ScopeAction.APPROVE),
+    (0, microservices_1.MessagePattern)(contracts_1.PATTERNS.STAFF_CREATE_DRIVER),
+    __param(0, (0, microservices_1.Payload)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], StaffMessageController.prototype, "createDriver", null);
+__decorate([
+    (0, common_1.UseGuards)(permission_guard_1.PermissionGuard, rate_limit_guard_1.RateLimitGuard),
+    (0, check_permission_decorator_1.CheckPermission)('User', permission_actions_enum_1.PermissionActions.READ),
+    (0, microservices_1.MessagePattern)(contracts_1.PATTERNS.STAFF_FIND_DRIVER),
+    __param(0, (0, microservices_1.Payload)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], StaffMessageController.prototype, "findDriver", null);
 exports.StaffMessageController = StaffMessageController = __decorate([
     (0, common_1.Controller)(),
     __metadata("design:paramtypes", [staff_useCase_impl_1.StaffUseCasesImpl])

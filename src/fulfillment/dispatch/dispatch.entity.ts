@@ -18,7 +18,6 @@ import {
 } from 'class-validator';
 import { escape } from 'lodash';
 
-
 export class AssignDriverForPickup {
   @IsNotEmpty()
   @IsString()

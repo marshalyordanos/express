@@ -93,7 +93,7 @@ let RouteOptimizerService = RouteOptimizerService_1 = class RouteOptimizerServic
             strategy: 'matrix+nearest-2opt',
         };
     }
-    async recalculateRouteIfDeviation(driverId, driverLocation, currentRoute, deviationThresholdMeters = 100) {
+    async recalculateRouteIfDeviation(driverId, driverLocation, currentRoute, deviationThresholdMeters = 300) {
         try {
             const distanceFromRoute = await this.mapsService.calculateDistanceFromRoute(driverLocation, currentRoute.geometry);
             this.logger.debug(`Driver ${driverId} is ${distanceFromRoute.toFixed(1)}m from current route`);

@@ -45,6 +45,9 @@ export declare class DispatchMessageController {
     arriveAndInbound(payload: {
         data: ConfirmBatchHandoverDto;
     }): Promise<any>;
+    getDeliveredAndOnGoingDispatches(payload: {
+        user: any;
+    }): Promise<any>;
     assignDriverForDelivery(payload: {
         data: AssignDriverForPickup;
         user: any;
@@ -76,6 +79,8 @@ export declare class DispatchMessageController {
         createdBy: string | null;
         userId: string;
         vehicleId: string | null;
+        licenseNumber: string | null;
+        licenseExpiry: Date | null;
         currentLat: number | null;
         currentLon: number | null;
     }>>;
@@ -103,6 +108,8 @@ export declare class DispatchMessageController {
             createdBy: string | null;
             userId: string;
             vehicleId: string | null;
+            licenseNumber: string | null;
+            licenseExpiry: Date | null;
             currentLat: number | null;
             currentLon: number | null;
         })[];

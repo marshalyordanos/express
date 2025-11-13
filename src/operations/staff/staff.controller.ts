@@ -3,13 +3,13 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import * as handleCatch from '../../common/handleCatch';
 import { IResponse } from '../../common/types';
 import { PATTERNS } from '../../contracts';
-import { AssignStaffToBranchDto, ChangeRoleDto, UpdateStaffDto } from './staff.entity';
+import { AssignStaffToBranchDto, ChangeRoleDto, CreateDriver, UpdateStaffDto } from './staff.entity';
 import { StaffUseCasesImpl } from './staff.useCase.impl';
 import { RegisterStaffDto } from './staff.entity';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { CheckPermission } from '../../common/decorator/check-permission.decorator';
 import { PermissionGuard } from '../../common/permission.guard';
-import { PermissionActions } from '../../contracts/permission-actions.enum';
+import { PermissionActions, ScopeAction } from '../../contracts/permission-actions.enum';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
 
 @Controller()
@@ -136,4 +136,23 @@ export class StaffMessageController {
       return IResponse.success('Staffs assigned successfully', result);
     
   }
+
+    @UseGuards(PermissionGuard, RateLimitGuard)
+    @CheckPermission('User', PermissionActions.CREATE, ScopeAction.APPROVE)
+    @MessagePattern(PATTERNS.STAFF_CREATE_DRIVER)
+    async createDriver(@Payload() payload: { data: CreateDriver; user: any }) {
+      const userId = payload.user.sub;
+      const result = await this.usecases.createDriver(payload.data, userId);
+      return IResponse.success(
+        `Driver with email ${payload.data.email} created successfully`,
+        result,
+      );
+    }
+    @UseGuards(PermissionGuard, RateLimitGuard)
+    @CheckPermission('User', PermissionActions.READ)
+    @MessagePattern(PATTERNS.STAFF_FIND_DRIVER)
+    async findDriver(@Payload() payload: { query: ListQueryDto }) {
+      const result = await this.usecases.findDriver(payload.query);
+      return IResponse.success('Officer created successfully', result);
+    }
 }

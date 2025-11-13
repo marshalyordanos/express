@@ -38,6 +38,27 @@ let StaffRepository = class StaffRepository {
             },
         });
     }
+    async deactivateStaff(id, userId) {
+        return this.prisma.user.update({
+            where: { id },
+            data: {
+                isActive: false,
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+            },
+        });
+    }
+    async getLastCustomId(prefix, roleAbbr) {
+        const lastUser = await this.prisma.user.findFirst({
+            where: { customId: { startsWith: `${prefix}-${roleAbbr}-` } },
+            orderBy: { createdAt: 'desc' },
+            select: { customId: true },
+        });
+        return lastUser?.customId || null;
+    }
     async createNotificationPreferences(id) {
         return this.prisma.userNotificationPreferences.create({
             data: {
@@ -60,26 +81,45 @@ let StaffRepository = class StaffRepository {
             where: { id: roleId },
         });
     }
-    async createStaff(data, userId) {
-        const prismaData = {
-            name: data.name,
-            email: data.email,
-            password: data.password,
-            phone: data.phone,
-            isStaff: true,
-            role: data.role ? { connect: { id: data.role } } : undefined,
-            branch: data.branchId ? { connect: { id: data.branchId } } : undefined,
-            createdBy: userId,
-        };
+    async findByEmail(email) {
+        return this.prisma.user.findUnique({ where: { email } });
+    }
+    async createStaff(data) {
         return this.prisma.user.create({
-            data: prismaData,
+            data,
+            select: {
+                id: true,
+                customId: true,
+                name: true,
+                email: true,
+                phone: true,
+                emailVerified: true,
+                isStaff: true,
+                isActive: true,
+                role: {
+                    select: { id: true, name: true },
+                },
+                emergencyContactName: true,
+                emergencyContactPhone: true,
+            },
+        });
+    }
+    async findByPhone(phone) {
+        return this.prisma.user.findUnique({
+            where: { phone },
         });
     }
     async findRoleByName(roleName) {
-        return this.prisma.role.findUnique({ where: { name: roleName } });
+        return this.prisma.role.findUnique({
+            where: { name: roleName },
+            select: { id: true },
+        });
     }
     async findBranchById(branchId) {
-        return this.prisma.branch.findUnique({ where: { id: branchId } });
+        return this.prisma.branch.findUnique({
+            where: { id: branchId },
+            select: { id: true, name: true },
+        });
     }
     async findStaffByRole(roleId, payload) {
         const feature = new prisma_query_feature_1.PrismaQueryFeature({
@@ -273,6 +313,160 @@ let StaffRepository = class StaffRepository {
             where: { id: { in: staffIds } },
             data: { branchId },
         });
+    }
+    async findVehicleById(vehicleId) {
+        return await this.prisma.vehicle.findUnique({
+            where: { id: vehicleId },
+        });
+    }
+    async createDriver(userData, driverData, userId) {
+        return this.prisma.$transaction(async (tx) => {
+            const user = await tx.user.create({
+                data: userData,
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true,
+                    roleId: true,
+                    customId: true,
+                },
+            });
+            const driver = await tx.driver.create({
+                data: {
+                    userId: user.id,
+                    vehicleId: driverData.vehicleId,
+                    status: driverData.status,
+                    type: driverData.type,
+                    licenseNumber: driverData.licenseNumber,
+                    licenseExpiry: driverData.licenseExpiry,
+                    currentLat: driverData.currentLat ?? null,
+                    currentLon: driverData.currentLong ?? null,
+                    createdBy: userId || 'system',
+                },
+                select: {
+                    id: true,
+                    vehicleId: true,
+                    status: true,
+                    type: true,
+                    licenseNumber: true,
+                    licenseExpiry: true,
+                },
+            });
+            if (driverData.currentLat && driverData.currentLong) {
+                await tx.driverLocationLog.create({
+                    data: {
+                        driverId: driver.id,
+                        latitude: driverData.currentLat,
+                        longitude: driverData.currentLong,
+                        speed: 0,
+                        heading: 0,
+                    },
+                });
+            }
+            await tx.vehicle.update({
+                where: { id: driverData.vehicleId },
+                data: { driverId: driver.id },
+            });
+            return { user, driver };
+        });
+    }
+    async findDriver(payload) {
+        const where = {
+            AND: [],
+        };
+        if (payload.search) {
+            where.AND.push({
+                OR: [
+                    { user: { name: { contains: payload.search, mode: 'insensitive' } } },
+                    {
+                        user: { email: { contains: payload.search, mode: 'insensitive' } },
+                    },
+                    {
+                        user: { phone: { contains: payload.search, mode: 'insensitive' } },
+                    },
+                    {
+                        vehicles: {
+                            some: {
+                                plateNumber: { contains: payload.search, mode: 'insensitive' },
+                            },
+                        },
+                    },
+                    {
+                        vehicles: {
+                            some: {
+                                model: { contains: payload.search, mode: 'insensitive' },
+                            },
+                        },
+                    },
+                ],
+            });
+        }
+        let filters = {};
+        if (typeof payload.filter === 'string') {
+            try {
+                filters = JSON.parse(payload.filter);
+            }
+            catch {
+                filters = {};
+            }
+        }
+        else if (typeof payload.filter === 'object' && payload.filter !== null) {
+            filters = payload.filter;
+        }
+        if (filters.status) {
+            where.AND.push({ status: filters.status });
+        }
+        if (filters.type) {
+            where.AND.push({ type: filters.type });
+        }
+        if (filters.vehicleStatus) {
+            where.AND.push({
+                vehicles: { some: { status: filters.vehicleStatus } },
+            });
+        }
+        if (filters.userId) {
+            where.AND.push({ userId: filters.userId });
+        }
+        if (filters.vehicleId) {
+            where.AND.push({
+                vehicles: { some: { id: filters.vehicleId } },
+            });
+        }
+        const feature = new prisma_query_feature_1.PrismaQueryFeature({
+            search: payload.search,
+            filter: payload.filter,
+            sort: payload.sort,
+            page: payload.page,
+            pageSize: payload.pageSize,
+            searchableFields: [
+                'user.name',
+                'user.email',
+                'user.phone',
+                'vehicles.plateNumber',
+                'vehicles.model',
+            ],
+        });
+        const query = {
+            ...feature.getQuery(),
+            where,
+            include: {
+                user: {
+                    select: { id: true, name: true, email: true, phone: true },
+                },
+                vehicles: {
+                    select: { id: true, plateNumber: true, model: true, status: true },
+                },
+            },
+        };
+        const [drivers, total] = await this.prisma.$transaction([
+            this.prisma.driver.findMany(query),
+            this.prisma.driver.count({ where }),
+        ]);
+        return {
+            drivers,
+            pagination: feature.getPagination(total),
+        };
     }
 };
 exports.StaffRepository = StaffRepository;

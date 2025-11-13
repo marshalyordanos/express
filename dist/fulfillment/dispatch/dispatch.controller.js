@@ -67,6 +67,10 @@ let DispatchMessageController = class DispatchMessageController {
     async arriveAndInbound(payload) {
         return this.usecases.confirmHandover(payload.data);
     }
+    async getDeliveredAndOnGoingDispatches(payload) {
+        const userId = payload.user?.sub;
+        return this.usecases.getDeliveredAndOnGoingDispatches(userId);
+    }
     async assignDriverForDelivery(payload) {
         const userId = payload.user?.sub;
         return this.usecases.assignDriverToOrder(payload.data, userId);
@@ -196,6 +200,15 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], DispatchMessageController.prototype, "arriveAndInbound", null);
+__decorate([
+    (0, common_1.UseGuards)(permission_guard_1.PermissionGuard, rate_limit_guard_1.RateLimitGuard),
+    (0, check_permission_decorator_1.CheckPermission)('Dispatch', permission_actions_enum_1.PermissionActions.READ),
+    (0, microservices_1.MessagePattern)(contracts_1.PATTERNS.DISPATCH_FIND_DELIVERED_AND_ONGOING),
+    __param(0, (0, microservices_1.Payload)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], DispatchMessageController.prototype, "getDeliveredAndOnGoingDispatches", null);
 __decorate([
     (0, common_1.UseGuards)(permission_guard_1.PermissionGuard, rate_limit_guard_1.RateLimitGuard),
     (0, check_permission_decorator_1.CheckPermission)('Dispatch', permission_actions_enum_1.PermissionActions.CREATE, permission_actions_enum_1.ScopeAction.ASSIGN),

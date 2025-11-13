@@ -18,7 +18,10 @@ import { IResponse } from '../../common/types';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { CheckPermission } from '../../common/decorator/check-permission.decorator';
 import { PermissionGuard } from '../../common/permission.guard';
-import { PermissionActions, ScopeAction } from '../../contracts/permission-actions.enum';
+import {
+  PermissionActions,
+  ScopeAction,
+} from '../../contracts/permission-actions.enum';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
 import { stat } from 'fs';
 
@@ -56,7 +59,7 @@ export class DispatchMessageController {
   async findDispatches(
     @Payload() payload: { query: ListQueryDto },
   ): Promise<any> {
-    const result= await this.usecases.getBatches(payload.query);
+    const result = await this.usecases.getBatches(payload.query);
     return IResponse.success('Batch Dispatch Fetched successfully', result);
   }
 
@@ -138,6 +141,16 @@ export class DispatchMessageController {
     @Payload() payload: { data: ConfirmBatchHandoverDto },
   ): Promise<any> {
     return this.usecases.confirmHandover(payload.data);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Dispatch', PermissionActions.READ)
+  @MessagePattern(PATTERNS.DISPATCH_FIND_DELIVERED_AND_ONGOING)
+  async getDeliveredAndOnGoingDispatches(
+    @Payload() payload: { user: any },
+  ): Promise<any> {
+    const userId = payload.user?.sub;
+    return this.usecases.getDeliveredAndOnGoingDispatches(userId);
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)

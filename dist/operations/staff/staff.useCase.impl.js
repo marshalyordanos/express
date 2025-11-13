@@ -16,67 +16,80 @@ const staff_repository_1 = require("./staff.repository");
 const bcrypt = require("bcrypt");
 const app_logger_service_1 = require("../../common/app-logger.service");
 const password_validator_1 = require("../../common/password-validator");
+const redis_service_1 = require("../..//redis/redis.service");
 let StaffUseCasesImpl = class StaffUseCasesImpl {
-    constructor(staffRepo, logger) {
+    constructor(staffRepo, logger, redis) {
         this.staffRepo = staffRepo;
         this.logger = logger;
+        this.redis = redis;
         this.logger.setContext('OperationsService', 'RoleUseCaseImpl');
     }
-    async createStaff(data, userId) {
+    async createStaff(data, createdBy) {
         try {
-            this.logger.log(`🧑‍💻 Creating new staff user: ${data.email || data.phone}`);
-            const { existingEmailStaff, existingStaffPhone } = await this.staffRepo.findStaffByEmailAndPhone(data.email, data.phone);
-            if (existingEmailStaff) {
-                this.logger.warn(`❌ Duplicate entry for staff Email : ${data.email}`);
-                throw new microservices_1.RpcException({
-                    message: `A staff with this email (${data.email}) already exists.`,
-                    statusCode: 400,
-                });
-            }
-            if (existingStaffPhone) {
-                this.logger.warn(`❌ Duplicate entry for staff Phone number: ${data.phone}`);
-                throw new microservices_1.RpcException({
-                    message: `A staff with this phone number (${data.phone}) already exists.`,
-                    statusCode: 400,
-                });
-            }
-            if (data.role) {
-                const role = await this.staffRepo.findRoleById(data.role);
-                if (!role) {
-                    this.logger.warn(`❌ Invalid role: ${data.role}`);
-                    throw new microservices_1.RpcException(`Invalid role: ${data.role}`);
-                }
-                data.role = role.id;
-            }
-            if (data.branchId) {
-                const branch = await this.staffRepo.findBranchById(data.branchId);
-                if (!branch) {
-                    this.logger.warn(`❌ Invalid branch ID: ${data.branchId}`);
-                    throw new microservices_1.RpcException(`Branch not found with id: ${data.branchId}`);
-                }
-                data.branchId = branch.id;
-            }
+            this.logger.log(`🧑‍💻 Creating new staff: ${data.email || data.phone}`);
+            const [existingEmail, existingPhone, role, branch] = await Promise.all([
+                this.staffRepo.findByEmail(data.email),
+                this.staffRepo.findByPhone(data.phone),
+                data.role ? this.staffRepo.findRoleById(data.role) : null,
+                data.branchId ? this.staffRepo.findBranchById(data.branchId) : null,
+            ]);
+            if (existingEmail)
+                throw new microservices_1.RpcException(`Email already exists: ${data.email}`);
+            if (existingPhone)
+                throw new microservices_1.RpcException(`Phone already exists: ${data.phone}`);
+            if (!role)
+                throw new microservices_1.RpcException(`Invalid role ID: ${data.role}`);
+            if (data.branchId && !branch)
+                throw new microservices_1.RpcException(`Invalid branch ID: ${data.branchId}`);
             const valid = password_validator_1.PasswordValidator.validate(data.password);
-            if (!valid.isValid) {
-                this.logger.warn(`⚠️ Weak password attempt by user email/phone: ${data.email}, ${data.phone}`);
-                throw new microservices_1.RpcException({
-                    statusCode: 400,
-                    message: valid.message,
-                });
-            }
+            if (!valid.isValid)
+                throw new microservices_1.RpcException(valid.message);
             const hashedPassword = await bcrypt.hash(data.password, 12);
-            data.password = hashedPassword;
-            const staff = await this.staffRepo.createStaff(data, userId);
-            this.logger.log(`✅ Staff created successfully with ID: ${staff.id}`);
-            delete staff.password;
-            await this.staffRepo.createNotificationPreferences(staff.id);
-            this.logger.log(`✅ Notification preferences created successfully for staff with ID: ${staff.id}`);
+            const isStaff = true;
+            let customId = null;
+            if (isStaff || role.name.toUpperCase() === 'DRIVER') {
+                customId = await this.generateCustomId(role.name);
+            }
+            const prismaData = {
+                name: data.name,
+                email: data.email,
+                phone: data.phone,
+                password: hashedPassword,
+                isStaff: true,
+                isActive: true,
+                emergencyContactName: data.emergencyContactName,
+                emergencyContactPhone: data.emergencyContactPhone,
+                customId,
+                createdBy,
+                role: { connect: { id: role.id } },
+                branch: data.branchId ? { connect: { id: branch.id } } : undefined,
+            };
+            const staff = await this.staffRepo.createStaff(prismaData);
+            this.staffRepo
+                .createNotificationPreferences(staff.id)
+                .catch((err) => this.logger.error(`Failed to create notification prefs for staff ${staff.customId}`, err));
+            this.logger.log(`✅ Staff created successfully: ${staff.customId}`);
             return staff;
         }
         catch (error) {
-            this.logger.error(`🚨 Error creating staff: ${error.message}`, error.stack);
+            this.logger.error(`🚨 Error creating staff: ${error.message}`);
             throw new microservices_1.RpcException(error.message || 'Failed to create staff');
         }
+    }
+    async generateCustomId(roleName) {
+        const prefix = 'LN';
+        const roleAbbr = roleName.slice(0, 2).toUpperCase();
+        const redisKey = `staff:counter:${roleAbbr}`;
+        let nextNumber = await this.redis.getClient().incr(redisKey);
+        if (nextNumber === 1) {
+            const lastCustomId = await this.staffRepo.getLastCustomId(prefix, roleAbbr);
+            if (lastCustomId) {
+                const lastNum = parseInt(lastCustomId.split('-')[2], 10);
+                nextNumber = lastNum + 1;
+                await this.redis.getClient().set(redisKey, String(nextNumber));
+            }
+        }
+        return `${prefix}-${roleAbbr}-${String(nextNumber).padStart(5, '0')}`;
     }
     async findStaffByRole(query, role) {
         try {
@@ -173,6 +186,19 @@ let StaffUseCasesImpl = class StaffUseCasesImpl {
             throw new microservices_1.RpcException(error.message || 'Failed to fetch staff by branch');
         }
     }
+    async deactivateStaff(id, userId) {
+        try {
+            this.logger.log(`🗑️ Deactivating staff with id: ${id} and initiated by user ${userId}`);
+            const staff = await this.staffRepo.findStaffById(userId);
+            if (!staff)
+                throw new microservices_1.RpcException(`Staff with id ${userId} not found`);
+            return await this.staffRepo.deactivateStaff(id, userId);
+        }
+        catch (error) {
+            this.logger.error(`🚨 Error deactivating staff: ${error.message}`, error.stack);
+            throw new microservices_1.RpcException(error.message || 'Failed to deactivate staff');
+        }
+    }
     async assignStaffToBranch(staffIds, branchId) {
         try {
             this.logger.log(`👥 Assigning ${staffIds.length} staff to branchId: ${branchId}`);
@@ -183,11 +209,55 @@ let StaffUseCasesImpl = class StaffUseCasesImpl {
             throw new microservices_1.RpcException(error.message || 'Failed to assign staff to branch');
         }
     }
+    async createDriver(data, userId) {
+        this.logger.log(`Creating driver for Email ${data.email} and initiated by user: ${userId}`);
+        if (!data.vehicleId || !data.roleId) {
+            throw new microservices_1.RpcException({ statusCode: 400, message: 'Vehicle ID and Role ID are required.' });
+        }
+        const [vehicle, role] = await Promise.all([
+            this.staffRepo.findVehicleById(data.vehicleId),
+            this.staffRepo.findRoleById(data.roleId),
+        ]);
+        if (!vehicle)
+            throw new microservices_1.RpcException(`Vehicle not found: ${data.vehicleId}`);
+        if (!role)
+            throw new microservices_1.RpcException(`Role not found: ${data.roleId}`);
+        const customId = await this.generateCustomId(role.name);
+        const userData = {
+            name: data.name,
+            email: data.email,
+            phone: data.phone ?? null,
+            password: '',
+            isStaff: true,
+            isActive: true,
+            customId,
+            branchId: data.type === 'INTERNAL' ? data.branchId : null,
+            roleId: data.roleId,
+            emergencyContactName: data.emergencyContactName,
+            emergencyContactPhone: data.emergencyContactPhone,
+        };
+        const result = await this.staffRepo.createDriver(userData, data, userId);
+        this.logger.log(`Driver created successfully: ${customId}`);
+        return { success: true, message: 'Driver created successfully', data: result };
+    }
+    async findDriver(query) {
+        this.logger.log(`Finding drivers with query: ${JSON.stringify(query)}`);
+        try {
+            const drivers = await this.staffRepo.findDriver(query);
+            this.logger.verbose(`Found ${drivers.pagination.total} drivers`);
+            return drivers;
+        }
+        catch (error) {
+            this.logger.error(`Find driver failed: ${error.message}`, error.stack);
+            throw new microservices_1.RpcException(error.message);
+        }
+    }
 };
 exports.StaffUseCasesImpl = StaffUseCasesImpl;
 exports.StaffUseCasesImpl = StaffUseCasesImpl = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [staff_repository_1.StaffRepository,
-        app_logger_service_1.AppLogger])
+        app_logger_service_1.AppLogger,
+        redis_service_1.RedisService])
 ], StaffUseCasesImpl);
 //# sourceMappingURL=staff.useCase.impl.js.map

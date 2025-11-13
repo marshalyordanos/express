@@ -39,7 +39,7 @@ export class NotificationService implements OnModuleInit {
           await this.sendEmailVerification(eventData);
           break;
 
-        // Add more cases if needed
+        // more cases can be added as needed
         default:
           await this.handleNotification(eventData, channel);
       }

@@ -12,6 +12,7 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         customerCategoryId: string | null;
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType;
@@ -20,7 +21,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         baseFee: number;
         perKmRate: number;
         perKgRate: number;
-        isActive: boolean;
         effectiveFrom: Date;
         effectiveTo: Date | null;
     }>;
@@ -68,6 +68,7 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             customerCategoryId: string | null;
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
@@ -76,7 +77,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             baseFee: number;
             perKmRate: number;
             perKgRate: number;
-            isActive: boolean;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
@@ -137,6 +137,7 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
+                isActive: boolean;
                 customerCategoryId: string | null;
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
@@ -145,7 +146,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
                 baseFee: number;
                 perKmRate: number;
                 perKgRate: number;
-                isActive: boolean;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             };
@@ -176,6 +176,7 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             customerCategoryId: string | null;
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
@@ -184,7 +185,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             baseFee: number;
             perKmRate: number;
             perKgRate: number;
-            isActive: boolean;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
@@ -255,6 +255,7 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
+                isActive: boolean;
                 customerCategoryId: string | null;
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
@@ -263,7 +264,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
                 baseFee: number;
                 perKmRate: number;
                 perKgRate: number;
-                isActive: boolean;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             };
@@ -298,6 +298,7 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             customerCategoryId: string | null;
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
@@ -306,7 +307,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             baseFee: number;
             perKmRate: number;
             perKgRate: number;
-            isActive: boolean;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
@@ -372,11 +372,11 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
-        isActive: boolean;
     }>;
     updateSurcharge(id: string, data: Partial<UpdateSurchargeDto>): Promise<{
         value: number;
@@ -386,11 +386,11 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
-        isActive: boolean;
     }>;
     findAllSurcharge(query: ListQueryDto): Promise<{
         surcharges: ({
@@ -399,6 +399,7 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
+                isActive: boolean;
                 customerCategoryId: string | null;
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
@@ -407,7 +408,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
                 baseFee: number;
                 perKmRate: number;
                 perKgRate: number;
-                isActive: boolean;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             };
@@ -419,11 +419,11 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType | null;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
             tariffId: string;
-            isActive: boolean;
         })[];
         pagination: {
             total: number;
@@ -440,11 +440,11 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
-        isActive: boolean;
     }>;
     deleteSurcharge(id: string): Promise<{
         value: number;
@@ -454,11 +454,11 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
-        isActive: boolean;
     }>;
     createDiscount(data: DiscountDto): Promise<{
         customerCategory: {
@@ -474,6 +474,7 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             customerCategoryId: string | null;
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
@@ -482,7 +483,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             baseFee: number;
             perKmRate: number;
             perKgRate: number;
-            isActive: boolean;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
@@ -494,12 +494,12 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         customerCategoryId: string | null;
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
-        isActive: boolean;
         validFrom: Date;
         validTo: Date | null;
     }>;
@@ -517,6 +517,7 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             customerCategoryId: string | null;
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
@@ -525,7 +526,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             baseFee: number;
             perKmRate: number;
             perKgRate: number;
-            isActive: boolean;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
@@ -537,12 +537,12 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         customerCategoryId: string | null;
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
-        isActive: boolean;
         validFrom: Date;
         validTo: Date | null;
     }>;
@@ -561,6 +561,7 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
+                isActive: boolean;
                 customerCategoryId: string | null;
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
@@ -569,7 +570,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
                 baseFee: number;
                 perKmRate: number;
                 perKgRate: number;
-                isActive: boolean;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             };
@@ -581,12 +581,12 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             customerCategoryId: string | null;
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType | null;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
             tariffId: string;
-            isActive: boolean;
             validFrom: Date;
             validTo: Date | null;
         })[];
@@ -611,6 +611,7 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             customerCategoryId: string | null;
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
@@ -619,7 +620,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             baseFee: number;
             perKmRate: number;
             perKgRate: number;
-            isActive: boolean;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
@@ -631,12 +631,12 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         customerCategoryId: string | null;
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
-        isActive: boolean;
         validFrom: Date;
         validTo: Date | null;
     }>;
@@ -648,12 +648,12 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         description: string | null;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
         customerCategoryId: string | null;
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
-        isActive: boolean;
         validFrom: Date;
         validTo: Date | null;
     }>;
@@ -675,12 +675,12 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
                 description: string | null;
                 createdAt: Date;
                 updatedAt: Date;
+                isActive: boolean;
                 customerCategoryId: string | null;
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType | null;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
                 tariffId: string;
-                isActive: boolean;
                 validFrom: Date;
                 validTo: Date | null;
             }[];
@@ -708,12 +708,12 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             description: string | null;
             createdAt: Date;
             updatedAt: Date;
+            isActive: boolean;
             customerCategoryId: string | null;
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType | null;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
             tariffId: string;
-            isActive: boolean;
             validFrom: Date;
             validTo: Date | null;
         }[];

@@ -1,3 +1,4 @@
+import { DriverStatus, DriverType } from '@prisma/client';
 import {
   IsEmail,
   IsNotEmpty,
@@ -7,7 +8,10 @@ import {
   IsIn,
   IsArray,
   ArrayNotEmpty,
+  IsEnum,
+  IsNumber,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class RegisterStaffDto {
   @IsString()
@@ -34,6 +38,14 @@ export class RegisterStaffDto {
   @IsOptional()
   @IsString()
   phone?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  emergencyContactPhone: string;
+
+  @IsNotEmpty()
+  @IsString()
+  emergencyContactName: string;
 }
 
 export class UpdateStaffDto {
@@ -73,4 +85,67 @@ export class AssignStaffToBranchDto {
   @IsNotEmpty({ message: 'branchId is required' })
   @IsString({ message: 'branchId must be a string' })
   branchId: string;
+}
+
+export class CreateDriver {
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
+  @IsOptional()
+  @IsString()
+  password: string;
+
+  @IsNotEmpty()
+  @IsOptional()
+  roleId?: string; // SUPER_ADMIN, CUSTOMER, DRIVER etc.
+
+  @IsNotEmpty()
+  @IsOptional()
+  branchId?: string;
+
+  @IsNotEmpty()
+  @IsOptional()
+  phone?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  licenseNumber: string;
+
+  @IsNotEmpty()
+  @IsString()
+  licenseExpiry: string;
+
+  @IsNotEmpty()
+  @IsString()
+  emergencyContactPhone: string;
+
+  @IsNotEmpty()
+  @IsString()
+  emergencyContactName: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  vehicleId: string;
+
+  @IsNotEmpty()
+  @IsEnum(DriverStatus, { message: 'Invalid driver status' })
+  status: DriverStatus;
+
+  @IsNotEmpty()
+  @IsEnum(DriverType, { message: 'Invalid driver type' })
+  type: DriverType;
+
+  @IsOptional()
+  @IsNumber({}, { message: 'Latitude must be a number' })
+  currentLat: number;
+
+  @IsOptional()
+  @IsNumber({}, { message: 'Longitude must be a number' })
+  currentLong: number;
 }

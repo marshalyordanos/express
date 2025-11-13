@@ -18,6 +18,7 @@ import { PATTERNS } from '../contracts';
 import {
   AssignStaffToBranchDto,
   ChangeRoleDto,
+  CreateDriver,
   RegisterStaffDto,
   UpdateStaffDto,
 } from '../operations/staff/staff.entity';
@@ -103,12 +104,7 @@ export class StaffGatewayController {
   }
   //Get all staff for roles like Internal driver,customer service, dispatch officer, branch manager
   @Get()
-  async findStaff(
-    @Req() req,
-    @Query() query: ListQueryDto,
-  ) {
-    console.log('gateway query :: ', query);
-
+  async findStaff(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
 
@@ -267,6 +263,49 @@ export class StaffGatewayController {
     });
   }
 
+  @Post('/driver')
+  async createDriver(@Body() data: CreateDriver, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.staffClient.send(PATTERNS.STAFF_CREATE_DRIVER, {
+      data,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  @Get('/driver')
+  async findDriver(@Query() query: ListQueryDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.staffClient.send(PATTERNS.STAFF_FIND_DRIVER, {
+      query,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
   @Post('assign-branch')
   async assignBranch(@Body() dto: AssignStaffToBranchDto, @Req() req) {
     const authHeader = req.headers['authorization'] || null;

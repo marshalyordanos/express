@@ -21,6 +21,7 @@ export declare class DispatchGatewayController {
     changeDriverForOrder(data: AssignDriverForPickup, req: any): Promise<any>;
     removeDriverFromOrder(orderId: string, req: any): Promise<any>;
     getAllDispatches(req: any, query: ListQueryDto): Promise<import("rxjs").Observable<any>>;
+    getDispatchesForOfficer(req: any, query: ListQueryDto): Promise<import("rxjs").Observable<any>>;
     addOrderToBatch(batchId: string, data: any, req: any): Promise<import("rxjs").Observable<any>>;
     generateQrCode(data: GenerateQrDto, req: any): Promise<import("rxjs").Observable<any>>;
     createDriver(data: CreateDriver, req: any): Promise<import("rxjs").Observable<any>>;

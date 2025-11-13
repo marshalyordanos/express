@@ -1,5 +1,5 @@
 import { IResponse } from '../../common/types';
-import { AssignStaffToBranchDto, ChangeRoleDto, UpdateStaffDto } from './staff.entity';
+import { AssignStaffToBranchDto, ChangeRoleDto, CreateDriver, UpdateStaffDto } from './staff.entity';
 import { StaffUseCasesImpl } from './staff.useCase.impl';
 import { RegisterStaffDto } from './staff.entity';
 import { ListQueryDto } from '../../common/query/query.dto';
@@ -9,23 +9,7 @@ export declare class StaffMessageController {
     createStaff(payload: {
         user: any;
         data: RegisterStaffDto;
-    }): Promise<IResponse<{
-        password: string;
-        name: string;
-        id: string;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        emailVerified: boolean;
-        roleId: string | null;
-        isStaff: boolean;
-        isSuperAdmin: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
-        customerCategoryId: string | null;
-        createdBy: string | null;
-    }>>;
+    }): Promise<IResponse<any>>;
     findStaffByRole(payload: {
         query: ListQueryDto;
         role: string;
@@ -76,6 +60,7 @@ export declare class StaffMessageController {
         password: string;
         name: string;
         id: string;
+        customId: string | null;
         email: string;
         phone: string | null;
         branchId: string | null;
@@ -85,6 +70,9 @@ export declare class StaffMessageController {
         roleId: string | null;
         isStaff: boolean;
         isSuperAdmin: boolean;
+        emergencyContactName: string | null;
+        emergencyContactPhone: string | null;
+        isActive: boolean;
         customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
@@ -98,6 +86,7 @@ export declare class StaffMessageController {
         password: string;
         name: string;
         id: string;
+        customId: string | null;
         email: string;
         phone: string | null;
         branchId: string | null;
@@ -107,6 +96,9 @@ export declare class StaffMessageController {
         roleId: string | null;
         isStaff: boolean;
         isSuperAdmin: boolean;
+        emergencyContactName: string | null;
+        emergencyContactPhone: string | null;
+        isActive: boolean;
         customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
@@ -118,6 +110,7 @@ export declare class StaffMessageController {
         password: string;
         name: string;
         id: string;
+        customId: string | null;
         email: string;
         phone: string | null;
         branchId: string | null;
@@ -127,6 +120,9 @@ export declare class StaffMessageController {
         roleId: string | null;
         isStaff: boolean;
         isSuperAdmin: boolean;
+        emergencyContactName: string | null;
+        emergencyContactPhone: string | null;
+        isActive: boolean;
         customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
@@ -158,4 +154,65 @@ export declare class StaffMessageController {
     assignStaffToBranch(payload: {
         data: AssignStaffToBranchDto;
     }): Promise<IResponse<import(".prisma/client").Prisma.BatchPayload>>;
+    createDriver(payload: {
+        data: CreateDriver;
+        user: any;
+    }): Promise<IResponse<{
+        success: boolean;
+        message: string;
+        data: {
+            user: {
+                name: string;
+                id: string;
+                customId: string;
+                email: string;
+                phone: string;
+                roleId: string;
+            };
+            driver: {
+                type: import(".prisma/client").$Enums.DriverType;
+                status: import(".prisma/client").$Enums.DriverStatus;
+                id: string;
+                vehicleId: string;
+                licenseNumber: string;
+                licenseExpiry: Date;
+            };
+        };
+    }>>;
+    findDriver(payload: {
+        query: ListQueryDto;
+    }): Promise<IResponse<{
+        drivers: ({
+            user: {
+                name: string;
+                id: string;
+                email: string;
+                phone: string;
+            };
+            vehicles: {
+                status: import(".prisma/client").$Enums.VehicleStatus;
+                id: string;
+                model: string;
+                plateNumber: string;
+            }[];
+        } & {
+            type: import(".prisma/client").$Enums.DriverType;
+            status: import(".prisma/client").$Enums.DriverStatus;
+            id: string;
+            updatedAt: Date | null;
+            createdBy: string | null;
+            userId: string;
+            vehicleId: string | null;
+            licenseNumber: string | null;
+            licenseExpiry: Date | null;
+            currentLat: number | null;
+            currentLon: number | null;
+        })[];
+        pagination: {
+            total: number;
+            page: number;
+            pageSize: number;
+            totalPages: number;
+        };
+    }>>;
 }

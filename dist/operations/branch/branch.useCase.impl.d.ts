@@ -14,7 +14,22 @@ export declare class BranchUseCaseImpl implements BranchUseCases {
     assignManager(branchId: string, managerId: string): Promise<Branch>;
     createBranch(data: BranchCreateDto, userId: string): Promise<Branch>;
     findAllBranch(query: ListQueryDto): Promise<{
-        branches: any[];
+        branches: {
+            id: string;
+            name: string;
+            location: string;
+            manager: {
+                name: string;
+                id: string;
+            };
+            totalOrders: number;
+            activeOrders: number;
+            interbranchActive: number;
+            staffCount: number;
+            revenue: number;
+            efficiency: number;
+            status: string;
+        }[];
         pagination: {
             total: number;
             page: number;

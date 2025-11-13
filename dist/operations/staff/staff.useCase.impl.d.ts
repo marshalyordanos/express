@@ -4,11 +4,14 @@ import { Prisma, User } from '@prisma/client';
 import { StaffRepository } from './staff.repository';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { AppLogger } from '../../common/app-logger.service';
+import { RedisService } from '../..//redis/redis.service';
 export declare class StaffUseCasesImpl implements StaffUsecase {
     private readonly staffRepo;
     private readonly logger;
-    constructor(staffRepo: StaffRepository, logger: AppLogger);
-    createStaff(data: RegisterStaffDto, userId: string): Promise<User>;
+    private readonly redis;
+    constructor(staffRepo: StaffRepository, logger: AppLogger, redis: RedisService);
+    createStaff(data: RegisterStaffDto, createdBy: string): Promise<any>;
+    private generateCustomId;
     findStaffByRole(query: ListQueryDto, role: string): Promise<{
         Staffs: {
             name: string;
@@ -91,5 +94,66 @@ export declare class StaffUseCasesImpl implements StaffUsecase {
             totalPages: number;
         };
     }>;
+    deactivateStaff(id: string, userId: string): Promise<{
+        name: string;
+        id: string;
+        email: string;
+    }>;
     assignStaffToBranch(staffIds: string[], branchId: string): Promise<Prisma.BatchPayload>;
+    createDriver(data: any, userId: string): Promise<{
+        success: boolean;
+        message: string;
+        data: {
+            user: {
+                name: string;
+                id: string;
+                customId: string;
+                email: string;
+                phone: string;
+                roleId: string;
+            };
+            driver: {
+                type: import(".prisma/client").$Enums.DriverType;
+                status: import(".prisma/client").$Enums.DriverStatus;
+                id: string;
+                vehicleId: string;
+                licenseNumber: string;
+                licenseExpiry: Date;
+            };
+        };
+    }>;
+    findDriver(query: ListQueryDto): Promise<{
+        drivers: ({
+            user: {
+                name: string;
+                id: string;
+                email: string;
+                phone: string;
+            };
+            vehicles: {
+                status: import(".prisma/client").$Enums.VehicleStatus;
+                id: string;
+                model: string;
+                plateNumber: string;
+            }[];
+        } & {
+            type: import(".prisma/client").$Enums.DriverType;
+            status: import(".prisma/client").$Enums.DriverStatus;
+            id: string;
+            updatedAt: Date | null;
+            createdBy: string | null;
+            userId: string;
+            vehicleId: string | null;
+            licenseNumber: string | null;
+            licenseExpiry: Date | null;
+            currentLat: number | null;
+            currentLon: number | null;
+        })[];
+        pagination: {
+            total: number;
+            page: number;
+            pageSize: number;
+            totalPages: number;
+        };
+    }>;
 }

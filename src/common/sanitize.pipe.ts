@@ -54,29 +54,6 @@ export class SanitizePipe implements PipeTransform {
     }
   }
 
-  // transform(value: any, metadata: ArgumentMetadata) {
-  //   try {
-  //     // --- SKIP FILES ---
-  //     if (this.isFilePayload(value, metadata)) {
-  //       return value;
-  //     }
-
-  //     const sanitized = this.safeSanitize(value);
-
-  //     // --- LOG ONLY IF NOT FILES ---
-  //     if (
-  //       !this.isFilePayload(value, metadata) &&
-  //       !this.isBufferPayload(value)
-  //     ) {
-  //       this.safeLog(value, sanitized, metadata);
-  //     }
-
-  //     return sanitized;
-  //   } catch (err) {
-  //     console.error('SanitizePipe unexpected error', err);
-  //     return value;
-  //   }
-  // }
   transform(value: any, metadata: ArgumentMetadata) {
     // SKIP if Multer file(s)
     if (this.isFilePayload(value, metadata)) return value;
