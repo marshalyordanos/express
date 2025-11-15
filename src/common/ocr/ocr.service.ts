@@ -150,6 +150,7 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import * as Tesseract from 'tesseract.js';
+// import Tesseract from 'tesseract.js/dist/tesseract.min.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
