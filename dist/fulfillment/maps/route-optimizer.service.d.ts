@@ -12,8 +12,14 @@ type Stop = {
 type Route = {
     routeId: string;
     driverId: string;
-    stops: any[];
+    stops: (Stop & {
+        seq?: number;
+        visited?: boolean;
+        eta?: number;
+        distanceKm?: number;
+    })[];
     orderedStopIds: string[];
+    originalOptimizedOrder: string[];
     geometry: any | null;
     distanceMeters: number;
     durationSec: number | null;
@@ -31,12 +37,13 @@ export declare class RouteOptimizerService {
     constructor(mapsService: MapsService);
     computeOptimizedRoute(driverId: string, driverLocation: LatLon, stops: Stop[]): Promise<Route>;
     recalculateRouteIfDeviation(driverId: string, driverLocation: LatLon, currentRoute: RouteLike, deviationThresholdMeters?: number): Promise<{
-        route: any;
+        route: RouteLike;
         recalculated: boolean;
     }>;
     private solveTspNearest2Opt;
     private calc2OptDelta;
     private sumTourDistanceMeters;
     private emptyRoute;
+    private haversineKm;
 }
 export {};

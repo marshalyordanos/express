@@ -18,8 +18,8 @@ export class DriverLocationWsService {
     return this.driverLocationService.updateDriverLocation(payload);
   }
 
-  async findNearbyDrivers(lat: number, lon: number, radiusKm: number) {
-    return this.driverLocationService.findNearbyDrivers(lon, lat, radiusKm);
+  async findNearbyDrivers(orderIds: string[], radiusKm: number): Promise<any> {
+    return this.driverLocationService.findNearbyDrivers(orderIds, radiusKm);
   }
 
   markOffline(driverId: string) {

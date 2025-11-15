@@ -18,11 +18,13 @@ const qr_code_helper_1 = require("../utils/qr-code.helper");
 const prisma_service_1 = require("../../prisma/prisma.service");
 const handleCatch_1 = require("../../common/handleCatch");
 const app_logger_service_1 = require("../../common/app-logger.service");
+const notification_publisher_1 = require("../../common/notification-publisher");
 let DispatchUseCasesImpl = class DispatchUseCasesImpl {
-    constructor(dispatchRepo, qrCodeService, logger) {
+    constructor(dispatchRepo, qrCodeService, logger, notificationPublisher) {
         this.dispatchRepo = dispatchRepo;
         this.qrCodeService = qrCodeService;
         this.logger = logger;
+        this.notificationPublisher = notificationPublisher;
         this.logger.setContext('FulfillmentService', 'DispatchUseCaseImpl');
     }
     async assignDriverForPickup(data, userId) {
@@ -856,12 +858,108 @@ let DispatchUseCasesImpl = class DispatchUseCasesImpl {
             throw new microservices_1.RpcException(error.message);
         }
     }
+    async retryNotification(event, payload, attempts = 3, delayMs = 200) {
+        for (let i = 0; i < attempts; i++) {
+            try {
+                await this.notificationPublisher.publish(event, payload);
+                return;
+            }
+            catch (err) {
+                this.logger.warn(`Notification attempt ${i + 1} failed for event ${event}: ${err.message}`);
+                if (i < attempts - 1) {
+                    await new Promise((res) => setTimeout(res, delayMs * Math.pow(2, i)));
+                }
+                else {
+                    this.logger.error(`Notification failed after ${attempts} attempts for event ${event}`);
+                }
+            }
+        }
+    }
+    async createDriverAssignmentRequests(data, userId) {
+        this.logger.log(`Creating assignment requests for order ${data.orderId} → drivers: [${data.driverIds.join(', ')}] and initiated by user ${userId}`);
+        try {
+            const tasks = data.driverIds.map((driverId) => this.dispatchRepo.upsertAssignmentRequest({
+                orderId: data.orderId,
+                driverId,
+                status: 'PENDING',
+                sentAt: new Date(),
+                expiresAt: data.expiresAt,
+            }));
+            await Promise.all(tasks);
+            await Promise.all(data.driverIds.map((driverId) => this.retryNotification('assignment.requested', {
+                type: 'assignment.requested',
+                userId: driverId,
+                message: `You have a new order assignment request.`,
+                payload: { orderId: data.orderId },
+            })));
+            this.logger.log(`Successfully created ${data.driverIds.length} assignment requests for order ${data.orderId}`);
+            return { success: true };
+        }
+        catch (error) {
+            this.logger.error(`Failed creating assignment requests for order ${data.orderId}: ${error.message}`, error.stack);
+            throw error;
+        }
+    }
+    async driverAccept(orderId, driverId) {
+        this.logger.log(`Driver ${driverId} attempting to accept order ${orderId}`);
+        try {
+            const result = await this.dispatchRepo.assignOrderAtomic(orderId, driverId);
+            if (result.count === 0) {
+                this.logger.warn(`Order ${orderId} already assigned — driver ${driverId} rejected`);
+                return { assigned: false, reason: 'already_assigned' };
+            }
+            await Promise.all([
+                this.dispatchRepo.markAccepted(orderId, driverId),
+                this.dispatchRepo.expireOtherDrivers(orderId, driverId),
+            ]);
+            const losers = await this.dispatchRepo.findExcludedDrivers(orderId, driverId);
+            (async () => {
+                try {
+                    await this.retryNotification('assignment.accepted', {
+                        type: 'assignment.accepted',
+                        userId: driverId,
+                        payload: { orderId },
+                        message: `You have been assigned to the order : ${orderId}.`,
+                    });
+                    for (const loserId of losers) {
+                        await this.retryNotification('assignment.expired', {
+                            type: 'assignment.expired',
+                            userId: loserId,
+                            payload: { orderId },
+                            message: `You have been expired for order ${orderId}.`,
+                        });
+                    }
+                }
+                catch (notifyError) {
+                    this.logger.error('Notification failed', notifyError);
+                }
+            })();
+            return { assigned: true };
+        }
+        catch (error) {
+            this.logger.error(`Driver ${driverId} failed to accept order ${orderId}: ${error.message}`, error.stack);
+            throw error;
+        }
+    }
+    async expire(orderId) {
+        this.logger.log(`Expiring pending assignment requests for order ${orderId}`);
+        try {
+            const result = await this.dispatchRepo.expirePendingRequests(orderId);
+            this.logger.log(`Expired ${result.count} pending requests for order ${orderId}`);
+            return result;
+        }
+        catch (error) {
+            this.logger.error(`Failed to expire requests for order ${orderId}: ${error.message}`, error.stack);
+            throw error;
+        }
+    }
 };
 exports.DispatchUseCasesImpl = DispatchUseCasesImpl;
 exports.DispatchUseCasesImpl = DispatchUseCasesImpl = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [dispatch_repository_1.DispatchRepository,
         prisma_service_1.PrismaService,
-        app_logger_service_1.AppLogger])
+        app_logger_service_1.AppLogger,
+        notification_publisher_1.NotificationPublisher])
 ], DispatchUseCasesImpl);
 //# sourceMappingURL=dispatch.usecase.impl.js.map

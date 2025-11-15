@@ -181,6 +181,44 @@ let DispatchGatewayController = class DispatchGatewayController {
             ip,
         });
     }
+    async createDriverAssignmentRequests(data, req) {
+        const authHeader = req.headers['authorization'] || null;
+        let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+        const forwarded = req.headers['x-forwarded-for'] || '';
+        const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+        let decodedUser = null;
+        try {
+            decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+        }
+        catch (err) {
+            throw new common_1.HttpException('Invalid token', common_1.HttpStatus.UNAUTHORIZED);
+        }
+        return this.dispatchClient.send(contracts_1.PATTERNS.DISPATCH_CREATE_ASSIGNEMENT_REQUEST, {
+            data,
+            headers: { authorization: authHeader },
+            user: decodedUser,
+            ip,
+        });
+    }
+    async driverAccept(orderId, req) {
+        const authHeader = req.headers['authorization'] || null;
+        let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+        const forwarded = req.headers['x-forwarded-for'] || '';
+        const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+        let decodedUser = null;
+        try {
+            decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+        }
+        catch (err) {
+            throw new common_1.HttpException('Invalid token', common_1.HttpStatus.UNAUTHORIZED);
+        }
+        return this.dispatchClient.send(contracts_1.PATTERNS.DISPATCH_ACCEPT_ASSIGNEMENT_REQUEST, {
+            orderId,
+            headers: { authorization: authHeader },
+            user: decodedUser,
+            ip,
+        });
+    }
     async assignDriverForDelivery(data, req) {
         const authHeader = req.headers['authorization'] || null;
         let token = req.headers['authorization']?.replace('Bearer ', '') || null;
@@ -493,6 +531,22 @@ __decorate([
     __metadata("design:paramtypes", [dispatch_entity_1.BatchDispatchDto, Object]),
     __metadata("design:returntype", Promise)
 ], DispatchGatewayController.prototype, "createBatchDispatch", null);
+__decorate([
+    (0, common_1.Post)('/driver/requests'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [dispatch_entity_1.CreateAssignmentRequestsDto, Object]),
+    __metadata("design:returntype", Promise)
+], DispatchGatewayController.prototype, "createDriverAssignmentRequests", null);
+__decorate([
+    (0, common_1.Patch)('/driver/accept/:orderId'),
+    __param(0, (0, common_1.Param)('orderId')),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], DispatchGatewayController.prototype, "driverAccept", null);
 __decorate([
     (0, common_1.Post)('/assign-delivery'),
     __param(0, (0, common_1.Body)()),

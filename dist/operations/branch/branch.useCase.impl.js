@@ -188,6 +188,19 @@ let BranchUseCaseImpl = class BranchUseCaseImpl {
             });
         }
     }
+    async findAllBranchFree(query) {
+        try {
+            this.logger.log(`🔍 Fetching all branches with query: ${JSON.stringify(query)}`);
+            return await this.branchRepository.findAllBranchFree(query);
+        }
+        catch (error) {
+            this.logger.error(`❌ Error fetching branches: ${error.message}`);
+            throw new microservices_1.RpcException({
+                code: error.code || 500,
+                message: 'Failed to fetch branches',
+            });
+        }
+    }
 };
 exports.BranchUseCaseImpl = BranchUseCaseImpl;
 exports.BranchUseCaseImpl = BranchUseCaseImpl = __decorate([

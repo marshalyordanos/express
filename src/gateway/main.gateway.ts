@@ -19,6 +19,7 @@ async function bootstrap() {
   // const sanitizePipe = app.get(SanitizePipe);
   const sanitizePipe = await app.resolve(SanitizePipe);
 
+  
   app.useGlobalPipes(
     sanitizePipe, // Use the DI instance
     new ValidationPipe({

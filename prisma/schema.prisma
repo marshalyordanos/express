@@ -9,41 +9,41 @@ datasource db {
 }
 
 model User {
-  id                 String             @id @default(cuid())
-  customId           String?            @unique
-  name               String
-  email              String             @unique
-  password           String
-  phone              String?            @unique
-  branchId           String?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  emailVerified      Boolean            @default(false)
-  roleId             String?
-  isStaff            Boolean            @default(false)
-  isSuperAdmin       Boolean            @default(false)
-  emergencyContactName   String?
-  emergencyContactPhone   String?
-  isActive           Boolean           @default(true)
-  logs               AuditLog[]
-  bookmarks          Bookmark[]
-  managedBranch      Branch?            @relation("BranchManager")
-  emialVarifiCation  EmailVerification?
-  mfa                Mfa?
-  notifications      Notification[]
-  orders             Order[]            @relation("CustomerOrders")
-  receivers          Order[]            @relation("ReceiverOrders")
+  id                    String             @id @default(cuid())
+  customId              String?            @unique
+  name                  String
+  email                 String             @unique
+  password              String
+  phone                 String?            @unique
+  branchId              String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  emailVerified         Boolean            @default(false)
+  roleId                String?
+  isStaff               Boolean            @default(false)
+  isSuperAdmin          Boolean            @default(false)
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  isActive              Boolean            @default(true)
+  logs                  AuditLog[]
+  bookmarks             Bookmark[]
+  managedBranch         Branch?            @relation("BranchManager")
+  emialVarifiCation     EmailVerification?
+  mfa                   Mfa?
+  notifications         Notification[]
+  orders                Order[]            @relation("CustomerOrders")
+  receivers             Order[]            @relation("ReceiverOrders")
   //assignedOrders     Order[]            @relation("DriverOrders")
-  validatedOrders    Order[]            @relation("ValidateOrders")
-  passwordReset      PasswordReset[]
-  refreshTokens      RefreshToken[]
-  branch             Branch?            @relation(fields: [branchId], references: [id])
-  role               Role?              @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  validatedOrders       Order[]            @relation("ValidateOrders")
+  passwordReset         PasswordReset[]
+  refreshTokens         RefreshToken[]
+  branch                Branch?            @relation(fields: [branchId], references: [id])
+  role                  Role?              @relation(fields: [roleId], references: [id], onDelete: Cascade)
   //vehicles          Vehicle[]
-  customerType       CustomerType?
-  customerCategoryId String?
-  customerCategory   CustomerCategory?  @relation(fields: [customerCategoryId], references: [id])
-  approvals          ParcelApproval[]   @relation("StaffApprovals")
+  customerType          CustomerType?
+  customerCategoryId    String?
+  customerCategory      CustomerCategory?  @relation(fields: [customerCategoryId], references: [id])
+  approvals             ParcelApproval[]   @relation("StaffApprovals")
 
   addresses              Address[]
   preferences            UserPreferences?
@@ -53,13 +53,15 @@ model User {
   officerBatches         BatchDispatch[]              @relation("BatchDispatchOfficer")
   handOverBatchesOfficer BatchHandover[]              @relation("HandoverBatchesOfficer")
 
-  pickupOrders    Order[]          @relation("PickupDriverOrders")
-  deliveryOrders  Order[]          @relation("DeliveryDriverOrders")
-  profilePictures ProfilePicture[]
-  podImages       PodImage[]
+  pickupOrders             Order[]                   @relation("PickupDriverOrders")
+  deliveryOrders           Order[]                   @relation("DeliveryDriverOrders")
+  profilePictures          ProfilePicture[]
+  podImages                PodImage[]
+  driverAssignmentRequests DriverAssignmentRequest[] @relation("UserDriverAssignmentRequests")
 
   corporateInfo CorporateInfo?
   driver        Driver?
+  orderSegments OrderRouteSegment[] @relation("DriverSegments")
 
   createdBy String?
 
@@ -113,8 +115,10 @@ model Address {
   deliveryOrders Order[] @relation("DeliveryAddress")
   branch         Branch? @relation("BranchAddress", fields: [branchId], references: [id], onDelete: Cascade)
 
-  originBatches      BatchDispatch[] @relation("BatchOrigin")
-  destinationBatches BatchDispatch[] @relation("BatchDestination")
+  originBatches       BatchDispatch[]     @relation("BatchOrigin")
+  destinationBatches  BatchDispatch[]     @relation("BatchDestination")
+  originSegments      OrderRouteSegment[] @relation("SegmentOrigin")
+  destinationSegments OrderRouteSegment[] @relation("SegmentDestination")
 
   @@index([lat, long], name: "idx_address_coords")
   @@index([userId])
@@ -211,6 +215,7 @@ model Vehicle {
   status      VehicleStatus
   model       String?
   driverId    String?
+  maxLoad     Float?        @default(100)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   fleetLogs   FleetLog[]
@@ -313,11 +318,13 @@ model Order {
   pickupDriver   User? @relation("PickupDriverOrders", fields: [pickupDriverId], references: [id])
   deliveryDriver User? @relation("DeliveryDriverOrders", fields: [deliveryDriverId], references: [id])
 
-  optimizationJob OptimizationJob?      @relation("OptimizationJobOrders", fields: [optimizationJobId], references: [id])
+  optimizationJob          OptimizationJob?          @relation("OptimizationJobOrders", fields: [optimizationJobId], references: [id])
   // driver          User?                 @relation("DriverOrders", fields: [driverId], references: [id], map: "Order_driver_fk_user")
   //orderDriver     Driver?               @relation("DriverAssignedOrders", fields: [driverId], references: [id], map: "Order_driver_fk_driver")
-  priceLogs       PriceCalculationLog[]
-  podImages       PodImage[]
+  priceLogs                PriceCalculationLog[]
+  podImages                PodImage[]
+  driverAssignmentRequests DriverAssignmentRequest[]
+  routeSegments            OrderRouteSegment[]
 
   @@index([pickupAddressId, deliveryAddressId], name: "idx_order_addresses") // compound index for route optimization
   @@index([branchId, status], name: "idx_branch_status") // filter orders by branch + status
@@ -837,17 +844,22 @@ model OptimizationJob {
 }
 
 model Driver {
-  id         String       @id @default(cuid())
-  userId     String       @unique
-  vehicleId  String?
-  status     DriverStatus @default(OFFLINE)
-  type       DriverType   @default(INTERNAL)
-  licenseNumber   String?
-  licenseExpiry   DateTime?
-  currentLat Float?
-  currentLon Float?
-  updatedAt  DateTime?
-  createdBy  String?
+  id                String                   @id @default(cuid())
+  userId            String                   @unique
+  vehicleId         String?
+  status            DriverStatus             @default(OFFLINE)
+  availablityStatus DriverAvailabilityStatus @default(AVAILABLE)
+  type              DriverType               @default(INTERNAL)
+  licenseNumber     String?
+  licenseExpiry     DateTime?
+  licenseIssue      DateTime?
+  frontImageUrl     String?
+  backImageUrl      String?
+  verifiedByOCR     Boolean                  @default(false)
+  currentLat        Float?
+  currentLon        Float?
+  updatedAt         DateTime?
+  createdBy         String?
 
   // Relations
   user             User?               @relation(fields: [userId], references: [id])
@@ -892,14 +904,45 @@ model TrafficCondition {
   optimizationJob OptimizationJob? @relation(fields: [optimizationJobId], references: [id], onDelete: Cascade)
 }
 
+model OrderRouteSegment {
+  id                   String    @id @default(cuid())
+  orderId              String
+  driverId             String?
+  originId             String // Address ID
+  destinationId        String // Address ID
+  distanceKm           Float?
+  estimatedDurationMin Float?
+  actualDurationMin    Float?
+  startTime            DateTime?
+  endTime              DateTime?
+  sequence             Int // 1 = pickup→branch, 2 = branch→delivery
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  origin      Address @relation("SegmentOrigin", fields: [originId], references: [id])
+  destination Address @relation("SegmentDestination", fields: [destinationId], references: [id])
+  driver      User?   @relation("DriverSegments", fields: [driverId], references: [id])
+
+  @@index([driverId])
+  @@index([orderId])
+  @@index([sequence])
+}
+
 enum DriverStatus {
   OFFLINE
   ONLINE
+  AVAILABLE
+  ENROUTE
+}
+
+enum DriverAvailabilityStatus {
   AVAILABLE
   BUSY
   INTAKE
   ENROUTE
   BREAK
+  FULL
 }
 
 enum DriverType {
@@ -1033,4 +1076,30 @@ enum DispatchStatus {
   COMPLETED // Delivered successfully
   CANCELLED
   CLOSED
+}
+
+enum AssignmentStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model DriverAssignmentRequest {
+  id         String           @id @default(cuid())
+  orderId    String
+  driverId   String // references user.id for drivers
+  status     AssignmentStatus @default(PENDING)
+  sentAt     DateTime         @default(now())
+  expiresAt  DateTime?
+  acceptedAt DateTime?
+  createdBy  String?
+
+  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver User  @relation("UserDriverAssignmentRequests", fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, driverId])
+  @@index([orderId])
+  @@index([driverId])
+  @@index([status])
 }

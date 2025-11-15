@@ -16,6 +16,7 @@ export declare class FleetMessageController {
         createdBy: string | null;
         plateNumber: string;
         driverId: string | null;
+        maxLoad: number | null;
     }>>;
     getAllVehicles(payload: any): Promise<IResponse<Partial<{
         type: string;
@@ -27,6 +28,7 @@ export declare class FleetMessageController {
         createdBy: string | null;
         plateNumber: string;
         driverId: string | null;
+        maxLoad: number | null;
     }>[]>>;
     getVehicleById(payload: {
         id: string;
@@ -40,6 +42,7 @@ export declare class FleetMessageController {
         createdBy: string | null;
         plateNumber: string;
         driverId: string | null;
+        maxLoad: number | null;
     }>>;
     updateVehicle(payload: {
         id: string;
@@ -54,6 +57,7 @@ export declare class FleetMessageController {
         createdBy: string | null;
         plateNumber: string;
         driverId: string | null;
+        maxLoad: number | null;
     }>>;
     deleteVehicle(payload: {
         id: string;
@@ -70,6 +74,7 @@ export declare class FleetMessageController {
         createdBy: string | null;
         plateNumber: string;
         driverId: string | null;
+        maxLoad: number | null;
     }>>;
     unassignVehicle(payload: {
         vehicleId: string;
@@ -83,6 +88,7 @@ export declare class FleetMessageController {
         createdBy: string | null;
         plateNumber: string;
         driverId: string | null;
+        maxLoad: number | null;
     }>>;
     getVehiclesByDriver(payload: {
         driverId: string;
@@ -96,6 +102,7 @@ export declare class FleetMessageController {
         createdBy: string | null;
         plateNumber: string;
         driverId: string | null;
+        maxLoad: number | null;
     }[]>>;
     logVehicleMaintenance(payload: {
         data: VehicleMaintenanceDto;
@@ -129,6 +136,7 @@ export declare class FleetMessageController {
         createdBy: string | null;
         plateNumber: string;
         driverId: string | null;
+        maxLoad: number | null;
     }[]>>;
     getVehicleHistory(payload: {
         vehicleId: string;
@@ -145,6 +153,7 @@ export declare class FleetMessageController {
         createdBy: string | null;
         plateNumber: string;
         driverId: string | null;
+        maxLoad: number | null;
     }>>;
     getFleetAlerts(): Promise<IResponse<{
         id: string;

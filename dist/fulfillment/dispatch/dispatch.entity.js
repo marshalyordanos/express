@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GenerateQrDto = exports.LastMileDeliveryDto = exports.CompleteDeliveryDto = exports.ConfirmBatchHandoverDto = exports.OrderScanTokenDto = exports.BatchHandoverDto = exports.AssignOfficerForBatch = exports.CreateDriver = exports.BatchDispatchDto = exports.AssignDriverForPickup = void 0;
+exports.CreateAssignmentRequestsDto = exports.AssignmentRequestUpsertDto = exports.GenerateQrDto = exports.LastMileDeliveryDto = exports.CompleteDeliveryDto = exports.ConfirmBatchHandoverDto = exports.OrderScanTokenDto = exports.BatchHandoverDto = exports.AssignOfficerForBatch = exports.CreateDriver = exports.BatchDispatchDto = exports.AssignDriverForPickup = void 0;
 const client_1 = require("@prisma/client");
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
@@ -329,4 +329,27 @@ __decorate([
     (0, class_validator_1.IsEnum)(client_1.ShippingScope),
     __metadata("design:type", String)
 ], GenerateQrDto.prototype, "shippingScope", void 0);
+class AssignmentRequestUpsertDto {
+}
+exports.AssignmentRequestUpsertDto = AssignmentRequestUpsertDto;
+class CreateAssignmentRequestsDto {
+}
+exports.CreateAssignmentRequestsDto = CreateAssignmentRequestsDto;
+__decorate([
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateAssignmentRequestsDto.prototype, "orderId", void 0);
+__decorate([
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayNotEmpty)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    (0, class_transformer_1.Transform)(({ value }) => value.map((v) => v.trim())),
+    __metadata("design:type", Array)
+], CreateAssignmentRequestsDto.prototype, "driverIds", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Date)
+], CreateAssignmentRequestsDto.prototype, "expiresAt", void 0);
 //# sourceMappingURL=dispatch.entity.js.map

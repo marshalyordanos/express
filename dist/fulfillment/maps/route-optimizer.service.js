@@ -35,7 +35,6 @@ let RouteOptimizerService = RouteOptimizerService_1 = class RouteOptimizerServic
             throw new Error('Failed to compute distance matrix');
         }
         const tour = this.solveTspNearest2Opt(distances, 0);
-        console.log("Routes tour ::: ", tour);
         const orderedPointIndices = tour.slice(1);
         const orderedStops = orderedPointIndices.map((idx, seq) => {
             const p = points[idx];
@@ -45,33 +44,28 @@ let RouteOptimizerService = RouteOptimizerService_1 = class RouteOptimizerServic
                 lat: p.lat,
                 lon: p.lon,
                 seq: seq + 1,
+                visited: false,
                 meta: originalStop ? { ...originalStop } : undefined,
             };
         });
-        console.log("Computed orders stops::::", orderedStops);
-        this.logger.debug(`Computed ordered stops: ${JSON.stringify(orderedStops)}`);
+        const originalOptimizedOrder = orderedStops.map((s) => s.orderId);
         const orderedPointsForDirections = [
             { lat: points[tour[0]].lat, lon: points[tour[0]].lon },
             ...orderedStops.map((s) => ({ lat: s.lat, lon: s.lon })),
         ];
-        console.log("FInal stops ::::", orderedPointsForDirections);
-        this.logger.debug(`Computed ordered points for directions: ${JSON.stringify(orderedPointsForDirections)}`);
         let directionsResult;
         try {
             directionsResult = await this.mapsService.getDirectionsOrdered(orderedPointsForDirections);
-            console.log("Direction results :::: ", directionsResult);
-            this.logger.debug(`Computed directions: ${JSON.stringify(directionsResult)}`);
         }
         catch (err) {
-            this.logger.warn('Directions request failed, will return route without geometry: ' +
-                err.message);
             const approxDistance = this.sumTourDistanceMeters(distances, tour);
-            this.logger.debug(`Approximated distance: ${approxDistance}`);
+            this.logger.warn('ORS directions failed — returning approximation', err);
             return {
                 routeId: `route:${driverId}:${Date.now()}`,
                 driverId,
                 stops: orderedStops,
                 orderedStopIds: orderedStops.map((s) => s.orderId),
+                originalOptimizedOrder,
                 geometry: null,
                 distanceMeters: approxDistance,
                 durationSec: null,
@@ -85,6 +79,7 @@ let RouteOptimizerService = RouteOptimizerService_1 = class RouteOptimizerServic
             driverId,
             stops: orderedStops,
             orderedStopIds: orderedStops.map((s) => s.orderId),
+            originalOptimizedOrder,
             geometry: directionsResult.geometry,
             distanceMeters: directionsResult.distance,
             durationSec: directionsResult.duration,
@@ -95,15 +90,28 @@ let RouteOptimizerService = RouteOptimizerService_1 = class RouteOptimizerServic
     }
     async recalculateRouteIfDeviation(driverId, driverLocation, currentRoute, deviationThresholdMeters = 300) {
         try {
-            const distanceFromRoute = await this.mapsService.calculateDistanceFromRoute(driverLocation, currentRoute.geometry);
-            this.logger.debug(`Driver ${driverId} is ${distanceFromRoute.toFixed(1)}m from current route`);
-            if (distanceFromRoute < deviationThresholdMeters) {
+            const nextStop = currentRoute.stops.find((s) => !s.visited);
+            if (!nextStop) {
                 return { route: currentRoute, recalculated: false };
             }
-            this.logger.warn(`Driver ${driverId} deviated ${distanceFromRoute.toFixed(1)}m — recalculating route...`);
-            const remainingStops = currentRoute.stops.filter((s) => !s.visited);
+            const distanceToNext = this.haversineKm(driverLocation.lat, driverLocation.lon, nextStop.lat, nextStop.lon) * 1000;
+            if (distanceToNext <= deviationThresholdMeters) {
+                return { route: currentRoute, recalculated: false };
+            }
+            this.logger.warn(`Driver ${driverId} deviated ${Math.round(distanceToNext)}m from next stop ${nextStop.orderId}. Recalculating route.`);
+            const remainingIds = (currentRoute.originalOptimizedOrder ||
+                currentRoute.orderedStopIds ||
+                []).filter((id) => !currentRoute.stops.find((s) => s.orderId === id)?.visited);
+            const remainingStops = remainingIds.map((id) => {
+                const s = currentRoute.stops.find((st) => st.orderId === id);
+                return {
+                    orderId: s.orderId,
+                    lat: s.lat,
+                    lon: s.lon,
+                    ...(s.meta ? { meta: s.meta } : {}),
+                };
+            });
             const newRoute = await this.computeOptimizedRoute(driverId, driverLocation, remainingStops);
-            this.logger.log(`✅ Recalculated new route for driver ${driverId}, total stops: ${remainingStops.length}`);
             return { route: newRoute, recalculated: true };
         }
         catch (err) {
@@ -176,6 +184,7 @@ let RouteOptimizerService = RouteOptimizerService_1 = class RouteOptimizerServic
             driverId,
             stops: [],
             orderedStopIds: [],
+            originalOptimizedOrder: [],
             geometry: null,
             distanceMeters: 0,
             durationSec: 0,
@@ -183,6 +192,19 @@ let RouteOptimizerService = RouteOptimizerService_1 = class RouteOptimizerServic
             generatedAt: Date.now(),
             strategy: 'none',
         };
+    }
+    haversineKm(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const toRad = (deg) => (deg * Math.PI) / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(lat1)) *
+                Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) *
+                Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     }
 };
 exports.RouteOptimizerService = RouteOptimizerService;

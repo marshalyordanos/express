@@ -19,8 +19,19 @@ export declare class MapsUseCasesImpl implements MapsUseCases {
         route: {
             routeId: string;
             driverId: string;
-            stops: any[];
+            stops: ({
+                [k: string]: any;
+                orderId: string;
+                lat: number;
+                lon: number;
+            } & {
+                seq?: number;
+                visited?: boolean;
+                eta?: number;
+                distanceKm?: number;
+            })[];
             orderedStopIds: string[];
+            originalOptimizedOrder: string[];
             geometry: any | null;
             distanceMeters: number;
             durationSec: number | null;

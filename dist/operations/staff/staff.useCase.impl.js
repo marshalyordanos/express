@@ -17,11 +17,15 @@ const bcrypt = require("bcrypt");
 const app_logger_service_1 = require("../../common/app-logger.service");
 const password_validator_1 = require("../../common/password-validator");
 const redis_service_1 = require("../..//redis/redis.service");
+const cloudinary_uploader_service_1 = require("../../common/cloudinary/cloudinary-uploader.service");
+const ocr_service_1 = require("../../common/ocr/ocr.service");
 let StaffUseCasesImpl = class StaffUseCasesImpl {
-    constructor(staffRepo, logger, redis) {
+    constructor(staffRepo, logger, redis, cloudinaryUploader, ocrService) {
         this.staffRepo = staffRepo;
         this.logger = logger;
         this.redis = redis;
+        this.cloudinaryUploader = cloudinaryUploader;
+        this.ocrService = ocrService;
         this.logger.setContext('OperationsService', 'RoleUseCaseImpl');
     }
     async createStaff(data, createdBy) {
@@ -210,24 +214,82 @@ let StaffUseCasesImpl = class StaffUseCasesImpl {
         }
     }
     async createDriver(data, userId) {
-        this.logger.log(`Creating driver for Email ${data.email} and initiated by user: ${userId}`);
+        this.logger.log(`Creating driver for Email ${data.email} and initiated by ${userId}`);
         if (!data.vehicleId || !data.roleId) {
-            throw new microservices_1.RpcException({ statusCode: 400, message: 'Vehicle ID and Role ID are required.' });
+            throw new microservices_1.RpcException({
+                statusCode: 400,
+                message: 'Vehicle ID and Role ID are required.',
+            });
         }
-        const [vehicle, role] = await Promise.all([
+        const [vehicle, role, user] = await Promise.all([
             this.staffRepo.findVehicleById(data.vehicleId),
             this.staffRepo.findRoleById(data.roleId),
+            this.staffRepo.findStaffByEmailAndPhone(data.email, data.phone),
         ]);
-        if (!vehicle)
-            throw new microservices_1.RpcException(`Vehicle not found: ${data.vehicleId}`);
         if (!role)
             throw new microservices_1.RpcException(`Role not found: ${data.roleId}`);
+        if (user.existingEmailStaff)
+            throw new microservices_1.RpcException('Email already exists');
+        if (user.existingStaffPhone)
+            throw new microservices_1.RpcException('Phone already exists');
+        let uploadedFront = null;
+        let uploadedBack = null;
+        let frontBuffer = null;
+        let backBuffer = null;
+        if (data.licenseFront) {
+            if (data.licenseFront.type === 'Buffer' &&
+                Array.isArray(data.licenseFront.data)) {
+                frontBuffer = Buffer.from(data.licenseFront.data);
+            }
+            else if (Buffer.isBuffer(data.licenseFront)) {
+                frontBuffer = data.licenseFront;
+            }
+        }
+        if (data.licenseBack) {
+            if (data.licenseBack.type === 'Buffer' &&
+                Array.isArray(data.licenseBack.data)) {
+                backBuffer = Buffer.from(data.licenseBack.data);
+            }
+            else if (Buffer.isBuffer(data.licenseBack)) {
+                backBuffer = data.licenseBack;
+            }
+        }
+        if (data.licenseFront) {
+            uploadedFront = await this.cloudinaryUploader.uploadFile(frontBuffer, `drivers/${data.email}/license/front`);
+        }
+        console.log('Uploaded front image ::: ', uploadedFront);
+        if (data.licenseBack) {
+            uploadedBack = await this.cloudinaryUploader.uploadFile(backBuffer, `drivers/${data.email}/license/back`);
+        }
+        console.log('Uploaded back image ::: ', uploadedBack);
+        data.licenseFrontUrl = uploadedFront?.secure_url || null;
+        data.licenseBackUrl = uploadedBack?.secure_url || null;
+        console.log(`Data request body for front ${data.licenseFront} and for back ${data.licenseBack}`);
+        let ocrFront = null;
+        let ocrBack = null;
+        if (uploadedFront?.url) {
+            ocrFront = await this.ocrService.extractFromImage(uploadedFront.url);
+        }
+        console.log(`Processed image for front :: `, ocrFront);
+        if (uploadedBack?.url) {
+            ocrBack = await this.ocrService.extractFromImage(uploadedBack.url);
+        }
+        console.log(`Processed image for back ::: `, ocrBack);
+        const ocr = { ...ocrBack, ...ocrFront };
+        console.log(`OCR big one :: `, ocr);
+        data.licenseNumber ||= ocr.licenseNumber;
+        data.expiryDate ||= ocr.expiryDate;
+        data.issueDate ||= ocr.issueDate;
+        data.phone ||= ocr.phone;
+        data.emergencyContactName ||= ocr.emergencyContactName;
+        data.emergencyContactPhone ||= ocr.emergencyContactPhone;
         const customId = await this.generateCustomId(role.name);
+        const hashedPassword = await bcrypt.hash('default', 12);
         const userData = {
             name: data.name,
             email: data.email,
             phone: data.phone ?? null,
-            password: '',
+            password: hashedPassword,
             isStaff: true,
             isActive: true,
             customId,
@@ -238,7 +300,11 @@ let StaffUseCasesImpl = class StaffUseCasesImpl {
         };
         const result = await this.staffRepo.createDriver(userData, data, userId);
         this.logger.log(`Driver created successfully: ${customId}`);
-        return { success: true, message: 'Driver created successfully', data: result };
+        return {
+            success: true,
+            message: 'Driver created successfully',
+            data: result,
+        };
     }
     async findDriver(query) {
         this.logger.log(`Finding drivers with query: ${JSON.stringify(query)}`);
@@ -258,6 +324,8 @@ exports.StaffUseCasesImpl = StaffUseCasesImpl = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [staff_repository_1.StaffRepository,
         app_logger_service_1.AppLogger,
-        redis_service_1.RedisService])
+        redis_service_1.RedisService,
+        cloudinary_uploader_service_1.CloudinaryUploaderService,
+        ocr_service_1.CommonOCRService])
 ], StaffUseCasesImpl);
 //# sourceMappingURL=staff.useCase.impl.js.map

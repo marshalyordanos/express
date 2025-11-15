@@ -9,6 +9,7 @@ import {
   BatchHandoverDto,
   CompleteDeliveryDto,
   ConfirmBatchHandoverDto,
+  CreateAssignmentRequestsDto,
   CreateDriver,
   GenerateQrDto,
   LastMileDeliveryDto,
@@ -238,5 +239,30 @@ export class DispatchMessageController {
   async findDriver(@Payload() payload: { query: ListQueryDto }) {
     const result = await this.usecases.findDriver(payload.query);
     return IResponse.success('Officer created successfully', result);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Dispatch', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.DISPATCH_CREATE_ASSIGNEMENT_REQUEST)
+  async createDriverAssignmentRequests(
+    @Payload() payload: { data: CreateAssignmentRequestsDto; user: any },
+  ) {
+    const userId = payload.user?.sub;
+    await this.usecases.createDriverAssignmentRequests(payload.data, userId);
+    return IResponse.success(
+      `Driver assignment requests created successfully for order ${payload.data.orderId} and notification sent to drivers`,
+    );
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Dispatch', PermissionActions.UPDATE)
+  @MessagePattern(PATTERNS.DISPATCH_ACCEPT_ASSIGNEMENT_REQUEST)
+  async driverAccept(@Payload() payload: { orderId: string; user: any }) {
+    const userId = payload.user?.sub;
+    const result = await this.usecases.driverAccept(payload.orderId, userId);
+    return IResponse.success(
+      'Successfully driver is assigned to order',
+      result,
+    );
   }
 }

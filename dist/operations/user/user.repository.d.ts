@@ -484,6 +484,7 @@ export declare class UserRepository {
         createdBy: string | null;
         plateNumber: string;
         driverId: string | null;
+        maxLoad: number | null;
     }>;
     findDriver(payload: ListQueryDto): Promise<{
         drivers: ({
@@ -507,8 +508,13 @@ export declare class UserRepository {
             createdBy: string | null;
             userId: string;
             vehicleId: string | null;
+            availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;
             licenseExpiry: Date | null;
+            licenseIssue: Date | null;
+            frontImageUrl: string | null;
+            backImageUrl: string | null;
+            verifiedByOCR: boolean;
             currentLat: number | null;
             currentLon: number | null;
         })[];

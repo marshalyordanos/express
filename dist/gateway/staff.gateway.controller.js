@@ -19,6 +19,7 @@ const contracts_1 = require("../contracts");
 const staff_entity_1 = require("../operations/staff/staff.entity");
 const query_dto_1 = require("../common/query/query.dto");
 const jwt = require("jsonwebtoken");
+const platform_express_1 = require("@nestjs/platform-express");
 let StaffGatewayController = class StaffGatewayController {
     constructor(staffClient) {
         this.staffClient = staffClient;
@@ -201,20 +202,18 @@ let StaffGatewayController = class StaffGatewayController {
             query,
         });
     }
-    async createDriver(data, req) {
+    async createDriver(files, body, req) {
         const authHeader = req.headers['authorization'] || null;
-        let token = req.headers['authorization']?.replace('Bearer ', '') || null;
-        const forwarded = req.headers['x-forwarded-for'] || '';
-        const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
-        let decodedUser = null;
-        try {
-            decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+        const token = authHeader?.replace('Bearer ', '');
+        const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
+        if (files?.length > 0) {
+            body.licenseFront = files[0]?.buffer || null;
+            body.licenseBack = files[1]?.buffer || null;
         }
-        catch (err) {
-            throw new common_1.HttpException('Invalid token', common_1.HttpStatus.UNAUTHORIZED);
-        }
+        const forwarded = req.headers['x-forwarded-for'];
+        const ip = forwarded?.split(',')[0] || req.ip;
         return this.staffClient.send(contracts_1.PATTERNS.STAFF_CREATE_DRIVER, {
-            data,
+            data: body,
             headers: { authorization: authHeader },
             user: decodedUser,
             ip,
@@ -337,10 +336,12 @@ __decorate([
 ], StaffGatewayController.prototype, "findStaffByBranch", null);
 __decorate([
     (0, common_1.Post)('/driver'),
-    __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.Req)()),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('licenseImages', 2)),
+    __param(0, (0, common_1.UploadedFiles)()),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [staff_entity_1.CreateDriver, Object]),
+    __metadata("design:paramtypes", [Array, Object, Object]),
     __metadata("design:returntype", Promise)
 ], StaffGatewayController.prototype, "createDriver", null);
 __decorate([

@@ -17,8 +17,13 @@ export declare class MapMessageController {
         driverId: string;
     }): Promise<any>;
     getNearbyDrivers(payoad: {
-        lat: any;
-        lon: any;
+        orderIds: string[];
+        radius: any;
+        user: any;
+    }): Promise<any>;
+    findNearbyExternalDrivers(payoad: {
+        lon: number;
+        lat: number;
         radius: any;
         user: any;
     }): Promise<any>;

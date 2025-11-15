@@ -237,6 +237,7 @@ export declare class StaffRepository {
         createdBy: string | null;
         plateNumber: string;
         driverId: string | null;
+        maxLoad: number | null;
     }>;
     createDriver(userData: any, driverData: any, userId: string): Promise<{
         user: {
@@ -278,8 +279,13 @@ export declare class StaffRepository {
             createdBy: string | null;
             userId: string;
             vehicleId: string | null;
+            availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;
             licenseExpiry: Date | null;
+            licenseIssue: Date | null;
+            frontImageUrl: string | null;
+            backImageUrl: string | null;
+            verifiedByOCR: boolean;
             currentLat: number | null;
             currentLon: number | null;
         })[];

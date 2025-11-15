@@ -585,8 +585,13 @@ export declare class UserMessageController {
             createdBy: string | null;
             userId: string;
             vehicleId: string | null;
+            availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;
             licenseExpiry: Date | null;
+            licenseIssue: Date | null;
+            frontImageUrl: string | null;
+            backImageUrl: string | null;
+            verifiedByOCR: boolean;
             currentLat: number | null;
             currentLon: number | null;
         })[];

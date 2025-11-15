@@ -22,8 +22,8 @@ let DriverLocationWsService = class DriverLocationWsService {
     async updateDriverLocation(payload) {
         return this.driverLocationService.updateDriverLocation(payload);
     }
-    async findNearbyDrivers(lat, lon, radiusKm) {
-        return this.driverLocationService.findNearbyDrivers(lon, lat, radiusKm);
+    async findNearbyDrivers(orderIds, radiusKm) {
+        return this.driverLocationService.findNearbyDrivers(orderIds, radiusKm);
     }
     markOffline(driverId) {
         return this.driverLocationService.markOfflineByDriverId(driverId);

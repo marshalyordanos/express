@@ -59,8 +59,7 @@ export declare class MapLocationGateway implements OnGatewayInit {
         heading?: number;
     }): void;
     handleNearbyDrivers(data: {
-        lat: number;
-        lon: number;
+        orderIds: string[];
         radiusKm: number;
     }, client: Socket): Promise<void>;
     handleOrderDistance(payload: any, client: Socket): Promise<void>;

@@ -144,7 +144,7 @@ let MapLocationGateway = class MapLocationGateway {
         this.wsEvent.emitDriverLocationToSubscribers(payload);
     }
     async handleNearbyDrivers(data, client) {
-        const nearby = await this.driverWs.findNearbyDrivers(data.lat, data.lon, data.radiusKm);
+        const nearby = await this.driverWs.findNearbyDrivers(data.orderIds, data.radiusKm);
         client.emit('drivers:nearby:result', nearby);
     }
     async handleOrderDistance(payload, client) {

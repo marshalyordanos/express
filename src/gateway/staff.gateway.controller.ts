@@ -11,6 +11,8 @@ import {
   Post,
   Query,
   Req,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
@@ -25,6 +27,7 @@ import {
 import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
 import { SanitizePipe } from '../common/sanitize.pipe';
+import { FilesInterceptor } from '@nestjs/platform-express';
 
 @Controller('staff')
 export class StaffGatewayController {
@@ -263,27 +266,33 @@ export class StaffGatewayController {
     });
   }
 
-  @Post('/driver')
-  async createDriver(@Body() data: CreateDriver, @Req() req) {
-    const authHeader = req.headers['authorization'] || null;
-    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+@Post('/driver')
+@UseInterceptors(FilesInterceptor('licenseImages', 2))
+async createDriver(
+  @UploadedFiles() files: Express.Multer.File[],
+  @Body() body: any,
+  @Req() req,
+) {
+  const authHeader = req.headers['authorization'] || null;
+  const token = authHeader?.replace('Bearer ', '');
+  const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
 
-    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
-    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
-    let decodedUser = null;
-    try {
-      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
-      // decodedUser = this.jwtService.verify(token);
-    } catch (err) {
-      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
-    }
-    return this.staffClient.send(PATTERNS.STAFF_CREATE_DRIVER, {
-      data,
-      headers: { authorization: authHeader },
-      user: decodedUser, // ✅ send user info
-      ip,
-    });
+  // Attach files (as buffer/base64)
+  // Attach file buffers
+  if (files?.length > 0) {
+    body.licenseFront = files[0]?.buffer || null;
+    body.licenseBack = files[1]?.buffer || null;
   }
+  const forwarded = req.headers['x-forwarded-for'] as string;
+  const ip = forwarded?.split(',')[0] || req.ip;
+
+  return this.staffClient.send(PATTERNS.STAFF_CREATE_DRIVER, {
+    data: body,
+    headers: { authorization: authHeader },
+    user: decodedUser,
+    ip,
+  });
+}
 
   @Get('/driver')
   async findDriver(@Query() query: ListQueryDto, @Req() req) {

@@ -31,15 +31,195 @@ let RouteCacheService = RouteCacheService_1 = class RouteCacheService {
     }
     async saveDriverRoute(driverId, route) {
         const key = `driver:${driverId}:currentRoute`;
+        let remainingDurationSec = route.totalDuration ?? 0;
+        if (!remainingDurationSec || remainingDurationSec <= 0) {
+            const remainingKm = route.remainingDistance ??
+                route.stops.reduce((acc, s) => acc + (s.distanceKm ?? 0), 0);
+            const speedKmh = 40;
+            remainingDurationSec = Math.round((remainingKm / speedKmh) * 3600);
+        }
+        route.remainingDurationSec = remainingDurationSec;
+        const routeFinishMs = Date.now() + remainingDurationSec * 1000;
+        const routeFinishISO = new Date(routeFinishMs).toISOString();
         await this.redisClient.set(key, JSON.stringify(route), { EX: 3600 });
-        this.logger.debug(`Saved route for driver ${driverId} in Redis`);
-        const data = (await this.redisClient.get(key));
-        console.log('get route after saved ::: ', data, key);
+        await this.redisClient.set(`driver:${driverId}:routeFinish`, routeFinishISO, { EX: 3600 });
+        this.logger.debug(`Saved route for driver ${driverId} in Redis (finish: ${routeFinishISO})`);
         this.wsGateway.broadcastDriverRoute(driverId, route);
     }
     async deleteDriverRoute(driverId) {
+        await this.redisClient.del(`driver:${driverId}:currentRoute`);
+        await this.redisClient.del(`driver:${driverId}:routeFinish`);
+    }
+    async getDriverRoute(driverId) {
         const key = `driver:${driverId}:currentRoute`;
-        await this.redisClient.del(key);
+        const data = (await this.redisClient.get(key));
+        if (!data)
+            return null;
+        try {
+            return JSON.parse(data);
+        }
+        catch (err) {
+            this.logger.error(`Failed to parse driver route for ${driverId}: ${err.message}`);
+            return null;
+        }
+    }
+    async getDriverRouteWithStops(driverId, reportedStops) {
+        const key = `driver:${driverId}:currentRoute`;
+        const data = (await this.redisClient.get(key));
+        if (!data)
+            return null;
+        try {
+            const route = JSON.parse(data);
+            if (reportedStops && reportedStops.length > 0) {
+                const reportedIds = new Set(reportedStops.map((r) => r.orderId));
+                route.stops = route.stops.filter((stop) => reportedIds.has(stop.orderId));
+            }
+            return route;
+        }
+        catch (err) {
+            this.logger.error(`Failed to parse route for driver ${driverId}: ${err.message}`);
+            return null;
+        }
+    }
+    async removeDriverRoute(driverId) {
+        await this.redisClient.del(`driver:${driverId}:currentRoute`);
+        await this.redisClient.del(`driver:${driverId}:routeFinish`);
+        this.logger.debug(`Removed route for driver ${driverId} from Redis`);
+    }
+    calculateDistanceKm(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * (Math.PI / 180);
+        const dLon = (lon2 - lon1) * (Math.PI / 180);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos((lat1 * Math.PI) / 180) *
+                Math.cos((lat2 * Math.PI) / 180) *
+                Math.sin(dLon / 2) *
+                Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+    async updateLiveRouteProgress(driverId, lat, lon, speedKmh) {
+        const route = await this.getDriverRoute(driverId);
+        if (!route)
+            return;
+        const remainingStops = route.stops.filter((s) => !s.visited);
+        if (!remainingStops || remainingStops.length === 0) {
+            return;
+        }
+        const speed = speedKmh && speedKmh > 5 ? speedKmh : 40;
+        const nextStop = remainingStops[0];
+        const distanceToNextKm = this.calculateDistanceKm(lat, lon, nextStop.lat, nextStop.lon);
+        const etaToNextMin = (distanceToNextKm / speed) * 60;
+        nextStop.distanceKm = Number(distanceToNextKm.toFixed(3));
+        nextStop.eta = Number(etaToNextMin.toFixed(1));
+        let cumulativeRemainingKm = distanceToNextKm;
+        for (let i = 0; i < remainingStops.length - 1; i++) {
+            const cur = remainingStops[i];
+            const nxt = remainingStops[i + 1];
+            const dkm = this.calculateDistanceKm(cur.lat, cur.lon, nxt.lat, nxt.lon);
+            cur.distanceKm = Number((cur.distanceKm ?? 0).toFixed(3));
+            nxt.distanceKm = nxt.distanceKm ?? Number(dkm.toFixed(3));
+            cumulativeRemainingKm += dkm;
+        }
+        route.remainingDistance = cumulativeRemainingKm;
+        route.lastUpdated = Date.now();
+        route.remainingDurationSec = Math.round((cumulativeRemainingKm / speed) * 3600);
+        route.estimatedArrivalTime = new Date(Date.now() + Math.round(etaToNextMin * 60000)).toISOString();
+        await this.saveDriverRoute(driverId, route);
+        this.wsGateway.emitNextStopEta(driverId, nextStop, {
+            lat,
+            lon,
+            speedKmh: speed,
+        });
+        const deviationThresholdMeters = 300;
+        if (distanceToNextKm * 1000 > deviationThresholdMeters) {
+            const { route: recalculatedRoute, recalculated } = await this.routeOptimizer.recalculateRouteIfDeviation(driverId, { lat, lon }, {
+                ...route,
+                originalOptimizedOrder: route.originalOptimizedOrder ?? route.orderedStopIds,
+            }, deviationThresholdMeters);
+            if (recalculated && recalculatedRoute) {
+                const rc = {
+                    optimizationJobId: recalculatedRoute.routeId ?? '',
+                    routeId: recalculatedRoute.routeId ?? '',
+                    stops: (recalculatedRoute.stops || []).map((s) => ({
+                        orderId: s.orderId,
+                        lat: s.lat,
+                        lon: s.lon,
+                        seq: s.seq,
+                        visited: false,
+                        eta: undefined,
+                        distanceKm: undefined,
+                    })),
+                    totalDistance: recalculatedRoute.distanceMeters ?? 0,
+                    totalDuration: recalculatedRoute.durationSec ?? 0,
+                    remainingDistance: undefined,
+                    remainingDurationSec: recalculatedRoute.durationSec ?? 0,
+                    estimatedArrivalTime: undefined,
+                    lastUpdated: Date.now(),
+                    orderedStopIds: recalculatedRoute.orderedStopIds,
+                    originalOptimizedOrder: recalculatedRoute.originalOptimizedOrder ??
+                        recalculatedRoute.orderedStopIds,
+                };
+                await this.saveDriverRoute(driverId, rc);
+                this.wsGateway.broadcastDriverRoute(driverId, rc);
+                this.wsGateway.broadcastDriverLocationToDriver('route:recalculated', {
+                    driverId,
+                    recalculatedRoute: rc,
+                });
+            }
+        }
+        else {
+            const etaData = {
+                driverId,
+                nextStopId: nextStop.orderId,
+                etaSeconds: Math.round(etaToNextMin * 60),
+                remainingDistanceMeters: Math.round(cumulativeRemainingKm * 1000),
+                recalculated: false,
+            };
+            this.wsGateway.broadcastDriverLocationToDriver(driverId, etaData);
+            this.wsGateway.broadcastETAtoCustomer(etaData);
+        }
+        return {
+            nextStop: {
+                orderId: nextStop.orderId,
+                distanceKm: nextStop.distanceKm,
+                etaMin: nextStop.eta,
+            },
+        };
+    }
+    async updateLiveRouteETA(driverId, route, location) {
+        try {
+            const { route: recalculatedRoute, recalculated } = await this.routeOptimizer.recalculateRouteIfDeviation(driverId, location, route, 300);
+            if (recalculated && recalculatedRoute) {
+                const rc = {
+                    optimizationJobId: recalculatedRoute.routeId ?? '',
+                    routeId: recalculatedRoute.routeId ?? '',
+                    stops: (recalculatedRoute.stops || []).map((s) => ({
+                        orderId: s.orderId,
+                        lat: s.lat,
+                        lon: s.lon,
+                        seq: s.seq,
+                        visited: false,
+                        eta: undefined,
+                        distanceKm: undefined,
+                    })),
+                    totalDistance: recalculatedRoute.distanceMeters ?? 0,
+                    totalDuration: recalculatedRoute.durationSec ?? 0,
+                    remainingDistance: undefined,
+                    remainingDurationSec: recalculatedRoute.durationSec ?? 0,
+                    estimatedArrivalTime: undefined,
+                    lastUpdated: Date.now(),
+                    orderedStopIds: recalculatedRoute.orderedStopIds,
+                    originalOptimizedOrder: recalculatedRoute.originalOptimizedOrder ??
+                        recalculatedRoute.orderedStopIds,
+                };
+                await this.saveDriverRoute(driverId, rc);
+                this.wsGateway.broadcastDriverRoute(driverId, rc);
+            }
+        }
+        catch (err) {
+            this.logger.error(`Failed to update ETA for driver ${driverId}: ${err.message}`);
+        }
     }
     async markStopVisited(driverId, orderId) {
         const route = await this.getDriverRoute(driverId);
@@ -83,120 +263,6 @@ let RouteCacheService = RouteCacheService_1 = class RouteCacheService {
         }
         catch (err) {
             this.logger.error(`Failed to complete route for driver ${driverId}: ${err}`);
-        }
-    }
-    async getDriverRoute(driverId) {
-        const key = `driver:${driverId}:currentRoute`;
-        const data = (await this.redisClient.get(key));
-        console.log('get route ::: ', data, key);
-        if (!data)
-            return null;
-        try {
-            return JSON.parse(data);
-        }
-        catch {
-            return null;
-        }
-    }
-    async getDriverRouteWithStops(driverId, reportedStops) {
-        const key = `driver:${driverId}:currentRoute`;
-        console.log("keyyyyyyyyyyyyy ::: ", key);
-        const data = await this.redisClient.gets(key);
-        console.log('Second iiiiiiiii  ::: ', data);
-        if (!data)
-            return null;
-        try {
-            const route = JSON.parse(data);
-            console.log('third iiiiiiiii  ::: ', route);
-            if (reportedStops && reportedStops.length > 0) {
-                const reportedIds = new Set(reportedStops.map((r) => r.orderId));
-                console.log('fourth iiiiiiiii  ::: ', reportedIds);
-                route.stops = route.stops.filter((stop) => reportedIds.has(stop.orderId));
-            }
-            console.log('fith iiiiiiiii  ::: ', route);
-            return route;
-        }
-        catch (err) {
-            console.error(`Failed to parse route for driver ${driverId}:`, err);
-            return null;
-        }
-    }
-    async removeDriverRoute(driverId) {
-        await this.redisClient.del(`driver:${driverId}:currentRoute`);
-        this.logger.debug(`Removed route for driver ${driverId} from Redis`);
-    }
-    calculateDistanceKm(lat1, lon1, lat2, lon2) {
-        const R = 6371;
-        const dLat = (lat2 - lat1) * (Math.PI / 180);
-        const dLon = (lon2 - lon1) * (Math.PI / 180);
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos((lat1 * Math.PI) / 180) *
-                Math.cos((lat2 * Math.PI) / 180) *
-                Math.sin(dLon / 2) *
-                Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }
-    async updateLiveRouteProgress(driverId, lat, lon, speedKmh) {
-        const route = await this.getDriverRoute(driverId);
-        console.log('Route fro deviattion ::::: ', route);
-        if (!route)
-            return;
-        const remainingStops = route.stops.filter((s) => !s.visited);
-        if (!remainingStops)
-            return;
-        for (const stop of remainingStops) {
-            const distance = this.calculateDistanceKm(lat, lon, stop.lat, stop.lon);
-            const speed = speedKmh && speedKmh > 0 ? speedKmh : 40;
-            const eta = (distance / speed) * 60;
-            stop.distanceKm = Number(distance.toFixed(2));
-            stop.eta = Number(eta.toFixed(1));
-        }
-        route.remainingDistance = remainingStops.reduce((acc, s) => acc + (s.distanceKm || 0), 0);
-        await this.saveDriverRoute(driverId, route);
-        for (const stop of remainingStops) {
-            this.wsGateway.emitNextStopEta(driverId, stop, {
-                lat,
-                lon,
-                speedKmh: speedKmh || 40,
-            });
-        }
-        const result = await this.updateLiveRouteETA(driverId, route, { lat, lon });
-        console.log('REsult result finallllllllllllllll:::', result);
-        return result;
-    }
-    async updateLiveRouteETA(driverId, route, location) {
-        try {
-            const { route: recalculatedRoute, recalculated } = await this.routeOptimizer.recalculateRouteIfDeviation(driverId, location, route);
-            if (recalculated && recalculatedRoute) {
-                console.log('ROute is recalculated :::: ', recalculated, recalculatedRoute);
-                await this.saveDriverRoute(driverId, recalculatedRoute);
-                this.wsGateway.broadcastDriverRoute(driverId, recalculatedRoute);
-                this.wsGateway.broadcastDriverLocationToDriver('route:recalculated', {
-                    driverId,
-                    recalculatedRoute,
-                });
-            }
-            const remainingStops = recalculatedRoute.stops.filter((s) => !s.visited);
-            for (const stop of remainingStops) {
-                const { distance, duration } = await this.mapsService.getDirectionsOrdered([
-                    { lat: location.lat, lon: location.lon },
-                    { lat: stop.lat, lon: stop.lon },
-                ]);
-                const etaData = {
-                    driverId,
-                    nextStopId: stop.orderId,
-                    etaSeconds: duration,
-                    remainingDistance: distance,
-                    recalculated,
-                };
-                this.wsGateway.broadcastDriverLocationToDriver(driverId, etaData);
-                this.wsGateway.broadcastETAtoCustomer(etaData);
-                this.logger.debug(`Updated ETA for driver ${driverId}: ${(duration / 60).toFixed(1)} min, ${Math.round(distance)} m`);
-            }
-        }
-        catch (err) {
-            this.logger.error(`Failed to update ETA for driver ${driverId}: ${err.message}`);
         }
     }
 };

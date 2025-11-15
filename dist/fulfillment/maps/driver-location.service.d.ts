@@ -9,6 +9,18 @@ export interface NearbyDriver {
         lon: number;
     };
 }
+export interface RankedDriver {
+    driverId: string;
+    userId: string;
+    distanceKm: number;
+    currentLat: number;
+    currentLon: number;
+    activeOrders: number;
+    lastUpdated: Date;
+    score: number;
+    rank?: number;
+    suggestedForOrders?: string[];
+}
 export declare class DriverLocationService {
     private readonly redisService;
     private readonly prisma;
@@ -28,7 +40,9 @@ export declare class DriverLocationService {
     }): Promise<void>;
     onlineEmitter: (driverId: string, status?: 'ONLINE' | 'OFFLINE') => void;
     setOnlineEmitter(fn: (driverId: string) => void): void;
-    findNearbyDrivers(lon: number, lat: number, radiusKm: number): Promise<any[]>;
+    findNearbyDrivers(orderIds: string[], radiusKm: number): Promise<RankedDriver[]>;
+    findNearbyExternalDrivers(lon: number, lat: number, radiusKm: number): Promise<NearbyDriver[]>;
+    private calcDistanceKm;
     syncToDatabase(): Promise<void>;
     updateOfflineDrivers(): Promise<void>;
     markOfflineByDriverId(driverId: string): Promise<void>;

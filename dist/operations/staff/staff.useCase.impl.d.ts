@@ -5,11 +5,15 @@ import { StaffRepository } from './staff.repository';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { AppLogger } from '../../common/app-logger.service';
 import { RedisService } from '../..//redis/redis.service';
+import { CloudinaryUploaderService } from '../../common/cloudinary/cloudinary-uploader.service';
+import { CommonOCRService } from '../../common/ocr/ocr.service';
 export declare class StaffUseCasesImpl implements StaffUsecase {
     private readonly staffRepo;
     private readonly logger;
     private readonly redis;
-    constructor(staffRepo: StaffRepository, logger: AppLogger, redis: RedisService);
+    private readonly cloudinaryUploader;
+    private readonly ocrService;
+    constructor(staffRepo: StaffRepository, logger: AppLogger, redis: RedisService, cloudinaryUploader: CloudinaryUploaderService, ocrService: CommonOCRService);
     createStaff(data: RegisterStaffDto, createdBy: string): Promise<any>;
     private generateCustomId;
     findStaffByRole(query: ListQueryDto, role: string): Promise<{
@@ -144,8 +148,13 @@ export declare class StaffUseCasesImpl implements StaffUsecase {
             createdBy: string | null;
             userId: string;
             vehicleId: string | null;
+            availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;
             licenseExpiry: Date | null;
+            licenseIssue: Date | null;
+            frontImageUrl: string | null;
+            backImageUrl: string | null;
+            verifiedByOCR: boolean;
             currentLat: number | null;
             currentLon: number | null;
         })[];

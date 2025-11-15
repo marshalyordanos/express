@@ -36,6 +36,8 @@ const dashboard_repository_1 = require("./report/repositories/dashboard.reposito
 const redis_service_1 = require("../redis/redis.service");
 const app_logger_service_1 = require("../common/app-logger.service");
 const maps_service_1 = require("../fulfillment/maps/maps.service");
+const cloudinary_uploader_service_1 = require("../common/cloudinary/cloudinary-uploader.service");
+const ocr_service_1 = require("../common/ocr/ocr.service");
 let OperationsModule = class OperationsModule {
 };
 exports.OperationsModule = OperationsModule;
@@ -78,6 +80,8 @@ exports.OperationsModule = OperationsModule = __decorate([
             dashboard_repository_1.DashboardReportRepository,
             app_logger_service_1.AppLogger,
             maps_service_1.MapsService,
+            cloudinary_uploader_service_1.CloudinaryUploaderService,
+            ocr_service_1.CommonOCRService,
         ],
         exports: [
             user_usecase_impl_1.UserUseCasesImp,

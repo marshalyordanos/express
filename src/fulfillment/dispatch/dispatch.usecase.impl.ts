@@ -8,11 +8,13 @@ import { DispatchUseCases } from './dispatch.usecase';
 import { DispatchRepository } from './dispatch.repository';
 import {
   AssignDriverForPickup,
+  AssignmentRequestUpsertDto,
   AssignOfficerForBatch,
   BatchDispatchDto,
   BatchHandoverDto,
   CompleteDeliveryDto,
   ConfirmBatchHandoverDto,
+  CreateAssignmentRequestsDto,
   CreateDriver,
 } from './dispatch.entity';
 import { RpcException } from '@nestjs/microservices';
@@ -29,6 +31,7 @@ import { handleCatch } from '../../common/handleCatch';
 import { AppLogger } from '../../common/app-logger.service';
 import { podUploader } from '../../common/cloudinary/cloudinary.storage';
 import { v2 as cloudinary } from 'cloudinary';
+import { NotificationPublisher } from '../../common/notification-publisher';
 
 @Injectable()
 export class DispatchUseCasesImpl implements DispatchUseCases {
@@ -36,6 +39,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     private readonly dispatchRepo: DispatchRepository,
     private readonly qrCodeService: PrismaService,
     private readonly logger: AppLogger,
+    private readonly notificationPublisher: NotificationPublisher,
   ) {
     this.logger.setContext('FulfillmentService', 'DispatchUseCaseImpl');
   }
@@ -161,7 +165,10 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       this.logger.log(
         `Delivered and on going dispatches found ${dispatches.length} for user ${userId}`,
       );
-      return IResponse.success(`Delivered and on going dispatches found for officer ${userId}`,dispatches);
+      return IResponse.success(
+        `Delivered and on going dispatches found for officer ${userId}`,
+        dispatches,
+      );
     } catch (error) {
       this.logger.error(
         `Failed to get delivered and on going dispatches for user ${userId}: ${error.message}`,
@@ -1639,6 +1646,170 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     } catch (error) {
       this.logger.error(`Find driver failed: ${error.message}`, error.stack);
       throw new RpcException(error.message);
+    }
+  }
+
+  /**
+   * Retry helper for notifications
+   */
+  private async retryNotification(
+    event: string,
+    payload: any,
+    attempts = 3,
+    delayMs = 200,
+  ): Promise<void> {
+    for (let i = 0; i < attempts; i++) {
+      try {
+        await this.notificationPublisher.publish(event, payload);
+        return;
+      } catch (err) {
+        this.logger.warn(
+          `Notification attempt ${i + 1} failed for event ${event}: ${err.message}`,
+        );
+        if (i < attempts - 1) {
+          await new Promise((res) => setTimeout(res, delayMs * Math.pow(2, i))); // exponential backoff
+        } else {
+          this.logger.error(
+            `Notification failed after ${attempts} attempts for event ${event}`,
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * Create assignment requests for multiple drivers
+   */
+  async createDriverAssignmentRequests(
+    data: CreateAssignmentRequestsDto,
+    userId: string,
+  ) {
+    this.logger.log(
+      `Creating assignment requests for order ${data.orderId} → drivers: [${data.driverIds.join(', ')}] and initiated by user ${userId}`,
+    );
+
+    try {
+      // Upsert all requests in parallel
+      const tasks = data.driverIds.map((driverId) =>
+        this.dispatchRepo.upsertAssignmentRequest({
+          orderId: data.orderId,
+          driverId,
+          status: 'PENDING',
+          sentAt: new Date(),
+          expiresAt: data.expiresAt,
+        }),
+      );
+
+      await Promise.all(tasks);
+
+      // Publish notifications in parallel with retry
+      await Promise.all(
+        data.driverIds.map((driverId) =>
+          this.retryNotification('assignment.requested', {
+            type: 'assignment.requested',
+            userId: driverId,
+            message: `You have a new order assignment request.`,
+            payload: { orderId: data.orderId },
+          }),
+        ),
+      );
+      this.logger.log(
+        `Successfully created ${data.driverIds.length} assignment requests for order ${data.orderId}`,
+      );
+
+      return { success: true };
+    } catch (error) {
+      this.logger.error(
+        `Failed creating assignment requests for order ${data.orderId}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Driver accepts the assignment.
+   * Concurrency-safe, atomic, conflict-proof
+   */
+  async driverAccept(orderId: string, driverId: string) {
+    this.logger.log(`Driver ${driverId} attempting to accept order ${orderId}`);
+
+    try {
+      const result = await this.dispatchRepo.assignOrderAtomic(
+        orderId,
+        driverId,
+      );
+      if (result.count === 0) {
+        this.logger.warn(
+          `Order ${orderId} already assigned — driver ${driverId} rejected`,
+        );
+        return { assigned: false, reason: 'already_assigned' };
+      }
+
+      // Mark winner & expire others in parallel
+      await Promise.all([
+        this.dispatchRepo.markAccepted(orderId, driverId),
+        this.dispatchRepo.expireOtherDrivers(orderId, driverId),
+      ]);
+
+      // Fetch losers
+      const losers = await this.dispatchRepo.findExcludedDrivers(
+        orderId,
+        driverId,
+      );
+
+      // Fire notifications asynchronously, with retry
+      (async () => {
+        try {
+          await this.retryNotification('assignment.accepted', {
+            type: 'assignment.accepted',
+            userId: driverId,
+            payload: { orderId },
+            message: `You have been assigned to the order : ${orderId}.`,
+          });
+
+          for (const loserId of losers) {
+            await this.retryNotification('assignment.expired', {
+              type: 'assignment.expired',
+              userId: loserId,
+              payload: {orderId},
+              message: `You have been expired for order ${orderId}.`,
+            });
+          }
+        } catch (notifyError) {
+          this.logger.error('Notification failed', notifyError);
+        }
+      })();
+
+      return { assigned: true };
+    } catch (error) {
+      this.logger.error(
+        `Driver ${driverId} failed to accept order ${orderId}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  async expire(orderId: string) {
+    this.logger.log(
+      `Expiring pending assignment requests for order ${orderId}`,
+    );
+
+    try {
+      const result = await this.dispatchRepo.expirePendingRequests(orderId);
+
+      this.logger.log(
+        `Expired ${result.count} pending requests for order ${orderId}`,
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to expire requests for order ${orderId}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
     }
   }
 }

@@ -10,6 +10,7 @@ import { MapsService } from '../../fulfillment/maps/maps.service';
 
 @Injectable()
 export class BranchUseCaseImpl implements BranchUseCases {
+
   constructor(
     private readonly branchRepository: BranchRepository,
     private readonly logger: AppLogger,
@@ -238,6 +239,21 @@ export class BranchUseCaseImpl implements BranchUseCases {
       throw new RpcException({
         code: error.code || 500,
         message: 'Failed to delete branch',
+      });
+    }
+  }
+
+  async findAllBranchFree(query: ListQueryDto) {
+    try {
+      this.logger.log(
+        `🔍 Fetching all branches with query: ${JSON.stringify(query)}`,
+      );
+      return await this.branchRepository.findAllBranchFree(query);
+    } catch (error) {
+      this.logger.error(`❌ Error fetching branches: ${error.message}`);
+      throw new RpcException({
+        code: error.code || 500,
+        message: 'Failed to fetch branches',
       });
     }
   }

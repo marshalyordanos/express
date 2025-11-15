@@ -53,18 +53,14 @@ let DriverLocationService = DriverLocationService_1 = class DriverLocationServic
                 EX: this.STATUS_PERSIST_MINUTES * 60,
             });
             await pipeline.exec();
-            if (this.onlineEmitter) {
+            if (this.onlineEmitter)
                 this.onlineEmitter(data.driverId, 'ONLINE');
-            }
             if (!isOnlineAlready) {
                 await this.prisma.driver.update({
                     where: { userId: data.driverId },
-                    data: {
-                        status: 'ONLINE',
-                        updatedAt: new Date(),
-                    },
+                    data: { status: 'ONLINE', updatedAt: new Date() },
                 });
-                this.logger.log(`Driver ${data.driverId} came ONLINE — recorded immediately in DB.`);
+                this.logger.log(`Driver ${data.driverId} came ONLINE — saved in DB.`);
             }
             this.websocketEventService.emitDriverLocationToSubscribers({
                 driverId: data.driverId,
@@ -81,7 +77,217 @@ let DriverLocationService = DriverLocationService_1 = class DriverLocationServic
     setOnlineEmitter(fn) {
         this.onlineEmitter = fn;
     }
-    async findNearbyDrivers(lon, lat, radiusKm) {
+    async findNearbyDrivers(orderIds, radiusKm) {
+        const client = this.redisService.getClient();
+        const orders = await this.prisma.order.findMany({
+            where: { id: { in: orderIds } },
+            select: {
+                id: true,
+                weight: true,
+                serviceType: true,
+                fulfillmentType: true,
+                shippingScope: true,
+                pickupAddress: { select: { lat: true, long: true } },
+                deliveryAddress: { select: { lat: true, long: true } },
+                pickupDate: true,
+                deliveryDate: true,
+            },
+        });
+        if (!orders.length)
+            return [];
+        console.log('Orders fetched :::: ', orders);
+        const batchWeightKg = orders.reduce((sum, o) => sum + (o.weight || 0), 0);
+        console.log('Orders weight kg ::: ', batchWeightKg);
+        const coordsForDistance = [];
+        for (const o of orders) {
+            const pickup = o.pickupAddress
+                ? { lat: Number(o.pickupAddress.lat), lon: Number(o.pickupAddress.long) }
+                : null;
+            const delivery = o.deliveryAddress
+                ? { lat: Number(o.deliveryAddress.lat), lon: Number(o.deliveryAddress.long) }
+                : null;
+            if (o.fulfillmentType === 'PICKUP') {
+                if (pickup)
+                    coordsForDistance.push(pickup);
+                if (o.shippingScope === 'TOWN' && delivery)
+                    coordsForDistance.push(delivery);
+            }
+            else if (o.fulfillmentType === 'DROPOFF') {
+                if (delivery)
+                    coordsForDistance.push(delivery);
+            }
+        }
+        if (!coordsForDistance.length)
+            coordsForDistance.push({ lat: 0, lon: 0 });
+        const centroid = (points) => {
+            const sum = points.reduce((acc, p) => ((acc.lat += p.lat), (acc.lon += p.lon), acc), { lat: 0, lon: 0 });
+            return { lat: sum.lat / points.length, lon: sum.lon / points.length };
+        };
+        const target = centroid(coordsForDistance);
+        console.log('target order :: ', target);
+        const sameDayOrders = orders.filter((o) => o.serviceType === 'SAME_DAY');
+        let earliestScheduledTimeMs = null;
+        if (sameDayOrders.length) {
+            for (const o of sameDayOrders) {
+                const times = [];
+                if (o.pickupDate)
+                    times.push(o.pickupDate);
+                if (o.deliveryDate)
+                    times.push(o.deliveryDate);
+                const validTs = times.filter(Boolean);
+                if (!validTs.length)
+                    continue;
+                const minTime = Math.min(...validTs.map((d) => d.getTime()));
+                earliestScheduledTimeMs =
+                    earliestScheduledTimeMs == null
+                        ? minTime
+                        : Math.min(earliestScheduledTimeMs, minTime);
+            }
+        }
+        console.log('Earliest schedule time ms :: ', earliestScheduledTimeMs);
+        const rawDrivers = (await client.sendCommand([
+            'GEOSEARCH',
+            this.GEO_KEY,
+            'FROMLONLAT',
+            target.lon.toString(),
+            target.lat.toString(),
+            'BYRADIUS',
+            radiusKm.toString(),
+            'km',
+            'WITHDIST',
+            'WITHCOORD',
+        ]));
+        if (!rawDrivers?.length)
+            return [];
+        const nearbyMap = new Map();
+        const userIds = [];
+        for (const d of rawDrivers) {
+            const member = d[0];
+            const distanceKm = parseFloat(d[1]);
+            const coord = d[2];
+            nearbyMap.set(member, { distanceKm, lon: parseFloat(coord[0]), lat: parseFloat(coord[1]) });
+            userIds.push(member);
+        }
+        const driverRecords = await this.prisma.driver.findMany({
+            where: { userId: { in: userIds }, status: 'ONLINE' },
+            include: {
+                user: {
+                    include: {
+                        pickupOrders: {
+                            where: { status: { in: ['ASSIGNED', 'OUT_FOR_DELIVERY', 'PICKED_UP', 'IN_TRANSIT'] } },
+                            select: { id: true, weight: true },
+                        },
+                        deliveryOrders: {
+                            where: { status: { in: ['ASSIGNED', 'OUT_FOR_DELIVERY', 'PICKED_UP', 'IN_TRANSIT'] } },
+                            select: { id: true, weight: true },
+                        },
+                    },
+                },
+                vehicles: true,
+            },
+        });
+        const results = [];
+        const nowMs = Date.now();
+        const WEIGHTS = { distance: 0.35, capacity: 0.25, eta: 0.2, freshness: 0.1, online: 0.1 };
+        const DEFAULT_TRAVEL_BUFFER_MIN = 5;
+        for (const drv of driverRecords) {
+            const geo = nearbyMap.get(drv.userId);
+            if (!geo)
+                continue;
+            const pickupLoad = (drv.user?.pickupOrders || []).reduce((s, o) => s + (o.weight || 0), 0);
+            const deliveryLoad = (drv.user?.deliveryOrders || []).reduce((s, o) => s + (o.weight || 0), 0);
+            const currentLoadKg = pickupLoad + deliveryLoad;
+            const vehicle = drv.vehicles?.[0];
+            if (!vehicle?.maxLoad)
+                continue;
+            const vehicleMaxLoadKg = Number(vehicle.maxLoad);
+            if (currentLoadKg + batchWeightKg > vehicleMaxLoadKg)
+                continue;
+            const routeFinishKey = `driver:${drv.userId}:routeFinish`;
+            let routeFinishMs = 0;
+            try {
+                const routeFinishStr = (await client.get(routeFinishKey));
+                if (routeFinishStr)
+                    routeFinishMs = new Date(routeFinishStr).getTime();
+            }
+            catch { }
+            if (earliestScheduledTimeMs != null &&
+                routeFinishMs > earliestScheduledTimeMs - DEFAULT_TRAVEL_BUFFER_MIN * 60000)
+                continue;
+            let distanceScore = 0;
+            for (const o of orders) {
+                const pickup = o.pickupAddress ? { lat: Number(o.pickupAddress.lat), lon: Number(o.pickupAddress.long) } : null;
+                const delivery = o.deliveryAddress ? { lat: Number(o.deliveryAddress.lat), lon: Number(o.deliveryAddress.long) } : null;
+                let dist = 0;
+                if (o.fulfillmentType === 'PICKUP') {
+                    if (pickup && delivery && o.shippingScope === 'TOWN')
+                        dist = Math.min(this.calcDistanceKm(geo.lat, geo.lon, pickup.lat, pickup.lon), this.calcDistanceKm(geo.lat, geo.lon, delivery.lat, delivery.lon));
+                    else if (pickup)
+                        dist = this.calcDistanceKm(geo.lat, geo.lon, pickup.lat, pickup.lon);
+                    else if (delivery)
+                        dist = this.calcDistanceKm(geo.lat, geo.lon, delivery.lat, delivery.lon);
+                }
+                else if (o.fulfillmentType === 'DROPOFF') {
+                    if (delivery)
+                        dist = this.calcDistanceKm(geo.lat, geo.lon, delivery.lat, delivery.lon);
+                }
+                distanceScore += 1 / (dist + 0.1);
+            }
+            distanceScore /= orders.length;
+            const capacityScore = 1 - (currentLoadKg + batchWeightKg) / vehicleMaxLoadKg;
+            let etaScore = 1;
+            if (earliestScheduledTimeMs) {
+                const timeUntilEarliestMin = Math.max(0, (earliestScheduledTimeMs - nowMs) / 60000);
+                const availableInMin = Math.max(0, (routeFinishMs - nowMs) / 60000);
+                etaScore =
+                    availableInMin <= 0 || availableInMin <= timeUntilEarliestMin
+                        ? 1
+                        : Math.max(0, (timeUntilEarliestMin - availableInMin) / Math.max(1, timeUntilEarliestMin));
+            }
+            const lastUpdatedScore = drv.updatedAt && nowMs - drv.updatedAt.getTime() < 5 * 60 * 1000 ? 1 : 0.5;
+            const onlineScore = drv.status === 'ONLINE' ? 1 : 0;
+            const finalScore = distanceScore * WEIGHTS.distance +
+                capacityScore * WEIGHTS.capacity +
+                etaScore * WEIGHTS.eta +
+                lastUpdatedScore * WEIGHTS.freshness +
+                onlineScore * WEIGHTS.online;
+            const suggestedForOrders = orders
+                .filter((o) => {
+                const pickup = o.pickupAddress ? { lat: Number(o.pickupAddress.lat), lon: Number(o.pickupAddress.long) } : null;
+                const delivery = o.deliveryAddress ? { lat: Number(o.deliveryAddress.lat), lon: Number(o.deliveryAddress.long) } : null;
+                let dist = 0;
+                if (o.fulfillmentType === 'PICKUP') {
+                    if (pickup && delivery && o.shippingScope === 'TOWN')
+                        dist = Math.min(this.calcDistanceKm(geo.lat, geo.lon, pickup.lat, pickup.lon), this.calcDistanceKm(geo.lat, geo.lon, delivery.lat, delivery.lon));
+                    else if (pickup)
+                        dist = this.calcDistanceKm(geo.lat, geo.lon, pickup.lat, pickup.lon);
+                    else if (delivery)
+                        dist = this.calcDistanceKm(geo.lat, geo.lon, delivery.lat, delivery.lon);
+                }
+                else if (o.fulfillmentType === 'DROPOFF') {
+                    if (delivery)
+                        dist = this.calcDistanceKm(geo.lat, geo.lon, delivery.lat, delivery.lon);
+                }
+                return dist <= radiusKm;
+            })
+                .map((o) => o.id);
+            results.push({
+                driverId: drv.id,
+                userId: drv.userId,
+                distanceKm: geo.distanceKm,
+                currentLat: geo.lat,
+                currentLon: geo.lon,
+                activeOrders: (drv.user?.pickupOrders?.length || 0) + (drv.user?.deliveryOrders?.length || 0),
+                lastUpdated: drv.updatedAt,
+                score: finalScore,
+                suggestedForOrders,
+            });
+        }
+        results.sort((a, b) => b.score - a.score);
+        results.forEach((r, idx) => (r.rank = idx + 1));
+        return results;
+    }
+    async findNearbyExternalDrivers(lon, lat, radiusKm) {
         const client = this.redisService.getClient();
         const rawDrivers = (await client.sendCommand([
             'GEOSEARCH',
@@ -95,69 +301,36 @@ let DriverLocationService = DriverLocationService_1 = class DriverLocationServic
             'WITHDIST',
             'WITHCOORD',
         ]));
-        if (!Array.isArray(rawDrivers) || rawDrivers.length === 0)
+        if (!rawDrivers?.length)
             return [];
-        const drivers = rawDrivers.map((d) => ({
-            driverId: d[0],
-            distanceKm: parseFloat(d[1]),
-            coordinates: {
-                lon: parseFloat(d[2][0]),
-                lat: parseFloat(d[2][1]),
-            },
-        }));
-        const driverRecords = await this.prisma.driver.findMany({
-            where: {
-                userId: { in: drivers.map((d) => d.driverId) },
-                status: 'ONLINE',
-            },
-            include: {
-                user: {
-                    include: {
-                        pickupOrders: {
-                            where: { status: { in: ['ASSIGNED', 'OUT_FOR_DELIVERY'] } },
-                            select: { id: true },
-                        },
-                        deliveryOrders: {
-                            where: { status: { in: ['ASSIGNED', 'OUT_FOR_DELIVERY'] } },
-                            select: { id: true },
-                        },
-                    },
+        const drivers = [];
+        for (const d of rawDrivers) {
+            const driverId = d[0];
+            const isOnline = await client.exists(`driver:${driverId}:online`);
+            if (!isOnline)
+                continue;
+            const distanceKm = parseFloat(d[1]);
+            const coord = d[2];
+            drivers.push({
+                driverId,
+                distanceKm,
+                coordinates: {
+                    lon: parseFloat(coord[0]),
+                    lat: parseFloat(coord[1]),
                 },
-            },
-        });
-        const rankedDrivers = driverRecords.map((d) => {
-            const geo = drivers.find((g) => g.driverId === d.userId);
-            const activeOrders = (d.user?.pickupOrders?.length || 0) +
-                (d.user?.deliveryOrders?.length || 0);
-            const distanceScore = 1 / (geo.distanceKm + 0.1);
-            const workloadScore = 1 / (activeOrders + 1);
-            const lastUpdatedScore = d.updatedAt &&
-                new Date().getTime() - d.updatedAt.getTime() < 5 * 60 * 1000
-                ? 1
-                : 0.5;
-            return {
-                driverId: d.id,
-                userId: d.userId,
-                distanceKm: geo.distanceKm,
-                currentLat: geo.coordinates.lat,
-                currentLon: geo.coordinates.lon,
-                activeOrders,
-                lastUpdated: d.updatedAt,
-                score: distanceScore * 0.6 + workloadScore * 0.3 + lastUpdatedScore * 0.1,
-            };
-        });
-        return rankedDrivers
-            .sort((a, b) => b.score - a.score)
-            .map((d) => ({
-            driverId: d.driverId,
-            userId: d.userId,
-            distanceKm: d.distanceKm,
-            currentLat: d.currentLat,
-            currentLon: d.currentLon,
-            activeOrders: d.activeOrders,
-            lastUpdated: d.lastUpdated,
-            score: d.score,
-        }));
+            });
+        }
+        return drivers;
+    }
+    calcDistanceKm(lat1, lon1, lat2, lon2) {
+        const toRad = (deg) => (deg * Math.PI) / 180;
+        const R = 6371;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     }
     async syncToDatabase() {
         const client = this.redisService.getClient();
@@ -175,22 +348,15 @@ let DriverLocationService = DriverLocationService_1 = class DriverLocationServic
                 where: { userId },
                 select: { id: true, updatedAt: true, status: true },
             });
-            if (!driver) {
-                console.warn(`⚠️ No driver found for userId: ${userId}`);
+            if (!driver)
                 continue;
-            }
             const now = new Date();
             if (!driver.updatedAt ||
                 (now.getTime() - driver.updatedAt.getTime()) / 1000 >
                     this.STATUS_PERSIST_MINUTES * 60) {
                 await this.prisma.driver.update({
                     where: { userId },
-                    data: {
-                        currentLat: lat,
-                        currentLon: lon,
-                        updatedAt: now,
-                        status,
-                    },
+                    data: { currentLat: lat, currentLon: lon, updatedAt: now, status },
                 });
             }
             const lastLog = await this.prisma.driverLocationLog.findFirst({
@@ -222,7 +388,7 @@ let DriverLocationService = DriverLocationService_1 = class DriverLocationServic
                 if (!isOnline)
                     offlineDriverIds.push(userId);
             }
-            if (offlineDriverIds.length === 0)
+            if (!offlineDriverIds.length)
                 return;
             await this.prisma.driver.updateMany({
                 where: { userId: { in: offlineDriverIds } },
@@ -232,7 +398,6 @@ let DriverLocationService = DriverLocationService_1 = class DriverLocationServic
                 if (this.onlineEmitter)
                     this.onlineEmitter(driverId, 'OFFLINE');
             });
-            console.log('Emited offline envents : ');
             this.logger.log(`✅ Marked ${offlineDriverIds.length} drivers OFFLINE`);
         }
         catch (err) {
@@ -246,9 +411,8 @@ let DriverLocationService = DriverLocationService_1 = class DriverLocationServic
             where: { userId: driverId },
             data: { status: 'OFFLINE', updatedAt: new Date() },
         });
-        if (this.onlineEmitter) {
+        if (this.onlineEmitter)
             this.onlineEmitter(driverId, 'OFFLINE');
-        }
     }
 };
 exports.DriverLocationService = DriverLocationService;

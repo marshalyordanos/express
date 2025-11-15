@@ -1,5 +1,5 @@
 import { DispatchUseCasesImpl } from './dispatch.usecase.impl';
-import { AssignDriverForPickup, AssignOfficerForBatch, BatchDispatchDto, BatchHandoverDto, CompleteDeliveryDto, ConfirmBatchHandoverDto, CreateDriver, GenerateQrDto, LastMileDeliveryDto, OrderScanTokenDto } from './dispatch.entity';
+import { AssignDriverForPickup, AssignOfficerForBatch, BatchDispatchDto, BatchHandoverDto, CompleteDeliveryDto, ConfirmBatchHandoverDto, CreateAssignmentRequestsDto, CreateDriver, GenerateQrDto, LastMileDeliveryDto, OrderScanTokenDto } from './dispatch.entity';
 import { IResponse } from '../../common/types';
 import { ListQueryDto } from '../../common/query/query.dto';
 export declare class DispatchMessageController {
@@ -79,8 +79,13 @@ export declare class DispatchMessageController {
         createdBy: string | null;
         userId: string;
         vehicleId: string | null;
+        availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
         licenseNumber: string | null;
         licenseExpiry: Date | null;
+        licenseIssue: Date | null;
+        frontImageUrl: string | null;
+        backImageUrl: string | null;
+        verifiedByOCR: boolean;
         currentLat: number | null;
         currentLon: number | null;
     }>>;
@@ -108,8 +113,13 @@ export declare class DispatchMessageController {
             createdBy: string | null;
             userId: string;
             vehicleId: string | null;
+            availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;
             licenseExpiry: Date | null;
+            licenseIssue: Date | null;
+            frontImageUrl: string | null;
+            backImageUrl: string | null;
+            verifiedByOCR: boolean;
             currentLat: number | null;
             currentLon: number | null;
         })[];
@@ -119,5 +129,19 @@ export declare class DispatchMessageController {
             pageSize: number;
             totalPages: number;
         };
+    }>>;
+    createDriverAssignmentRequests(payload: {
+        data: CreateAssignmentRequestsDto;
+        user: any;
+    }): Promise<IResponse<unknown>>;
+    driverAccept(payload: {
+        orderId: string;
+        user: any;
+    }): Promise<IResponse<{
+        assigned: boolean;
+        reason: string;
+    } | {
+        assigned: boolean;
+        reason?: undefined;
     }>>;
 }

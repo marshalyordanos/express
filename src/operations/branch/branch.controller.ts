@@ -10,6 +10,7 @@ import { PermissionActions } from '../../contracts/permission-actions.enum';
 import { CheckPermission } from '../../common/decorator/check-permission.decorator';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
+import { Public } from '../../common/decorator/public.decorator';
 
 @Controller()
 export class BranchMessageController {
@@ -80,6 +81,17 @@ export class BranchMessageController {
   @MessagePattern(PATTERNS.BRANCH_FIND_ALL)
   async findAllBranches(@Payload() payload: { query: ListQueryDto }) {
     const branches = await this.usecases.findAllBranch(payload.query);
+    return IResponse.success(
+      'Branches fetched successfullyy',
+      branches.branches,
+      branches.pagination,
+    );
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.BRANCH_FIND_ALL_FREE)
+  async findAllBranchFree(@Payload() payload: { query: ListQueryDto }) {
+    const branches = await this.usecases.findAllBranchFree(payload.query);
     return IResponse.success(
       'Branches fetched successfullyy',
       branches.branches,

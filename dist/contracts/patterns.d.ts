@@ -49,6 +49,7 @@ export declare const PATTERNS: {
     readonly BRANCH_DELETE: "branch.delete";
     readonly BRANCH_ASSIGN_MANAGER: "branch.assignManager";
     readonly BRANCH_REVOKE_MANAGER: "branch.revokeManager";
+    readonly BRANCH_FIND_ALL_FREE: "branch.findAllFree";
     readonly ROLE_CREATE: "role.create";
     readonly ROLE_FIND_BY_ID_OR_NAME: "role.findByIdOrName";
     readonly ROLE_FIND_ALL: "role.findAll";
@@ -149,10 +150,13 @@ export declare const PATTERNS: {
     readonly DISPATCH_CREATE_DRIVER: "dispatch.createDriver";
     readonly DISPATCH_FIND_DRIVER: "dispatch.findDriver";
     readonly DISPATCH_FIND_DELIVERED_AND_ONGOING: "dispatch.findDeliveredAndOngoing";
+    readonly DISPATCH_CREATE_ASSIGNEMENT_REQUEST: "dispatch.createAssignementRequest";
+    readonly DISPATCH_ACCEPT_ASSIGNEMENT_REQUEST: "dispatch.acceptAssignementRequest";
     readonly MAP_GET_ROUTE: "map.getRoute";
     readonly MAP_MARK_STOP_VISITED: "map.markStopVisited";
     readonly MAP_GET_CURRENT_ROUTE_STATUS: "map.getCurrentRouteStatus";
     readonly MAP_NEARBY_DRIVERS: "map.nearbyDrivers";
+    readonly MAP_EXTERNAL_NEARBY_DRIVERS: "map.externalNearbyDrivers";
     readonly PRICE_TARIFF_CREATE: "price.tariff.create";
     readonly PRICE_TARIFF_FIND_ALL: "price.tariff.findAll";
     readonly PRICE_TARIFF_FIND_BY_ID: "price.tariff.findById";

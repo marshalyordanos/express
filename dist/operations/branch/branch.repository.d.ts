@@ -127,4 +127,17 @@ export declare class BranchRepository {
     }>;
     createBranch(data: BranchCreateDto, address: any, userId: string): Promise<Branch>;
     findBranchById(id: string): Promise<Partial<Branch> | null>;
+    findAllBranchFree(payload: ListQueryDto): Promise<{
+        branches: {
+            name: string;
+            id: string;
+            location: string;
+        }[];
+        pagination: {
+            total: number;
+            page: number;
+            pageSize: number;
+            totalPages: number;
+        };
+    }>;
 }

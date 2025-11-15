@@ -72,3 +72,16 @@ export declare class GenerateQrDto {
     serviceType?: ServiceType;
     shippingScope?: ShippingScope;
 }
+export declare class AssignmentRequestUpsertDto {
+    orderId: string;
+    driverId: string;
+    status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+    sentAt?: Date;
+    expiresAt?: Date | null;
+    acceptedAt?: Date | null;
+}
+export declare class CreateAssignmentRequestsDto {
+    orderId: string;
+    driverIds: string[];
+    expiresAt?: Date | null;
+}

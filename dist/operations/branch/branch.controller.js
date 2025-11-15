@@ -22,6 +22,7 @@ const permission_guard_1 = require("../../common/permission.guard");
 const permission_actions_enum_1 = require("../../contracts/permission-actions.enum");
 const check_permission_decorator_1 = require("../../common/decorator/check-permission.decorator");
 const rate_limit_guard_1 = require("../../common/rate-limit.guard");
+const public_decorator_1 = require("../../common/decorator/public.decorator");
 let BranchMessageController = class BranchMessageController {
     constructor(usecases) {
         this.usecases = usecases;
@@ -53,6 +54,10 @@ let BranchMessageController = class BranchMessageController {
     }
     async findAllBranches(payload) {
         const branches = await this.usecases.findAllBranch(payload.query);
+        return types_1.IResponse.success('Branches fetched successfullyy', branches.branches, branches.pagination);
+    }
+    async findAllBranchFree(payload) {
+        const branches = await this.usecases.findAllBranchFree(payload.query);
         return types_1.IResponse.success('Branches fetched successfullyy', branches.branches, branches.pagination);
     }
 };
@@ -120,6 +125,14 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], BranchMessageController.prototype, "findAllBranches", null);
+__decorate([
+    (0, public_decorator_1.Public)(),
+    (0, microservices_1.MessagePattern)(contracts_1.PATTERNS.BRANCH_FIND_ALL_FREE),
+    __param(0, (0, microservices_1.Payload)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], BranchMessageController.prototype, "findAllBranchFree", null);
 exports.BranchMessageController = BranchMessageController = __decorate([
     (0, common_1.Controller)(),
     __metadata("design:paramtypes", [branch_useCase_impl_1.BranchUseCaseImpl])

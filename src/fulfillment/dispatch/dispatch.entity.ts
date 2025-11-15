@@ -38,13 +38,13 @@ export class BatchDispatchDto {
   @IsNotEmpty()
   @IsEnum(ServiceType)
   serviceType: ServiceType; // ServiceType (SAME_DAY, EXPRESS, etc.)
-  
+
   @IsOptional()
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
   @Transform(({ value }) => value.map((v: string) => v.trim()))
-    category: string[]; // IDs of batches being handed over
+  category: string[]; // IDs of batches being handed over
 
   @IsOptional()
   @IsBoolean()
@@ -62,7 +62,7 @@ export class BatchDispatchDto {
 
   @IsOptional()
   @IsString()
-   @Transform(({ value }) => escape(value?.trim()))
+  @Transform(({ value }) => escape(value?.trim()))
   notes?: string;
 
   @IsOptional()
@@ -166,17 +166,17 @@ export class BatchHandoverDto {
 
   @IsOptional()
   @IsString()
-   @Transform(({ value }) => escape(value?.trim()))
+  @Transform(({ value }) => escape(value?.trim()))
   reference?: string; // optional receipt number, QR code, or photo URL
 
   @IsOptional()
   @IsString()
-   @Transform(({ value }) => escape(value?.trim()))
+  @Transform(({ value }) => escape(value?.trim()))
   notes?: string; // additional notes or comments
 
   @IsOptional()
   @IsString()
-   @Transform(({ value }) => escape(value?.trim()))
+  @Transform(({ value }) => escape(value?.trim()))
   currentLocation?: string; // additional notes or comments
 }
 
@@ -200,17 +200,17 @@ export class ConfirmBatchHandoverDto {
 
   @IsString()
   @IsOptional()
-   @Transform(({ value }) => escape(value?.trim()))
+  @Transform(({ value }) => escape(value?.trim()))
   method?: string;
 
   @IsString()
   @IsOptional()
-   @Transform(({ value }) => escape(value?.trim()))
+  @Transform(({ value }) => escape(value?.trim()))
   reference?: string;
 
   @IsString()
   @IsOptional()
-   @Transform(({ value }) => escape(value?.trim()))
+  @Transform(({ value }) => escape(value?.trim()))
   notes?: string;
 }
 
@@ -227,10 +227,10 @@ export class CompleteDeliveryDto {
 
   @IsString()
   @IsOptional()
-   @Transform(({ value }) => escape(value?.trim()))
+  @Transform(({ value }) => escape(value?.trim()))
   notes?: string;
 
- @IsArray()
+  @IsArray()
   @IsOptional()
   podImages?: {
     url: string;
@@ -253,7 +253,7 @@ export class LastMileDeliveryDto {
 
   @IsString()
   @IsOptional()
-   @Transform(({ value }) => escape(value?.trim()))
+  @Transform(({ value }) => escape(value?.trim()))
   notes?: string;
 }
 
@@ -281,4 +281,29 @@ export class GenerateQrDto {
   @IsOptional()
   @IsEnum(ShippingScope)
   shippingScope?: ShippingScope;
+}
+
+export class AssignmentRequestUpsertDto {
+  orderId: string;
+  driverId: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+  sentAt?: Date;
+  expiresAt?: Date | null;
+  acceptedAt?: Date | null;
+}
+
+export class CreateAssignmentRequestsDto {
+  @IsNotEmpty()
+  @IsString()
+  orderId: string;
+
+  @IsNotEmpty()
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  @Transform(({ value }) => value.map((v: string) => v.trim()))
+  driverIds: string[]; // multiple drivers
+
+  @IsOptional()
+  expiresAt?: Date | null;
 }

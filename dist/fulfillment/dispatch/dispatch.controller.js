@@ -108,6 +108,16 @@ let DispatchMessageController = class DispatchMessageController {
         const result = await this.usecases.findDriver(payload.query);
         return types_1.IResponse.success('Officer created successfully', result);
     }
+    async createDriverAssignmentRequests(payload) {
+        const userId = payload.user?.sub;
+        await this.usecases.createDriverAssignmentRequests(payload.data, userId);
+        return types_1.IResponse.success(`Driver assignment requests created successfully for order ${payload.data.orderId} and notification sent to drivers`);
+    }
+    async driverAccept(payload) {
+        const userId = payload.user?.sub;
+        const result = await this.usecases.driverAccept(payload.orderId, userId);
+        return types_1.IResponse.success('Successfully driver is assigned to order', result);
+    }
 };
 exports.DispatchMessageController = DispatchMessageController;
 __decorate([
@@ -281,6 +291,24 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], DispatchMessageController.prototype, "findDriver", null);
+__decorate([
+    (0, common_1.UseGuards)(permission_guard_1.PermissionGuard, rate_limit_guard_1.RateLimitGuard),
+    (0, check_permission_decorator_1.CheckPermission)('Dispatch', permission_actions_enum_1.PermissionActions.CREATE),
+    (0, microservices_1.MessagePattern)(contracts_1.PATTERNS.DISPATCH_CREATE_ASSIGNEMENT_REQUEST),
+    __param(0, (0, microservices_1.Payload)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], DispatchMessageController.prototype, "createDriverAssignmentRequests", null);
+__decorate([
+    (0, common_1.UseGuards)(permission_guard_1.PermissionGuard, rate_limit_guard_1.RateLimitGuard),
+    (0, check_permission_decorator_1.CheckPermission)('Dispatch', permission_actions_enum_1.PermissionActions.UPDATE),
+    (0, microservices_1.MessagePattern)(contracts_1.PATTERNS.DISPATCH_ACCEPT_ASSIGNEMENT_REQUEST),
+    __param(0, (0, microservices_1.Payload)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], DispatchMessageController.prototype, "driverAccept", null);
 exports.DispatchMessageController = DispatchMessageController = __decorate([
     (0, common_1.Controller)(),
     __metadata("design:paramtypes", [dispatch_usecase_impl_1.DispatchUseCasesImpl])

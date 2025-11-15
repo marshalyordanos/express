@@ -44,8 +44,13 @@ let MapMessageController = class MapMessageController {
     }
     async getNearbyDrivers(payoad) {
         const userId = payoad.user?.sub;
-        const result = await this.locationService.findNearbyDrivers(payoad.lon, payoad.lat, payoad.radius);
+        const result = await this.locationService.findNearbyDrivers(payoad.orderIds, payoad.radius);
         return types_1.IResponse.success('Nearby Drivers Fetched successfully', result);
+    }
+    async findNearbyExternalDrivers(payoad) {
+        const userId = payoad.user?.sub;
+        const result = await this.locationService.findNearbyExternalDrivers(payoad.lon, payoad.lat, payoad.radius);
+        return types_1.IResponse.success('External Nearby Drivers Fetched successfully', result);
     }
 };
 exports.MapMessageController = MapMessageController;
@@ -85,6 +90,15 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], MapMessageController.prototype, "getNearbyDrivers", null);
+__decorate([
+    (0, common_1.UseGuards)(permission_guard_1.PermissionGuard, rate_limit_guard_1.RateLimitGuard),
+    (0, check_permission_decorator_1.CheckPermission)('Maps', permission_actions_enum_1.PermissionActions.READ),
+    (0, microservices_1.MessagePattern)(contracts_1.PATTERNS.MAP_EXTERNAL_NEARBY_DRIVERS),
+    __param(0, (0, microservices_1.Payload)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], MapMessageController.prototype, "findNearbyExternalDrivers", null);
 exports.MapMessageController = MapMessageController = __decorate([
     (0, common_1.Controller)(),
     __metadata("design:paramtypes", [navigation_service_1.RouteCacheService,

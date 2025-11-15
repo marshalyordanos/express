@@ -5,6 +5,7 @@ import { ListQueryDto } from '../../common/query/query.dto';
 export declare class DispatchRepository {
     private prisma;
     constructor(prisma: PrismaService);
+    findExcludedDrivers(orderId: string, winnerDriverId: string): Promise<string[]>;
     assignDriverForPickup(driverId: string, orderId: string, userId: string): Promise<{
         id: string;
         trackingCode: string;
@@ -34,8 +35,13 @@ export declare class DispatchRepository {
         createdBy: string | null;
         userId: string;
         vehicleId: string | null;
+        availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
         licenseNumber: string | null;
         licenseExpiry: Date | null;
+        licenseIssue: Date | null;
+        frontImageUrl: string | null;
+        backImageUrl: string | null;
+        verifiedByOCR: boolean;
         currentLat: number | null;
         currentLon: number | null;
     }>;
@@ -1294,8 +1300,13 @@ export declare class DispatchRepository {
         createdBy: string | null;
         userId: string;
         vehicleId: string | null;
+        availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
         licenseNumber: string | null;
         licenseExpiry: Date | null;
+        licenseIssue: Date | null;
+        frontImageUrl: string | null;
+        backImageUrl: string | null;
+        verifiedByOCR: boolean;
         currentLat: number | null;
         currentLon: number | null;
     }>;
@@ -1309,6 +1320,7 @@ export declare class DispatchRepository {
         createdBy: string | null;
         plateNumber: string;
         driverId: string | null;
+        maxLoad: number | null;
     }>;
     findDriver(payload: ListQueryDto): Promise<{
         drivers: ({
@@ -1332,8 +1344,13 @@ export declare class DispatchRepository {
             createdBy: string | null;
             userId: string;
             vehicleId: string | null;
+            availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;
             licenseExpiry: Date | null;
+            licenseIssue: Date | null;
+            frontImageUrl: string | null;
+            backImageUrl: string | null;
+            verifiedByOCR: boolean;
             currentLat: number | null;
             currentLon: number | null;
         })[];
@@ -1344,4 +1361,28 @@ export declare class DispatchRepository {
             totalPages: number;
         };
     }>;
+    upsertAssignmentRequest(data: any): Promise<{
+        status: import(".prisma/client").$Enums.AssignmentStatus;
+        id: string;
+        createdBy: string | null;
+        driverId: string;
+        orderId: string;
+        expiresAt: Date | null;
+        sentAt: Date;
+        acceptedAt: Date | null;
+    }>;
+    expirePendingRequests(orderId: string): Promise<Prisma.BatchPayload>;
+    markAccepted(orderId: string, driverId: string): Promise<{
+        status: import(".prisma/client").$Enums.AssignmentStatus;
+        id: string;
+        createdBy: string | null;
+        driverId: string;
+        orderId: string;
+        expiresAt: Date | null;
+        sentAt: Date;
+        acceptedAt: Date | null;
+    }>;
+    expireOtherDrivers(orderId: string, driverId: string): Promise<Prisma.BatchPayload>;
+    assignOrderAtomic(orderId: string, driverId: string): Promise<Prisma.BatchPayload>;
+    expireAllExpiredPending(): Promise<Prisma.BatchPayload>;
 }

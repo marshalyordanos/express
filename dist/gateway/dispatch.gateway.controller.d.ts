@@ -1,5 +1,5 @@
 import { ClientProxy } from '@nestjs/microservices';
-import { AssignDriverForPickup, AssignOfficerForBatch, BatchDispatchDto, BatchHandoverDto, CompleteDeliveryDto, ConfirmBatchHandoverDto, CreateDriver, GenerateQrDto, LastMileDeliveryDto, OrderScanTokenDto } from '../fulfillment/dispatch/dispatch.entity';
+import { AssignDriverForPickup, AssignOfficerForBatch, BatchDispatchDto, BatchHandoverDto, CompleteDeliveryDto, ConfirmBatchHandoverDto, CreateAssignmentRequestsDto, CreateDriver, GenerateQrDto, LastMileDeliveryDto, OrderScanTokenDto } from '../fulfillment/dispatch/dispatch.entity';
 import { ListQueryDto } from '../common/query/query.dto';
 import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
 export declare class DispatchGatewayController {
@@ -15,6 +15,8 @@ export declare class DispatchGatewayController {
     compareOrders(officerId: string, req: any): Promise<any>;
     confirmArrivalAndHandover(data: ConfirmBatchHandoverDto, req: any): Promise<any>;
     createBatchDispatch(data: BatchDispatchDto, req: any): Promise<any>;
+    createDriverAssignmentRequests(data: CreateAssignmentRequestsDto, req: any): Promise<any>;
+    driverAccept(orderId: string, req: any): Promise<any>;
     assignDriverForDelivery(data: AssignDriverForPickup, req: any): Promise<any>;
     lastMileDelivery(data: LastMileDeliveryDto, req: any): Promise<any>;
     completeDelivery(files: Express.Multer.File[], data: CompleteDeliveryDto, req: any): Promise<import("rxjs").Observable<any>>;

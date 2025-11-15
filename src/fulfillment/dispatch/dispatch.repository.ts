@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AssignDriverForPickup,
+  AssignmentRequestUpsertDto,
   BatchDispatchDto,
   CreateDriver,
 } from './dispatch.entity';
@@ -12,8 +13,26 @@ import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class DispatchRepository {
-
   constructor(private prisma: PrismaService) {}
+
+  async findExcludedDrivers(
+    orderId: string,
+    winnerDriverId: string,
+  ): Promise<string[]> {
+    const losers = await this.prisma.driverAssignmentRequest.findMany({
+      where: {
+        orderId,
+        driverId: { not: winnerDriverId },
+        status: 'EXPIRED', // only include drivers who were expired
+      },
+      select: {
+        driverId: true,
+      },
+    });
+
+    // return array of driverIds
+    return losers.map((l) => l.driverId);
+  }
 
   async assignDriverForPickup(
     driverId: string,
@@ -153,29 +172,29 @@ export class DispatchRepository {
     );
   }
 
-async getDeliveredAndOnGoingDispatches(userId: string): Promise<any> {
-  return this.prisma.batchDispatch.findMany({
-    where: {
-      officerId: userId,
-      NOT: {
-        status: { in: ['PENDING', 'READY'] },
+  async getDeliveredAndOnGoingDispatches(userId: string): Promise<any> {
+    return this.prisma.batchDispatch.findMany({
+      where: {
+        officerId: userId,
+        NOT: {
+          status: { in: ['PENDING', 'READY'] },
+        },
       },
-    },
-    select: {
-      id: true,
-      status: true,
-      _count: {
-        select: { orders: true },
+      select: {
+        id: true,
+        status: true,
+        _count: {
+          select: { orders: true },
+        },
+        awbNumber: true,
+        serviceType: true,
+        shipmentDate: true,
+        scope: true,
+        destinationId: true,
+        originId: true,
       },
-      awbNumber: true,
-      serviceType: true,
-      shipmentDate: true,
-      scope: true,
-      destinationId: true,
-      originId: true,
-    },
-  });
-}
+    });
+  }
 
   async cancelDispatch(batchIds: string[]) {
     return this.prisma.batchDispatch.updateMany({
@@ -760,7 +779,6 @@ async getDeliveredAndOnGoingDispatches(userId: string): Promise<any> {
 
     const query = feature.getQuery();
 
-    
     // 🔹 If there's a search term, extend query.where.OR with trackingCode search
     if (payload.search) {
       query.where = {
@@ -1162,5 +1180,92 @@ async getDeliveredAndOnGoingDispatches(userId: string): Promise<any> {
       drivers,
       pagination: feature.getPagination(total),
     };
+  }
+
+  // Create or update assignment request
+  async upsertAssignmentRequest(data: any) {
+    return this.prisma.driverAssignmentRequest.upsert({
+      where: {
+        orderId_driverId: {
+          orderId: data.orderId,
+          driverId: data.driverId,
+        },
+      },
+      create: {
+        order: { connect: { id: data.orderId } },
+        driver: { connect: { id: data.driverId } },
+        status: data.status,
+        sentAt: data.sentAt,
+        expiresAt: data.expiresAt,
+        acceptedAt: data.acceptedAt,
+      },
+      update: {
+        status: data.status,
+        sentAt: data.sentAt,
+        expiresAt: data.expiresAt,
+        acceptedAt: data.acceptedAt,
+      },
+    });
+  }
+
+  async expirePendingRequests(orderId: string) {
+    return this.prisma.driverAssignmentRequest.updateMany({
+      where: {
+        orderId,
+        status: 'PENDING',
+        expiresAt: { lt: new Date() },
+      },
+      data: { status: 'EXPIRED' },
+    });
+  }
+
+  async markAccepted(orderId: string, driverId: string) {
+    return this.prisma.driverAssignmentRequest.update({
+      where: { orderId_driverId: { orderId, driverId } },
+      data: {
+        status: 'ACCEPTED',
+        acceptedAt: new Date(),
+      },
+    });
+  }
+
+  async expireOtherDrivers(orderId: string, driverId: string) {
+    return this.prisma.driverAssignmentRequest.updateMany({
+      where: {
+        orderId,
+        driverId: { not: driverId },
+        status: 'PENDING',
+      },
+      data: {
+        status: 'EXPIRED',
+      },
+    });
+  }
+
+  async assignOrderAtomic(orderId: string, driverId: string) {
+    return this.prisma.order.updateMany({
+      where: {
+        id: orderId,
+        deliveryDriverId: null,
+      },
+      data: {
+        deliveryDriverId: driverId,
+        deliveryAssignedAt: new Date(),
+        deliveryAssignedBy: driverId,
+        status: 'ASSIGNED',
+      },
+    });
+  }
+
+  async expireAllExpiredPending() {
+    return this.prisma.driverAssignmentRequest.updateMany({
+      where: {
+        status: 'PENDING',
+        expiresAt: { lt: new Date() },
+      },
+      data: {
+        status: 'EXPIRED',
+      },
+    });
   }
 }

@@ -1,4 +1,4 @@
-import { AssignDriverForPickup, AssignOfficerForBatch, BatchDispatchDto, BatchHandoverDto, CompleteDeliveryDto, ConfirmBatchHandoverDto } from './dispatch.entity';
+import { AssignDriverForPickup, AssignOfficerForBatch, BatchDispatchDto, BatchHandoverDto, CompleteDeliveryDto, ConfirmBatchHandoverDto, CreateAssignmentRequestsDto } from './dispatch.entity';
 import { ListQueryDto } from '../../common/query/query.dto';
 export interface DispatchUseCases {
     assignDriverForPickup(data: AssignDriverForPickup, userId: string): Promise<any>;
@@ -25,4 +25,6 @@ export interface DispatchUseCases {
     confirmHandover(dto: ConfirmBatchHandoverDto): Promise<any>;
     findDriver(query: ListQueryDto): Promise<any>;
     confirmHandover(dto: ConfirmBatchHandoverDto): Promise<any>;
+    driverAccept(orderId: string, driverId: string): Promise<any>;
+    createDriverAssignmentRequests(data: CreateAssignmentRequestsDto, userId: string): Promise<any>;
 }

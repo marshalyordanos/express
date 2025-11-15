@@ -481,13 +481,13 @@ export class StaffRepository {
       const driver = await tx.driver.create({
         data: {
           userId: user.id,
-          vehicleId: driverData.vehicleId,
+          vehicleId: driverData.vehicleId ?? null,
           status: driverData.status,
           type: driverData.type,
           licenseNumber: driverData.licenseNumber,
           licenseExpiry: driverData.licenseExpiry,
-          currentLat: driverData.currentLat ?? null,
-          currentLon: driverData.currentLong ?? null,
+          currentLat: parseFloat(driverData.currentLat) ?? null,
+          currentLon: parseFloat(driverData.currentLong)?? null,
           createdBy: userId || 'system',
         },
         select: {
@@ -505,8 +505,8 @@ export class StaffRepository {
         await tx.driverLocationLog.create({
           data: {
             driverId: driver.id,
-            latitude: driverData.currentLat,
-            longitude: driverData.currentLong,
+            latitude: parseFloat(driverData.currentLat),
+            longitude: parseFloat(driverData.currentLong),
             speed: 0,
             heading: 0,
           },

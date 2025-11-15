@@ -25,6 +25,7 @@ import {
   BatchHandoverDto,
   CompleteDeliveryDto,
   ConfirmBatchHandoverDto,
+  CreateAssignmentRequestsDto,
   CreateDriver,
   GenerateQrDto,
   LastMileDeliveryDto,
@@ -267,6 +268,62 @@ export class DispatchGatewayController {
     });
   }
 
+    @Post('/driver/requests')
+  async createDriverAssignmentRequests(
+    @Body() data: CreateAssignmentRequestsDto,
+    @Req() req,
+  ): Promise<any> {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.dispatchClient.send(
+      PATTERNS.DISPATCH_CREATE_ASSIGNEMENT_REQUEST,
+      {
+        data,
+        headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+      },
+    );
+  }
+
+  @Patch('/driver/accept/:orderId')
+  async driverAccept(
+    @Param('orderId') orderId: string,
+    @Req() req,
+  ): Promise<any> {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.dispatchClient.send(
+      PATTERNS.DISPATCH_ACCEPT_ASSIGNEMENT_REQUEST,
+      {
+        orderId,
+        headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+      },
+    );
+  }
+
   //Controller used for assigning driver for the last mile delivery of the package
   @Post('/assign-delivery')
   async assignDriverForDelivery(
@@ -344,6 +401,7 @@ export class DispatchGatewayController {
           fileStreamsOrBuffers,
           `pod_images/${data.driverId}/${data.orderId}`,
         );
+        
         data.podImages = uploadedImages;
         console.log('Proof of delivery images uploaded successfully.');
       } catch (error) {

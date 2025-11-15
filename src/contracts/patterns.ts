@@ -54,6 +54,7 @@ export const PATTERNS = {
   BRANCH_DELETE: 'branch.delete',
   BRANCH_ASSIGN_MANAGER: 'branch.assignManager',
   BRANCH_REVOKE_MANAGER: 'branch.revokeManager',
+  BRANCH_FIND_ALL_FREE: 'branch.findAllFree',
 
   ROLE_CREATE: 'role.create',
   ROLE_FIND_BY_ID_OR_NAME: 'role.findByIdOrName',
@@ -164,11 +165,14 @@ export const PATTERNS = {
   DISPATCH_CREATE_DRIVER: 'dispatch.createDriver',
   DISPATCH_FIND_DRIVER: 'dispatch.findDriver',
   DISPATCH_FIND_DELIVERED_AND_ONGOING: 'dispatch.findDeliveredAndOngoing',
+  DISPATCH_CREATE_ASSIGNEMENT_REQUEST: 'dispatch.createAssignementRequest',
+  DISPATCH_ACCEPT_ASSIGNEMENT_REQUEST: 'dispatch.acceptAssignementRequest',
 
   MAP_GET_ROUTE: 'map.getRoute',
   MAP_MARK_STOP_VISITED: 'map.markStopVisited',
   MAP_GET_CURRENT_ROUTE_STATUS: 'map.getCurrentRouteStatus',
   MAP_NEARBY_DRIVERS: 'map.nearbyDrivers',
+  MAP_EXTERNAL_NEARBY_DRIVERS: 'map.externalNearbyDrivers',
   //Pricing and Tariff Management Module
 
   //Tariff

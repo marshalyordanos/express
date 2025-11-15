@@ -48,16 +48,33 @@ export class MapMessageController {
   @CheckPermission('Maps', PermissionActions.READ)
   @MessagePattern(PATTERNS.MAP_NEARBY_DRIVERS)
   async getNearbyDrivers(
-    @Payload() payoad: { lat: any; lon: any; radius: any; user: any },
+    @Payload() payoad: { orderIds: string[]; radius: any; user: any },
   ): Promise<any> {
     const userId = payoad.user?.sub;
     const result= await
      this.locationService.findNearbyDrivers(
-      payoad.lon,
-      payoad.lat,
+      payoad.orderIds,
       payoad.radius,
     );
 
     return IResponse.success('Nearby Drivers Fetched successfully', result);
   }
+
+    @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Maps', PermissionActions.READ)
+  @MessagePattern(PATTERNS.MAP_EXTERNAL_NEARBY_DRIVERS)
+  async findNearbyExternalDrivers(
+    @Payload() payoad: { lon: number; lat: number; radius: any; user: any },
+  ): Promise<any> {
+    const userId = payoad.user?.sub;
+    const result= await
+     this.locationService.findNearbyExternalDrivers(
+      payoad.lon,
+      payoad.lat,
+      payoad.radius,
+    );
+
+    return IResponse.success('External Nearby Drivers Fetched successfully', result);
+  }
+  
 }

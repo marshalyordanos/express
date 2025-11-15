@@ -1,16 +1,18 @@
 import { DispatchUseCases } from './dispatch.usecase';
 import { DispatchRepository } from './dispatch.repository';
-import { AssignDriverForPickup, AssignOfficerForBatch, BatchDispatchDto, BatchHandoverDto, CompleteDeliveryDto, ConfirmBatchHandoverDto, CreateDriver } from './dispatch.entity';
+import { AssignDriverForPickup, AssignOfficerForBatch, BatchDispatchDto, BatchHandoverDto, CompleteDeliveryDto, ConfirmBatchHandoverDto, CreateAssignmentRequestsDto, CreateDriver } from './dispatch.entity';
 import { ShippingScope, ServiceType } from '@prisma/client';
 import { IResponse } from '../../common/types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { AppLogger } from '../../common/app-logger.service';
+import { NotificationPublisher } from '../../common/notification-publisher';
 export declare class DispatchUseCasesImpl implements DispatchUseCases {
     private readonly dispatchRepo;
     private readonly qrCodeService;
     private readonly logger;
-    constructor(dispatchRepo: DispatchRepository, qrCodeService: PrismaService, logger: AppLogger);
+    private readonly notificationPublisher;
+    constructor(dispatchRepo: DispatchRepository, qrCodeService: PrismaService, logger: AppLogger, notificationPublisher: NotificationPublisher);
     assignDriverForPickup(data: AssignDriverForPickup, userId: string): Promise<any>;
     getDeliveredAndOnGoingDispatches(userId: any): Promise<any>;
     confirmDispatch(data: AssignOfficerForBatch, userId: string): Promise<any>;
@@ -439,8 +441,13 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
         createdBy: string | null;
         userId: string;
         vehicleId: string | null;
+        availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
         licenseNumber: string | null;
         licenseExpiry: Date | null;
+        licenseIssue: Date | null;
+        frontImageUrl: string | null;
+        backImageUrl: string | null;
+        verifiedByOCR: boolean;
         currentLat: number | null;
         currentLon: number | null;
     }>;
@@ -466,8 +473,13 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
             createdBy: string | null;
             userId: string;
             vehicleId: string | null;
+            availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;
             licenseExpiry: Date | null;
+            licenseIssue: Date | null;
+            frontImageUrl: string | null;
+            backImageUrl: string | null;
+            verifiedByOCR: boolean;
             currentLat: number | null;
             currentLon: number | null;
         })[];
@@ -478,4 +490,16 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
             totalPages: number;
         };
     }>;
+    private retryNotification;
+    createDriverAssignmentRequests(data: CreateAssignmentRequestsDto, userId: string): Promise<{
+        success: boolean;
+    }>;
+    driverAccept(orderId: string, driverId: string): Promise<{
+        assigned: boolean;
+        reason: string;
+    } | {
+        assigned: boolean;
+        reason?: undefined;
+    }>;
+    expire(orderId: string): Promise<import(".prisma/client").Prisma.BatchPayload>;
 }

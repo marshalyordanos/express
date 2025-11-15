@@ -85,4 +85,11 @@ export declare class BranchMessageController {
         efficiency: number;
         status: string;
     }[]>>;
+    findAllBranchFree(payload: {
+        query: ListQueryDto;
+    }): Promise<IResponse<{
+        name: string;
+        id: string;
+        location: string;
+    }[]>>;
 }

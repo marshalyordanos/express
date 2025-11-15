@@ -18,6 +18,7 @@ export class ReportGatewayController {
   constructor(
     @Inject('USER_SERVICE') private readonly reportClient: ClientProxy,
   ) {}
+  
 
   @Get('dashboard/overview')
   async getOverview(@Req() req) {

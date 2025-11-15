@@ -42,25 +42,6 @@ let BranchGatewayController = class BranchGatewayController {
             ip,
         });
     }
-    async findBranchById(id, req) {
-        const authHeader = req.headers['authorization'] || null;
-        let token = req.headers['authorization']?.replace('Bearer ', '') || null;
-        const forwarded = req.headers['x-forwarded-for'] || '';
-        const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
-        let decodedUser = null;
-        try {
-            decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
-        }
-        catch (err) {
-            throw new common_1.HttpException('Invalid token', common_1.HttpStatus.UNAUTHORIZED);
-        }
-        return this.branchClient.send(contracts_1.PATTERNS.BRANCH_FIND_BY_ID, {
-            id,
-            headers: { authorization: authHeader },
-            user: decodedUser,
-            ip,
-        });
-    }
     async findAllBranches(req, query) {
         const authHeader = req.headers['authorization'] || null;
         let token = req.headers['authorization']?.replace('Bearer ', '') || null;
@@ -160,6 +141,35 @@ let BranchGatewayController = class BranchGatewayController {
             ip,
         });
     }
+    async findAllBranchFree(req, query) {
+        const forwarded = req.headers['x-forwarded-for'] || '';
+        const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+        let decodedUser = null;
+        return this.branchClient.send(contracts_1.PATTERNS.BRANCH_FIND_ALL_FREE, {
+            user: decodedUser,
+            ip,
+            query,
+        });
+    }
+    async findBranchById(id, req) {
+        const authHeader = req.headers['authorization'] || null;
+        let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+        const forwarded = req.headers['x-forwarded-for'] || '';
+        const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+        let decodedUser = null;
+        try {
+            decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+        }
+        catch (err) {
+            throw new common_1.HttpException('Invalid token', common_1.HttpStatus.UNAUTHORIZED);
+        }
+        return this.branchClient.send(contracts_1.PATTERNS.BRANCH_FIND_BY_ID, {
+            id,
+            headers: { authorization: authHeader },
+            user: decodedUser,
+            ip,
+        });
+    }
 };
 exports.BranchGatewayController = BranchGatewayController;
 __decorate([
@@ -170,14 +180,6 @@ __decorate([
     __metadata("design:paramtypes", [branch_entity_1.BranchCreateDto, Object]),
     __metadata("design:returntype", Promise)
 ], BranchGatewayController.prototype, "createBranch", null);
-__decorate([
-    (0, common_1.Get)(':id'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Req)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
-    __metadata("design:returntype", Promise)
-], BranchGatewayController.prototype, "findBranchById", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Req)()),
@@ -219,6 +221,22 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], BranchGatewayController.prototype, "revokeManager", null);
+__decorate([
+    (0, common_1.Get)("all"),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, query_dto_1.ListQueryDto]),
+    __metadata("design:returntype", Promise)
+], BranchGatewayController.prototype, "findAllBranchFree", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], BranchGatewayController.prototype, "findBranchById", null);
 exports.BranchGatewayController = BranchGatewayController = __decorate([
     (0, common_1.Controller)('branch'),
     __param(0, (0, common_1.Inject)('USER_SERVICE')),

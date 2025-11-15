@@ -9,7 +9,7 @@ export declare class DriverLocationWsService {
         speed?: number;
         heading?: number;
     }): Promise<void>;
-    findNearbyDrivers(lat: number, lon: number, radiusKm: number): Promise<any[]>;
+    findNearbyDrivers(orderIds: string[], radiusKm: number): Promise<any>;
     markOffline(driverId: string): Promise<void>;
     setOnlineEmitter(callback: (driverId: string, status?: 'ONLINE' | 'OFFLINE') => void): void;
 }

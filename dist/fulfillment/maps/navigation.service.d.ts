@@ -18,8 +18,11 @@ interface RouteCache {
     totalDistance: number;
     totalDuration: number;
     remainingDistance?: number;
+    remainingDurationSec?: number;
     estimatedArrivalTime?: string;
     lastUpdated: number;
+    orderedStopIds?: string[];
+    originalOptimizedOrder?: string[];
 }
 export declare class RouteCacheService {
     private readonly wsGateway;
@@ -31,18 +34,24 @@ export declare class RouteCacheService {
     constructor(wsGateway: MapLocationGateway, mapRepo: MapsRepository, redisClient: RedisService, routeOptimizer: RouteOptimizerService, mapsService: MapsService);
     saveDriverRoute(driverId: string, route: RouteCache): Promise<void>;
     deleteDriverRoute(driverId: string): Promise<void>;
-    markStopVisited(driverId: string, orderId: string): Promise<void>;
-    private completeRoute;
     getDriverRoute(driverId: string): Promise<RouteCache | null>;
     getDriverRouteWithStops(driverId: string, reportedStops?: {
         orderId: string;
     }[]): Promise<RouteCache | null>;
     removeDriverRoute(driverId: string): Promise<void>;
     private calculateDistanceKm;
-    updateLiveRouteProgress(driverId: string, lat: number, lon: number, speedKmh?: number): Promise<void>;
+    updateLiveRouteProgress(driverId: string, lat: number, lon: number, speedKmh?: number): Promise<{
+        nextStop: {
+            orderId: string;
+            distanceKm: number;
+            etaMin: number;
+        };
+    }>;
     updateLiveRouteETA(driverId: string, route: RouteCache, location: {
         lat: number;
         lon: number;
     }): Promise<void>;
+    markStopVisited(driverId: string, orderId: string): Promise<void>;
+    private completeRoute;
 }
 export {};

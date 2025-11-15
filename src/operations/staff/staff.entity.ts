@@ -111,7 +111,7 @@ export class CreateDriver {
   @IsNotEmpty()
   @IsOptional()
   phone?: string;
-
+  
   @IsNotEmpty()
   @IsString()
   licenseNumber: string;

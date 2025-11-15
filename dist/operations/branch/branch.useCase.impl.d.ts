@@ -40,4 +40,17 @@ export declare class BranchUseCaseImpl implements BranchUseCases {
     findBranchById(id: string): Promise<Partial<Branch>>;
     updateBranch(id: string, data: Partial<BranchUpdateDto>): Promise<Branch>;
     deleteBranch(id: string): Promise<Branch>;
+    findAllBranchFree(query: ListQueryDto): Promise<{
+        branches: {
+            name: string;
+            id: string;
+            location: string;
+        }[];
+        pagination: {
+            total: number;
+            page: number;
+            pageSize: number;
+            totalPages: number;
+        };
+    }>;
 }

@@ -301,4 +301,38 @@ export class BranchRepository {
       },
     });
   }
+
+  async findAllBranchFree(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['name', 'location'],
+    });
+
+    const query = feature.getQuery();
+
+    const results = await Promise.all([
+      this.prisma.branch.findMany({
+        ...query,
+        where: query.where || {},
+        select: {
+          id: true,
+          name: true,
+          location: true,
+        },
+      }),
+      this.prisma.branch.count({ where: query.where || {} }),
+    ]);
+
+    const branches = results[0] || [];
+    const total = results[1] || 0;
+
+    return {
+      branches,
+      pagination: feature.getPagination(total),
+    };
+  }
 }

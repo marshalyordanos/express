@@ -5,6 +5,7 @@ import {
   BatchHandoverDto,
   CompleteDeliveryDto,
   ConfirmBatchHandoverDto,
+  CreateAssignmentRequestsDto,
 } from './dispatch.entity';
 import { ListQueryDto } from '../../common/query/query.dto';
 
@@ -66,4 +67,6 @@ export interface DispatchUseCases {
 
   findDriver(query: ListQueryDto): Promise<any>;
   confirmHandover(dto: ConfirmBatchHandoverDto): Promise<any>;
+  driverAccept(orderId: string, driverId: string): Promise<any>;
+  createDriverAssignmentRequests(data: CreateAssignmentRequestsDto, userId: string): Promise<any>;
 }

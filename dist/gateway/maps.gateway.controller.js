@@ -22,7 +22,27 @@ let MapGatewayController = class MapGatewayController {
     constructor(mapClient) {
         this.mapClient = mapClient;
     }
-    async nearbyDrivers(lat, lon, radius, req) {
+    async nearbyDrivers({ orderIds, radius }, req) {
+        const authHeader = req.headers['authorization'] || null;
+        let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+        const forwarded = req.headers['x-forwarded-for'] || '';
+        const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+        let decodedUser = null;
+        try {
+            decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+        }
+        catch (err) {
+            throw new common_1.HttpException('Invalid token', common_1.HttpStatus.UNAUTHORIZED);
+        }
+        return this.mapClient.send(contracts_1.PATTERNS.MAP_NEARBY_DRIVERS, {
+            orderIds,
+            radius: parseFloat(radius),
+            headers: { authorization: authHeader },
+            user: decodedUser,
+            ip,
+        });
+    }
+    async externalNearbyDrivers(lat, lon, radius, req) {
         const authHeader = req.headers['authorization'] || null;
         let token = req.headers['authorization']?.replace('Bearer ', '') || null;
         const forwarded = req.headers['x-forwarded-for'] || '';
@@ -35,7 +55,7 @@ let MapGatewayController = class MapGatewayController {
             throw new common_1.HttpException('Invalid token', common_1.HttpStatus.UNAUTHORIZED);
         }
         console.log('lat', lat, 'lon', lon, 'radius', radius);
-        return this.mapClient.send(contracts_1.PATTERNS.MAP_NEARBY_DRIVERS, {
+        return this.mapClient.send(contracts_1.PATTERNS.MAP_EXTERNAL_NEARBY_DRIVERS, {
             lat: parseFloat(lat),
             lon: parseFloat(lon),
             radius: parseFloat(radius),
@@ -106,7 +126,15 @@ let MapGatewayController = class MapGatewayController {
 };
 exports.MapGatewayController = MapGatewayController;
 __decorate([
-    (0, common_1.Get)('nearby-drivers'),
+    (0, common_1.Post)('nearby-drivers'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], MapGatewayController.prototype, "nearbyDrivers", null);
+__decorate([
+    (0, common_1.Get)('external/nearby-drivers'),
     __param(0, (0, common_1.Query)('lat')),
     __param(1, (0, common_1.Query)('lon')),
     __param(2, (0, common_1.Query)('radius')),
@@ -114,7 +142,7 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String, String, Object]),
     __metadata("design:returntype", Promise)
-], MapGatewayController.prototype, "nearbyDrivers", null);
+], MapGatewayController.prototype, "externalNearbyDrivers", null);
 __decorate([
     (0, common_1.Post)('route/:driverId/driver-stop'),
     __param(0, (0, common_1.Param)('driverId')),

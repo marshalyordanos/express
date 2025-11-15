@@ -55,8 +55,13 @@ export declare class DashboardReportRepository {
             createdBy: string | null;
             userId: string;
             vehicleId: string | null;
+            availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;
             licenseExpiry: Date | null;
+            licenseIssue: Date | null;
+            frontImageUrl: string | null;
+            backImageUrl: string | null;
+            verifiedByOCR: boolean;
             currentLat: number | null;
             currentLon: number | null;
         };
@@ -78,6 +83,7 @@ export declare class DashboardReportRepository {
         createdBy: string | null;
         plateNumber: string;
         driverId: string | null;
+        maxLoad: number | null;
     })[]>;
     getActiveDrivers(): Promise<number>;
     getActiveDriversYesterday(): Promise<number>;
@@ -174,6 +180,7 @@ export declare class DashboardReportRepository {
             createdBy: string | null;
             plateNumber: string;
             driverId: string | null;
+            maxLoad: number | null;
         };
         origin: {
             label: string;

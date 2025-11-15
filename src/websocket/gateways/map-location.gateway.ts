@@ -259,12 +259,11 @@ export class MapLocationGateway implements OnGatewayInit {
   /** ================== NEARBY DRIVERS ================== */
   @SubscribeMessage('drivers:nearby')
   async handleNearbyDrivers(
-    @MessageBody() data: { lat: number; lon: number; radiusKm: number },
+    @MessageBody() data: { orderIds: string[]; radiusKm: number },
     @ConnectedSocket() client: Socket,
   ) {
     const nearby = await this.driverWs.findNearbyDrivers(
-      data.lat,
-      data.lon,
+      data.orderIds,
       data.radiusKm,
     );
     client.emit('drivers:nearby:result', nearby);
