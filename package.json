@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "npx nest build",
+    "build": "node ./node_modules/@nestjs/cli/bin/nest.js build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "dev:auth": "ts-node-dev --respawn --transpile-only src/auth/main.auth.ts",
     "dev:user": "ts-node-dev --respawn --transpile-only src/operations/main.operations.ts",
