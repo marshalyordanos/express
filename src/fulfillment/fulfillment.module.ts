@@ -12,7 +12,7 @@ import { PricingRepository } from './pricing/pricing.repository';
 import { PricingMessageController } from './pricing/pricing.controller';
 import { PricingUseCasesImpl } from './pricing/pricing.usecase.impl';
 import { MapsService } from './maps/maps.service';
-import { RedisService } from '../redis/redis.service';
+// import { RedisService } from '../redis/redis.service';
 import { DriverLocationService } from './maps/driver-location.service';
 import { RouteOptimizerService } from './maps/route-optimizer.service';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -28,9 +28,11 @@ import { QueueModule } from './order/queue/queue.module';
 import { OrderQueue } from './order/queue/order.queue';
 import { OrderWorker } from './order/workers/order.worker';
 import { DriverAssignmentQueue } from './order/queue/driver-assignment.queue';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
+    RedisModule,
     forwardRef(() => WebSocketModule),
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
@@ -56,7 +58,7 @@ import { DriverAssignmentQueue } from './order/queue/driver-assignment.queue';
     PricingRepository,
     PricingUseCasesImpl,
     MapsService,
-    RedisService,
+    // RedisService,
     DriverLocationService,
     RouteOptimizerService,
     RouteCacheService,
@@ -76,7 +78,7 @@ import { DriverAssignmentQueue } from './order/queue/driver-assignment.queue';
     DriverLocationService,
     RouteOptimizerService,
     RouteCacheService,
-    RedisService,
+    // RedisService,
     DispatchUseCasesImpl,
     PricingUseCasesImpl,
     MapsUseCasesImpl,

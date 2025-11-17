@@ -24,6 +24,8 @@ import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
 import { NotificationModule } from '../notification/notification.module';
+import Redis from 'ioredis';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
@@ -35,6 +37,7 @@ import { NotificationModule } from '../notification/notification.module';
     WebSocketModule,
     NotificationModule,
     MicroserviceClientsModule,
+    RedisModule,
     ConfigModule.forRoot({ isGlobal: true }),
     // LoggerModule.forRoot({
     //   pinoHttp: {
@@ -56,7 +59,7 @@ import { NotificationModule } from '../notification/notification.module';
   providers: [
     PermissionBootstrapper,
     PrismaService,
-    RedisService,
+    // RedisService,
     AppLogger,
     SanitizePipe,
     CloudinaryUploaderService,

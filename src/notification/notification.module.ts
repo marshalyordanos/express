@@ -5,13 +5,15 @@ import { EmailService } from './email.service';
 import { EventsGateway } from './events.gateway';
 import { PrismaService } from '../prisma/prisma.service'; // your Prisma service
 import { AppLogger } from '../common/app-logger.service';
-import { RedisService } from '../redis/redis.service';
+// import { RedisService } from '../redis/redis.service';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { NotificationRepository } from './notification.repository';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
+    RedisModule,
     ConfigModule.forRoot({
       isGlobal: true, // prevents needing to re-import everywhere
     }),
@@ -23,7 +25,7 @@ import { NotificationRepository } from './notification.repository';
   providers: [
     NotificationService,
     EmailService,
-    RedisService,
+    // RedisService,
     AppLogger,
     EventsGateway,
     PrismaService,

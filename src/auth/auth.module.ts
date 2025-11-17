@@ -5,12 +5,14 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthUseCaseImpl } from './auth.usecase.impl';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthRepository } from './auth.repository';
-import { RedisService } from '../redis/redis.service';
+// import { RedisService } from '../redis/redis.service';
 import { AppLogger } from '../common/app-logger.service';
 import { NotificationPublisher } from '../common/notification-publisher';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
+    RedisModule,
     ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'yourSecret',
@@ -18,7 +20,14 @@ import { NotificationPublisher } from '../common/notification-publisher';
     }),
   ],
   controllers: [AuthMessageController],
-  providers: [AuthRepository, AuthUseCaseImpl,NotificationPublisher,  PrismaService, RedisService, AppLogger],
+  providers: [
+    AuthRepository,
+    AuthUseCaseImpl,
+    NotificationPublisher,
+    PrismaService,
+    //  RedisService,
+    AppLogger,
+  ],
   exports: [AuthUseCaseImpl],
 })
 export class AuthModule {}

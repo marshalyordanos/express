@@ -25,14 +25,16 @@ import { DashboardReportMessageController } from './report/controllers/dashboard
 import { ReportMessageController } from './report/controllers/report.controller';
 import { DashboardReportService } from './report/services/dashboard.service';
 import { DashboardReportRepository } from './report/repositories/dashboard.repository';
-import { RedisService } from '../redis/redis.service';
+// import { RedisService } from '../redis/redis.service';
 import { AppLogger } from '../common/app-logger.service';
 import { MapsService } from '../fulfillment/maps/maps.service';
 import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
 import { CommonOCRService } from '../common/ocr/ocr.service';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
+    RedisModule,
     ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'yourSecret',
@@ -56,7 +58,7 @@ import { CommonOCRService } from '../common/ocr/ocr.service';
     BranchUseCaseImpl,
     BranchRepository,
     PrismaService,
-    RedisService,
+    // RedisService,
     VehicleRepository,
     FleetUseCasesImp,
     StaffUseCasesImpl,

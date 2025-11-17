@@ -5,7 +5,7 @@ import { createClient, RedisClientType } from 'redis';
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: RedisClientType;
-  public client2: RedisClientType;
+  // public client2: RedisClientType;
   private readyPromise: Promise<void>;
 
   async onModuleInit() {
