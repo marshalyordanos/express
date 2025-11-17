@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "node ./node_modules/@nestjs/cli/bin/nest.js build",
+    "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "dev:auth": "ts-node-dev --respawn --transpile-only src/auth/main.auth.ts",
     "dev:user": "ts-node-dev --respawn --transpile-only src/operations/main.operations.ts",
@@ -45,6 +45,7 @@
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/websockets": "^11.1.6",
     "@prisma/client": "^6.15.0",
+    "@nestjs/cli": "^11.0.10",
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.63.2",
