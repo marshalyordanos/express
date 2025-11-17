@@ -586,35 +586,35 @@ export class StaffUseCasesImpl implements StaffUsecase {
     // -------------------------------------------------------------------
     // 2. 🔥 OCR Extraction
     // -------------------------------------------------------------------
-    let ocrFront = null;
-    let ocrBack = null;
+    // let ocrFront = null;
+    // let ocrBack = null;
 
-    if (uploadedFront?.url) {
-      ocrFront = await this.ocrService.extractFromImage(
-        uploadedFront.url
-      );
-    }
+    // if (uploadedFront?.url) {
+    //   ocrFront = await this.ocrService.extractFromImage(
+    //     uploadedFront.url
+    //   );
+    // }
 
-    console.log(`Processed image for front :: `, ocrFront);
+    // console.log(`Processed image for front :: `, ocrFront);
 
-    if (uploadedBack?.url) {
-      ocrBack = await this.ocrService.extractFromImage(uploadedBack.url);
-    }
+    // if (uploadedBack?.url) {
+    //   ocrBack = await this.ocrService.extractFromImage(uploadedBack.url);
+    // }
 
-    console.log(`Processed image for back ::: `, ocrBack);
+    // console.log(`Processed image for back ::: `, ocrBack);
 
 
-    // Merge best extracted values
-    const ocr = { ...ocrBack, ...ocrFront }; // front wins if both exist
-    console.log(`OCR big one :: `, ocr);
+    // // Merge best extracted values
+    // const ocr = { ...ocrBack, ...ocrFront }; // front wins if both exist
+    // console.log(`OCR big one :: `, ocr);
 
-    data.licenseNumber ||= ocr.licenseNumber;
-    data.expiryDate ||= ocr.expiryDate;
-    data.issueDate ||= ocr.issueDate;
-    data.phone ||= ocr.phone;
+    // data.licenseNumber ||= ocr.licenseNumber;
+    // data.expiryDate ||= ocr.expiryDate;
+    // data.issueDate ||= ocr.issueDate;
+    // data.phone ||= ocr.phone;
 
-    data.emergencyContactName ||= ocr.emergencyContactName;
-    data.emergencyContactPhone ||= ocr.emergencyContactPhone;
+    // data.emergencyContactName ||= ocr.emergencyContactName;
+    // data.emergencyContactPhone ||= ocr.emergencyContactPhone;
 
 
     // -------------------------------------------------------------------
