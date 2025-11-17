@@ -33,7 +33,18 @@ export class AccessControlGatewayController {
   ) {}
 
   // ------------ ROLES ------------
-
+  @Get('roles/all')
+  async findAllRole(@Req() req, @Query() query: ListQueryDto) {
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    return this.accessClient.send(PATTERNS.ROLE_FIND_ALL_FREE, {
+      user: decodedUser,
+      ip,
+      query,
+    });
+  }
+  
   @Get('roles/:id')
   async findRoleById(@Req() req, @Param('id') id: string) {
     const authHeader = req.headers['authorization'] || null;
@@ -55,17 +66,7 @@ export class AccessControlGatewayController {
     });
   }
 
-  @Get('roles/all')
-  async findAllRole(@Req() req, @Query() query: ListQueryDto) {
-    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
-    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
-    let decodedUser = null;
-    return this.accessClient.send(PATTERNS.ROLE_FIND_ALL_FREE, {
-      user: decodedUser,
-      ip,
-      query,
-    });
-  }
+
 
   @Get('roles')
   async findAllRoles(

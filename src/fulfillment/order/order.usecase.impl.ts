@@ -22,8 +22,8 @@ import { handleCatch } from '../../common/handleCatch';
 import { AppLogger } from '../../common/app-logger.service';
 import { PricingUseCasesImpl } from '../pricing/pricing.usecase.impl';
 import { NotificationPublisher } from '../../common/notification-publisher';
-import { DriverAssignmentQueue } from './queue/driver-assignment.queue';
-import { OrderQueue } from './queue/order.queue';
+// import { DriverAssignmentQueue } from './queue/driver-assignment.queue';
+// import { OrderQueue } from './queue/order.queue';
 
 @Injectable()
 export class OrderUseCasesImpl implements OrderUseCases {
@@ -34,228 +34,228 @@ export class OrderUseCasesImpl implements OrderUseCases {
     private readonly pricingUseCases: PricingUseCasesImpl,
     private readonly logger: AppLogger,
     private readonly notificationPublisher: NotificationPublisher,
-    private readonly orderQueue: OrderQueue,
-    private readonly driverQueue: DriverAssignmentQueue,
+    // private readonly orderQueue: OrderQueue,
+    // private readonly driverQueue: DriverAssignmentQueue,
   ) {
     this.logger.setContext('FulfillmentService', 'OrderUsecaseImpl');
   }
   //Customer order creating API: For customer to create for it self and staff/Admin to create for customer
-  // async createOrder(data: any, userId: string): Promise<Order> {
-  //   this.logger.log(`Order creation requested by userId: ${userId}`);
-
-  //   try {
-  //     // 🔹 Find or create customer
-  //     let customer =
-  //       (data.customerId &&
-  //         (await this.orderRepo.findCustomer(data.customerId))) ||
-  //       ((data.email || data.phone) &&
-  //         (await this.orderRepo.findCustomerByEmailOrPhone(
-  //           data.email,
-  //           data.phone,
-  //         )));
-
-  //     if (customer && customer.id !== userId) {
-  //       this.logger.warn(
-  //         `Unauthorized order creation attempt by userId: ${userId}, customerId: ${customer.id}`,
-  //       );
-  //       throw new RpcException({
-  //         statusCode: 403,
-  //         message: 'You are not authorized to create this order.',
-  //       });
-  //     }
-
-  //     // 🔹 Find or create receiver
-  //     let receiver =
-  //       (data.receiverId &&
-  //         (await this.orderRepo.findCustomer(data.receiverId))) ||
-  //       ((data.receiverEmail || data.receiverPhone) &&
-  //         (await this.orderRepo.findCustomerByEmailOrPhone(
-  //           data.receiverEmail,
-  //           data.receiverPhone,
-  //         )));
-
-  //     // 🔹 Create customer if not found
-  //     if (!customer) {
-  //       if (!data.name || (!data.email && !data.phone)) {
-  //         this.logger.warn(
-  //           `Customer details missing for order creation by userId: ${userId}`,
-  //         );
-  //         throw new RpcException({
-  //           statusCode: 400,
-  //           message: 'Customer not found or required details not provided',
-  //         });
-  //       }
-  //       customer = await this.orderRepo.createCustomer({
-  //         name: data.name,
-  //         email: data.email,
-  //         phone: data.phone,
-  //         userId,
-  //       });
-  //       this.logger.verbose(`Customer with id: ${customer.id} created with notification preference`);
-  //     }
-
-  //     // 🔹 Create receiver if not found
-  //     if (!receiver) {
-  //       if (
-  //         !data.receiverName ||
-  //         (!data.receiverEmail && !data.receiverPhone)
-  //       ) {
-  //         this.logger.warn(
-  //           `Receiver details missing for order creation by userId: ${userId}`,
-  //         );
-  //         throw new RpcException({
-  //           statusCode: 400,
-  //           message: 'Receiver not found or required details not provided',
-  //         });
-  //       }
-  //       receiver = await this.orderRepo.findOrCreateCustomer({
-  //         name: data.receiverName,
-  //         email: data.receiverEmail,
-  //         phone: data.receiverPhone,
-  //         userId,
-  //       });
-  //       this.logger.verbose(`Receiver created with id: ${receiver.id}`);
-  //     }
-
-  //     // 🔹 Generate tracking code
-  //     const username = customer.name.substring(0, 3).toUpperCase();
-  //     const trackingCode = this.generateTrackingCode(username);
-
-  //     // 🔹 Resolve addresses
-  //     let pickupAddress: any = null;
-  //     if (data.fulfillmentType === 'PICKUP') {
-  //       pickupAddress = await this.mapsService.reverseGeocode(
-  //         data.pickupAddress.lat,
-  //         data.pickupAddress.long,
-  //       );
-  //       this.logger.verbose('Pickup address resolved');
-  //     }
-
-  //     const deliveryAddress = await this.mapsService.reverseGeocode(
-  //       data.deliveryAddress.lat,
-  //       data.deliveryAddress.long,
-  //     );
-  //     this.logger.verbose('Delivery address resolved');
-
-  //     // 🔹 Delegate order creation to repository
-  //     const order = await this.orderRepo.createOrderWithAddresses(
-  //       data,
-  //       customer.id,
-  //       receiver.id,
-  //       trackingCode,
-  //       pickupAddress,
-  //       deliveryAddress,
-  //       userId,
-  //     );
-
-  //     let origin: { lat: number; lon: number };
-  //     if (order.pickupAddress) {
-  //       origin = {
-  //         lat: Number(order.pickupAddress.lat),
-  //         lon: Number(order.pickupAddress.long),
-  //       };
-  //     } else {
-  //       origin = (await this.orderRepo.getBranchCoordinates(
-  //         data.branchId,
-  //       )) as any;
-  //     }
-
-  //     const destination = {
-  //       lat: Number(order.deliveryAddress.lat),
-  //       lon: Number(order.deliveryAddress.long),
-  //     };
-
-  //     console.log('before calculating : ', origin, destination);
-
-  //     // Emit WebSocket or background job for async processing
-  //     this.calculateDistanceAndPrice(order.id, origin, destination);
-
-  //     this.logger.log(
-  //       `Order created successfully with id: ${order.id}, trackingCode: ${trackingCode}`,
-  //     );
-
-  //     await this.notificationPublisher.publish('order.created', {
-  //       type: 'order.created',
-  //       userId,
-  //       userEmail: customer.email,
-  //       subject: 'New Order created',
-  //       message: `Your order ${order.trackingCode} has been created.`,
-  //       payload: { orderId: order.id, tracking: trackingCode }, // extra metadata
-  //     });
-
-  //     return order;
-  //   } catch (error) {
-  //     // ✅ Handle known and unknown errors
-  //     this.logger.error(
-  //       `Order creation failed for userId: ${userId}: ${error.message}`,
-  //     );
-  //     throw handleCatch(error);
-  //   }
-  // }
-
   async createOrder(data: any, userId: string): Promise<Order> {
     this.logger.log(`Order creation requested by userId: ${userId}`);
 
     try {
-      // 1️⃣ Find/create customer and receiver (fast queries)
-      const { customer, receiver } = await this.resolveCustomerReceiver(
-        data,
-        userId,
-      );
+      // 🔹 Find or create customer
+      let customer =
+        (data.customerId &&
+          (await this.orderRepo.findCustomer(data.customerId))) ||
+        ((data.email || data.phone) &&
+          (await this.orderRepo.findCustomerByEmailOrPhone(
+            data.email,
+            data.phone,
+          )));
 
-      console.log(
-        `Order creation for customer ${customer}, and receiver ${receiver}`,
-      );
+      if (customer && customer.id !== userId) {
+        this.logger.warn(
+          `Unauthorized order creation attempt by userId: ${userId}, customerId: ${customer.id}`,
+        );
+        throw new RpcException({
+          statusCode: 403,
+          message: 'You are not authorized to create this order.',
+        });
+      }
 
-      // 2️⃣ Create order inside small transaction
+      // 🔹 Find or create receiver
+      let receiver =
+        (data.receiverId &&
+          (await this.orderRepo.findCustomer(data.receiverId))) ||
+        ((data.receiverEmail || data.receiverPhone) &&
+          (await this.orderRepo.findCustomerByEmailOrPhone(
+            data.receiverEmail,
+            data.receiverPhone,
+          )));
+
+      // 🔹 Create customer if not found
+      if (!customer) {
+        if (!data.name || (!data.email && !data.phone)) {
+          this.logger.warn(
+            `Customer details missing for order creation by userId: ${userId}`,
+          );
+          throw new RpcException({
+            statusCode: 400,
+            message: 'Customer not found or required details not provided',
+          });
+        }
+        customer = await this.orderRepo.createCustomer({
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          userId,
+        });
+        this.logger.verbose(`Customer with id: ${customer.id} created with notification preference`);
+      }
+
+      // 🔹 Create receiver if not found
+      if (!receiver) {
+        if (
+          !data.receiverName ||
+          (!data.receiverEmail && !data.receiverPhone)
+        ) {
+          this.logger.warn(
+            `Receiver details missing for order creation by userId: ${userId}`,
+          );
+          throw new RpcException({
+            statusCode: 400,
+            message: 'Receiver not found or required details not provided',
+          });
+        }
+        receiver = await this.orderRepo.findOrCreateCustomer({
+          name: data.receiverName,
+          email: data.receiverEmail,
+          phone: data.receiverPhone,
+          userId,
+        });
+        this.logger.verbose(`Receiver created with id: ${receiver.id}`);
+      }
+
+      // 🔹 Generate tracking code
+      const username = customer.name.substring(0, 3).toUpperCase();
+      const trackingCode = this.generateTrackingCode(username);
+
+      // 🔹 Resolve addresses
+      let pickupAddress: any = null;
+      if (data.fulfillmentType === 'PICKUP') {
+        pickupAddress = await this.mapsService.reverseGeocode(
+          data.pickupAddress.lat,
+          data.pickupAddress.long,
+        );
+        this.logger.verbose('Pickup address resolved');
+      }
+
+      const deliveryAddress = await this.mapsService.reverseGeocode(
+        data.deliveryAddress.lat,
+        data.deliveryAddress.long,
+      );
+      this.logger.verbose('Delivery address resolved');
+
+      // 🔹 Delegate order creation to repository
       const order = await this.orderRepo.createOrderWithAddresses(
         data,
         customer.id,
         receiver.id,
-        this.generateTrackingCode(customer.name.substring(0, 3)),
+        trackingCode,
+        pickupAddress,
+        deliveryAddress,
         userId,
       );
 
-      console.log(`Order created one ::: ${order}`);
+      let origin: { lat: number; lon: number };
+      if (order.pickupAddress) {
+        origin = {
+          lat: Number(order.pickupAddress.lat),
+          lon: Number(order.pickupAddress.long),
+        };
+      } else {
+        origin = (await this.orderRepo.getBranchCoordinates(
+          data.branchId,
+        )) as any;
+      }
 
-      await this.orderQueue.enqueueDistancePrice(order.id, {
-        origin: order.pickupAddress,
-        destination: order.deliveryAddress,
+      const destination = {
+        lat: Number(order.deliveryAddress.lat),
+        lon: Number(order.deliveryAddress.long),
+      };
+
+      console.log('before calculating : ', origin, destination);
+
+      // Emit WebSocket or background job for async processing
+      this.calculateDistanceAndPrice(order.id, origin, destination);
+
+      this.logger.log(
+        `Order created successfully with id: ${order.id}, trackingCode: ${trackingCode}`,
+      );
+
+      await this.notificationPublisher.publish('order.created', {
+        type: 'order.created',
+        userId,
+        userEmail: customer.email,
+        subject: 'New Order created',
+        message: `Your order ${order.trackingCode} has been created.`,
+        payload: { orderId: order.id, tracking: trackingCode }, // extra metadata
       });
-      console.log(`Sending order to ques`);
 
-      await this.orderQueue.enqueueSegmentCreation(order.id);
-      // await this.driverQueue.enqueueInternalDriverAssignment(order.id);
-
-      //       await this.orderQueue.enqueueDistancePrice(order.id, {...});
-      // await this.orderQueue.enqueueSegmentCreation(order.id);
-      // await this.driverQueue.enqueueInternalDriverAssignment(order.id);
-
-      // 3️⃣ Push heavy tasks to queue (non-blocking)
-      // this.queueService.add('order.calculateDistance', {
-      //   orderId: order.id,
-      //   branchId: data.branchId,
-      //   pickupAddress: order.pickupAddress,
-      //   deliveryAddress: order.deliveryAddress,
-      // });
-
-      // this.queueService.add('order.notifyCreated', {
-      //   orderId: order.id,
-      //   email: customer.email,
-      //   tracking: order.trackingCode,
-      //   userId,
-      // });
-
-      // this.queueService.add('order.assignDriver', {
-      //   orderId: order.id,
-      // });
-
-      return order; // ⚡ returns instantly
-    } catch (err) {
-      this.logger.error(err);
-      throw handleCatch(err);
+      return order;
+    } catch (error) {
+      // ✅ Handle known and unknown errors
+      this.logger.error(
+        `Order creation failed for userId: ${userId}: ${error.message}`,
+      );
+      throw handleCatch(error);
     }
   }
+
+  // async createOrder(data: any, userId: string): Promise<Order> {
+  //   this.logger.log(`Order creation requested by userId: ${userId}`);
+
+  //   try {
+  //     // 1️⃣ Find/create customer and receiver (fast queries)
+  //     const { customer, receiver } = await this.resolveCustomerReceiver(
+  //       data,
+  //       userId,
+  //     );
+
+  //     console.log(
+  //       `Order creation for customer ${customer}, and receiver ${receiver}`,
+  //     );
+
+  //     // 2️⃣ Create order inside small transaction
+  //     const order = await this.orderRepo.createOrderWithAddresses(
+  //       data,
+  //       customer.id,
+  //       receiver.id,
+  //       this.generateTrackingCode(customer.name.substring(0, 3)),
+  //       userId,
+  //     );
+
+  //     console.log(`Order created one ::: ${order}`);
+
+  //     await this.orderQueue.enqueueDistancePrice(order.id, {
+  //       origin: order.pickupAddress,
+  //       destination: order.deliveryAddress,
+  //     });
+  //     console.log(`Sending order to ques`);
+
+  //     await this.orderQueue.enqueueSegmentCreation(order.id);
+  //     // await this.driverQueue.enqueueInternalDriverAssignment(order.id);
+
+  //     //       await this.orderQueue.enqueueDistancePrice(order.id, {...});
+  //     // await this.orderQueue.enqueueSegmentCreation(order.id);
+  //     // await this.driverQueue.enqueueInternalDriverAssignment(order.id);
+
+  //     // 3️⃣ Push heavy tasks to queue (non-blocking)
+  //     // this.queueService.add('order.calculateDistance', {
+  //     //   orderId: order.id,
+  //     //   branchId: data.branchId,
+  //     //   pickupAddress: order.pickupAddress,
+  //     //   deliveryAddress: order.deliveryAddress,
+  //     // });
+
+  //     // this.queueService.add('order.notifyCreated', {
+  //     //   orderId: order.id,
+  //     //   email: customer.email,
+  //     //   tracking: order.trackingCode,
+  //     //   userId,
+  //     // });
+
+  //     // this.queueService.add('order.assignDriver', {
+  //     //   orderId: order.id,
+  //     // });
+
+  //     return order; // ⚡ returns instantly
+  //   } catch (err) {
+  //     this.logger.error(err);
+  //     throw handleCatch(err);
+  //   }
+  // }
 
   public async calculateDistancePriceBackground(
     orderId: string,

@@ -496,272 +496,272 @@ export class OrderRepository {
     });
   }
 
-  // async createOrderWithAddresses(
-  //   data: any,
-  //   customerId: string,
-  //   receiverId: string,
-  //   trackingCode: string,
-  //   pickupAddress: any,
-  //   deliveryAddress: any,
-  //   userId?: string,
-  // ): Promise<any> {
-  //   console.log(
-  //     'Repository inside creation order for addresses pickup and delivery :::::: ',
-  //     pickupAddress,
-  //     deliveryAddress,
-  //   );
-
-  //   // 1️⃣ Create addresses and order in a short Prisma transaction
-  //   const order = await this.prisma.$transaction(
-  //     async (tx) => {
-  //       console.log('Pickup address is :::::: ', data.pickupAddress);
-
-  //       // Create pickup address if provided
-  //       // let pickupAddressRecord: Address | null = null;
-  //       // if (data.pickupAddress) {
-  //       //   // Try to find an existing address with the same lat & long
-  //       //   pickupAddressRecord = await tx.address.findFirst({
-  //       //     where: {
-  //       //       lat: data.pickupAddress.lat,
-  //       //       long: data.pickupAddress.long,
-  //       //       purpose: 'ORDER_PICKUP',
-  //       //       userId: customerId,
-  //       //     },
-  //       //   });
-
-  //       //   console.log("Pickup address for creating address inside repo .... ::", pickupAddress);
-
-  //       //   // If not found, create a new one
-  //       //   if (!pickupAddressRecord) {
-  //       //     pickupAddressRecord = await tx.address.create({
-  //       //       data: {
-  //       //         addressLine: pickupAddress.addressLine ?? 'Unknown',
-  //       //         label: pickupAddress.label ?? 'Unknown Home or Office',
-  //       //         lat: data.pickupAddress.lat,
-  //       //         long: data.pickupAddress.long,
-  //       //         city: pickupAddress.city ?? 'Unknown',
-  //       //         state: pickupAddress.state ?? 'Unknown',
-  //       //         country: pickupAddress.country ?? 'Unknown',
-  //       //         postalCode: pickupAddress.postalCode ?? 'Unknown',
-  //       //         purpose: 'ORDER_PICKUP',
-  //       //         user: { connect: { id: customerId } },
-  //       //         createdBy: userId ?? customerId,
-  //       //       },
-  //       //     });
-  //       //   }
-  //       // }
-
-  //       // console.log('Pickup address ready:', pickupAddressRecord);
-
-  //       // // Delivery address (similar logic)
-  //       // let deliveryAddressRecord: Address | null = null;
-  //       // if (data.deliveryAddress) {
-  //       //   deliveryAddressRecord = await tx.address.findFirst({
-  //       //     where: {
-  //       //       lat: data.deliveryAddress.lat,
-  //       //       long: data.deliveryAddress.long,
-  //       //       purpose: 'ORDER_DELIVERY',
-  //       //       userId: customerId,
-  //       //     },
-  //       //   });
-  //       //   console.log("Delivery address for creating address inside repo .... ::", deliveryAddress);
-
-  //       //   if (!deliveryAddressRecord) {
-  //       //     deliveryAddressRecord = await tx.address.create({
-  //       //       data: {
-  //       //         addressLine: deliveryAddress.addressLine ?? 'Unknown',
-  //       //         label: deliveryAddress.label ?? 'Unknown Home or Office',
-  //       //         lat: data.deliveryAddress.lat,
-  //       //         long: data.deliveryAddress.long,
-  //       //         city: deliveryAddress.city ?? 'Unknown',
-  //       //         state: deliveryAddress.state ?? 'Unknown',
-  //       //         country: deliveryAddress.country ?? 'Unknown',
-  //       //         postalCode: deliveryAddress.postalCode ?? 'Unknown',
-  //       //         purpose: 'ORDER_DELIVERY',
-  //       //         user: { connect: { id: customerId } },
-  //       //         createdBy: userId ?? customerId,
-  //       //       },
-  //       //     });
-  //       //   }
-  //       // }
-
-  //       const pickupAddressRecord = await upsertAddress(
-  //         tx,
-  //         customerId,
-  //         userId,
-  //         data.pickupAddress,
-  //         'ORDER_PICKUP',
-  //       );
-
-  //       const deliveryAddressRecord = await upsertAddress(
-  //         tx,
-  //         customerId,
-  //         userId,
-  //         data.deliveryAddress,
-  //         'ORDER_DELIVERY',
-  //       );
-  //       console.log('Pickup address ready:', pickupAddressRecord);
-  //       console.log('Delivery address ready:', deliveryAddressRecord);
-
-  //       console.log('Delivery created:: ');
-
-  //       // Prepare order data
-  //       const orderData: any = {
-  //         trackingCode: trackingCode,
-  //         status: OrderStatus.CREATED,
-  //         serviceType: data.serviceType,
-  //         fulfillmentType: data.fulfillmentType,
-  //         weight: data.weight,
-  //         height: data.height,
-  //         width: data.width,
-  //         length: data.length,
-  //         category: data.category,
-  //         isFragile: data.isFragile,
-  //         shipmentType: data.shipmentType,
-  //         shippingScope: data.shippingScope,
-  //         pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
-  //         deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
-  //         createdBy: userId ?? customerId,
-  //         cost: data.cost,
-  //         customerId: customerId,
-  //         receiverId: receiverId,
-  //         quantity: data.quantity,
-  //         // customer: { connect: { id: customerId } },
-  //         branchId: data.branchId ? data.branchId : null,
-  //         // branch: data.branchId ? { connect: { id: data.branchId } } : undefined,
-  //         pickupAddressId: pickupAddressRecord?.id ?? null,
-  //         // pickupAddress: pickupAddress ? { connect: { id: pickupAddress.id } } : undefined,
-  //         deliveryAddressId: deliveryAddressRecord.id,
-  //         // deliveryAddress: { connect: { id: deliveryAddress.id } },
-  //       };
-
-  //       // Create order
-  //       const order = await tx.order.create({
-  //         data: orderData,
-  //         include: { pickupAddress: true, deliveryAddress: true },
-  //       });
-
-  //       console.log('Order created:: ');
-
-  //       // Create order tracking record
-  //       await tx.orderTracking.create({
-  //         data: {
-  //           orderId: order.id,
-  //           status: 'CREATED',
-  //           location: pickupAddress?.addressLine ?? 'Customer Home',
-  //           updatedBy: userId ?? customerId,
-  //           notes: 'Order Created.',
-  //         },
-  //       });
-
-  //       console.log('Log created:: ');
-
-  //       return order;
-  //     },
-  //     { timeout: 60000 },
-  //   );
-
-  //   // 2️⃣ Trigger async distance & pricing calculation outside transaction
-  //   // let origin: { lat: number; lon: number };
-  //   // if (order.pickupAddress) {
-  //   //   origin = {
-  //   //     lat: Number(order.pickupAddress.lat),
-  //   //     lon: Number(order.pickupAddress.long),
-  //   //   };
-  //   // } else {
-  //   //   origin = (await this.getBranchCoordinates(data.branchId)) as any;
-  //   // }
-
-  //   // const destination = {
-  //   //   lat: Number(order.deliveryAddress.lat),
-  //   //   lon: Number(order.deliveryAddress.long),
-  //   // };
-
-  //   // console.log('before calculating : ', origin, destination);
-  //   // console.log('before calculating second : ', this.websocketService);
-
-  //   // console.log(
-  //   //   '🧩 websocketService:',
-  //   //   this.websocketService?.constructor?.name,
-  //   // );
-  //   // if (!this.websocketService) {
-  //   //   throw new Error('🚨 websocketService is not injected!');
-  //   // }
-  //   // // Emit WebSocket or background job for async processing
-  //   // this.websocketService.emitOrderDistanceCalculation(
-  //   //   order.id,
-  //   //   origin,
-  //   //   destination,
-  //   // );
-
-  //   // console.log('Distance and price calculated:: ');
-
-  //   // 3️⃣ Return immediately, transaction is complete
-  //   return order;
-  // }
-
-
-  async createOrderWithAddresses(data: any, customerId: string, receiverId: string, trackingCode: string, userId: string) {
-  return this.prisma.$transaction(async (tx) => {
-    const pickup = await upsertAddress(
-      tx,
-      customerId,
-      userId,
-      data.pickupAddress,
-      'ORDER_PICKUP',
+  async createOrderWithAddresses(
+    data: any,
+    customerId: string,
+    receiverId: string,
+    trackingCode: string,
+    pickupAddress: any,
+    deliveryAddress: any,
+    userId?: string,
+  ): Promise<any> {
+    console.log(
+      'Repository inside creation order for addresses pickup and delivery :::::: ',
+      pickupAddress,
+      deliveryAddress,
     );
 
-    const delivery = await upsertAddress(
-      tx,
-      customerId,
-      userId,
-      data.deliveryAddress,
-      'ORDER_DELIVERY',
+    // 1️⃣ Create addresses and order in a short Prisma transaction
+    const order = await this.prisma.$transaction(
+      async (tx) => {
+        console.log('Pickup address is :::::: ', data.pickupAddress);
+
+        // Create pickup address if provided
+        // let pickupAddressRecord: Address | null = null;
+        // if (data.pickupAddress) {
+        //   // Try to find an existing address with the same lat & long
+        //   pickupAddressRecord = await tx.address.findFirst({
+        //     where: {
+        //       lat: data.pickupAddress.lat,
+        //       long: data.pickupAddress.long,
+        //       purpose: 'ORDER_PICKUP',
+        //       userId: customerId,
+        //     },
+        //   });
+
+        //   console.log("Pickup address for creating address inside repo .... ::", pickupAddress);
+
+        //   // If not found, create a new one
+        //   if (!pickupAddressRecord) {
+        //     pickupAddressRecord = await tx.address.create({
+        //       data: {
+        //         addressLine: pickupAddress.addressLine ?? 'Unknown',
+        //         label: pickupAddress.label ?? 'Unknown Home or Office',
+        //         lat: data.pickupAddress.lat,
+        //         long: data.pickupAddress.long,
+        //         city: pickupAddress.city ?? 'Unknown',
+        //         state: pickupAddress.state ?? 'Unknown',
+        //         country: pickupAddress.country ?? 'Unknown',
+        //         postalCode: pickupAddress.postalCode ?? 'Unknown',
+        //         purpose: 'ORDER_PICKUP',
+        //         user: { connect: { id: customerId } },
+        //         createdBy: userId ?? customerId,
+        //       },
+        //     });
+        //   }
+        // }
+
+        // console.log('Pickup address ready:', pickupAddressRecord);
+
+        // // Delivery address (similar logic)
+        // let deliveryAddressRecord: Address | null = null;
+        // if (data.deliveryAddress) {
+        //   deliveryAddressRecord = await tx.address.findFirst({
+        //     where: {
+        //       lat: data.deliveryAddress.lat,
+        //       long: data.deliveryAddress.long,
+        //       purpose: 'ORDER_DELIVERY',
+        //       userId: customerId,
+        //     },
+        //   });
+        //   console.log("Delivery address for creating address inside repo .... ::", deliveryAddress);
+
+        //   if (!deliveryAddressRecord) {
+        //     deliveryAddressRecord = await tx.address.create({
+        //       data: {
+        //         addressLine: deliveryAddress.addressLine ?? 'Unknown',
+        //         label: deliveryAddress.label ?? 'Unknown Home or Office',
+        //         lat: data.deliveryAddress.lat,
+        //         long: data.deliveryAddress.long,
+        //         city: deliveryAddress.city ?? 'Unknown',
+        //         state: deliveryAddress.state ?? 'Unknown',
+        //         country: deliveryAddress.country ?? 'Unknown',
+        //         postalCode: deliveryAddress.postalCode ?? 'Unknown',
+        //         purpose: 'ORDER_DELIVERY',
+        //         user: { connect: { id: customerId } },
+        //         createdBy: userId ?? customerId,
+        //       },
+        //     });
+        //   }
+        // }
+
+        const pickupAddressRecord = await upsertAddress(
+          tx,
+          customerId,
+          userId,
+          data.pickupAddress,
+          'ORDER_PICKUP',
+        );
+
+        const deliveryAddressRecord = await upsertAddress(
+          tx,
+          customerId,
+          userId,
+          data.deliveryAddress,
+          'ORDER_DELIVERY',
+        );
+        console.log('Pickup address ready:', pickupAddressRecord);
+        console.log('Delivery address ready:', deliveryAddressRecord);
+
+        console.log('Delivery created:: ');
+
+        // Prepare order data
+        const orderData: any = {
+          trackingCode: trackingCode,
+          status: OrderStatus.CREATED,
+          serviceType: data.serviceType,
+          fulfillmentType: data.fulfillmentType,
+          weight: data.weight,
+          height: data.height,
+          width: data.width,
+          length: data.length,
+          category: data.category,
+          isFragile: data.isFragile,
+          shipmentType: data.shipmentType,
+          shippingScope: data.shippingScope,
+          pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
+          deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
+          createdBy: userId ?? customerId,
+          cost: data.cost,
+          customerId: customerId,
+          receiverId: receiverId,
+          quantity: data.quantity,
+          // customer: { connect: { id: customerId } },
+          branchId: data.branchId ? data.branchId : null,
+          // branch: data.branchId ? { connect: { id: data.branchId } } : undefined,
+          pickupAddressId: pickupAddressRecord?.id ?? null,
+          // pickupAddress: pickupAddress ? { connect: { id: pickupAddress.id } } : undefined,
+          deliveryAddressId: deliveryAddressRecord.id,
+          // deliveryAddress: { connect: { id: deliveryAddress.id } },
+        };
+
+        // Create order
+        const order = await tx.order.create({
+          data: orderData,
+          include: { pickupAddress: true, deliveryAddress: true },
+        });
+
+        console.log('Order created:: ');
+
+        // Create order tracking record
+        await tx.orderTracking.create({
+          data: {
+            orderId: order.id,
+            status: 'CREATED',
+            location: pickupAddress?.addressLine ?? 'Customer Home',
+            updatedBy: userId ?? customerId,
+            notes: 'Order Created.',
+          },
+        });
+
+        console.log('Log created:: ');
+
+        return order;
+      },
+      { timeout: 60000 },
     );
 
-    const order = await tx.order.create({
-      data: {
-        trackingCode,
-        status: 'CREATED',
-        serviceType: data.serviceType,
-        fulfillmentType: data.fulfillmentType,
-        weight: data.weight,
-        height: data.height,
-        width: data.width,
-        length: data.length,
-        category: data.category,
-        isFragile: data.isFragile,
-        shipmentType: data.shipmentType,
-        shippingScope: data.shippingScope,
-        pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
-        deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
-        createdBy: userId ?? customerId,
-        customerId,
-        receiverId,
-        quantity: data.quantity,
-        branchId: data.branchId ?? null,
-        pickupAddressId: pickup?.id ?? null,
-        deliveryAddressId: delivery.id,
-      },
-      include: {
-        pickupAddress: true,
-        deliveryAddress: true
-      }
-    });
+    // 2️⃣ Trigger async distance & pricing calculation outside transaction
+    // let origin: { lat: number; lon: number };
+    // if (order.pickupAddress) {
+    //   origin = {
+    //     lat: Number(order.pickupAddress.lat),
+    //     lon: Number(order.pickupAddress.long),
+    //   };
+    // } else {
+    //   origin = (await this.getBranchCoordinates(data.branchId)) as any;
+    // }
 
-    await tx.orderTracking.create({
-      data: {
-        orderId: order.id,
-        status: 'CREATED',
-        location: pickup?.addressLine ?? 'Customer Home',
-        updatedBy: userId ?? customerId,
-        notes: 'Order Created.',
-      },
-    });
+    // const destination = {
+    //   lat: Number(order.deliveryAddress.lat),
+    //   lon: Number(order.deliveryAddress.long),
+    // };
 
+    // console.log('before calculating : ', origin, destination);
+    // console.log('before calculating second : ', this.websocketService);
+
+    // console.log(
+    //   '🧩 websocketService:',
+    //   this.websocketService?.constructor?.name,
+    // );
+    // if (!this.websocketService) {
+    //   throw new Error('🚨 websocketService is not injected!');
+    // }
+    // // Emit WebSocket or background job for async processing
+    // this.websocketService.emitOrderDistanceCalculation(
+    //   order.id,
+    //   origin,
+    //   destination,
+    // );
+
+    // console.log('Distance and price calculated:: ');
+
+    // 3️⃣ Return immediately, transaction is complete
     return order;
-  });
-}
+  }
+
+
+//   async createOrderWithAddresses(data: any, customerId: string, receiverId: string, trackingCode: string, userId: string) {
+//   return this.prisma.$transaction(async (tx) => {
+//     const pickup = await upsertAddress(
+//       tx,
+//       customerId,
+//       userId,
+//       data.pickupAddress,
+//       'ORDER_PICKUP',
+//     );
+
+//     const delivery = await upsertAddress(
+//       tx,
+//       customerId,
+//       userId,
+//       data.deliveryAddress,
+//       'ORDER_DELIVERY',
+//     );
+
+//     const order = await tx.order.create({
+//       data: {
+//         trackingCode,
+//         status: 'CREATED',
+//         serviceType: data.serviceType,
+//         fulfillmentType: data.fulfillmentType,
+//         weight: data.weight,
+//         height: data.height,
+//         width: data.width,
+//         length: data.length,
+//         category: data.category,
+//         isFragile: data.isFragile,
+//         shipmentType: data.shipmentType,
+//         shippingScope: data.shippingScope,
+//         pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
+//         deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
+//         createdBy: userId ?? customerId,
+//         customerId,
+//         receiverId,
+//         quantity: data.quantity,
+//         branchId: data.branchId ?? null,
+//         pickupAddressId: pickup?.id ?? null,
+//         deliveryAddressId: delivery.id,
+//       },
+//       include: {
+//         pickupAddress: true,
+//         deliveryAddress: true
+//       }
+//     });
+
+//     await tx.orderTracking.create({
+//       data: {
+//         orderId: order.id,
+//         status: 'CREATED',
+//         location: pickup?.addressLine ?? 'Customer Home',
+//         updatedBy: userId ?? customerId,
+//         notes: 'Order Created.',
+//       },
+//     });
+
+//     return order;
+//   });
+// }
 
   async updateOrderDistance(orderId: string, distance: number) {
     try {

@@ -23,11 +23,11 @@ import { MapMessageController } from './maps/maps.controller';
 import { RouteCacheService } from './maps/navigation.service';
 import { AppLogger } from '../common/app-logger.service';
 import { NotificationPublisher } from '../common/notification-publisher';
-import { WorkerModule } from './order/workers/worker.module';
-import { QueueModule } from './order/queue/queue.module';
-import { OrderQueue } from './order/queue/order.queue';
-import { OrderWorker } from './order/workers/order.worker';
-import { DriverAssignmentQueue } from './order/queue/driver-assignment.queue';
+// import { WorkerModule } from './order/workers/worker.module';
+// import { QueueModule } from './order/queue/queue.module';
+// import { OrderQueue } from './order/queue/order.queue';
+// import { OrderWorker } from './order/workers/order.worker';
+// import { DriverAssignmentQueue } from './order/queue/driver-assignment.queue';
 import { RedisModule } from '../redis/redis.module';
 
 @Module({
@@ -40,8 +40,8 @@ import { RedisModule } from '../redis/redis.module';
       secret: process.env.JWT_SECRET || 'yourSecret',
       signOptions: { expiresIn: '15m' },
     }),
-    WorkerModule,
-    QueueModule,
+    // WorkerModule,
+    // QueueModule,
   ],
   controllers: [
     OrderMessageController,
@@ -65,9 +65,9 @@ import { RedisModule } from '../redis/redis.module';
     MapsUseCasesImpl,
     MapsRepository,
     AppLogger,
-    OrderQueue,
-    OrderWorker,
-    DriverAssignmentQueue,
+    // OrderQueue,
+    // OrderWorker,
+    // DriverAssignmentQueue,
     NotificationPublisher,
 
   ],

@@ -31,6 +31,16 @@ export class DriverLocationService {
   private readonly LOCATION_LOG_INTERVAL_SECONDS = 120; // 2 minutes for location logs
   private readonly logger = new Logger(DriverLocationService.name);
 
+  /**
+   * Constructor for DriverLocationService.
+   * @param {RedisService} redisService
+   * @param {PrismaService} prisma
+   * @param {WebSocketEventService} websocketEventService
+   * @description
+   * This service is responsible for managing driver locations.
+   * It uses Redis for storing the driver locations and Prisma for persisting the driver status.
+   * It also uses WebSocketEventService for emitting driver status updates to connected clients.
+   */
   constructor(
     private readonly redisService: RedisService,
     private readonly prisma: PrismaService,
