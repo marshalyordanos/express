@@ -1,5 +1,5 @@
 # compiled output
-# /dist
+/dist
 /node_modules
 /build
 /logs
@@ -30,6 +30,7 @@ lerna-debug.log*
 
 # IDE - VSCode
 .vscode/*
+.vscode
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json

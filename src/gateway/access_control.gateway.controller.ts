@@ -23,6 +23,7 @@ import {
   RemovePermissionDto,
 } from '../operations/acl/access_control.entity';
 import * as jwt from 'jsonwebtoken';
+import { ListQueryDto } from '../common/query/query.dto';
 
 @Controller('access-control')
 export class AccessControlGatewayController {
@@ -54,7 +55,18 @@ export class AccessControlGatewayController {
     });
   }
 
-  
+  @Get('roles/all')
+  async findAllRole(@Req() req, @Query() query: ListQueryDto) {
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    return this.accessClient.send(PATTERNS.ROLE_FIND_ALL_FREE, {
+      user: decodedUser,
+      ip,
+      query,
+    });
+  }
+
   @Get('roles')
   async findAllRoles(
     @Req() req,
@@ -174,7 +186,6 @@ export class AccessControlGatewayController {
     });
   }
 
-  
   @Get('permissions')
   async findAllPermissions(
     @Req() req,
@@ -301,7 +312,7 @@ export class AccessControlGatewayController {
   async removePermissionFromRole(
     @Req() req,
     @Param('roleId') roleId: string,
-    @Body() dto: RemovePermissionDto, 
+    @Body() dto: RemovePermissionDto,
   ) {
     const { permissionId } = dto;
     const authHeader = req.headers['authorization'] || null;

@@ -11,6 +11,7 @@ import { CheckPermission } from '../../common/decorator/check-permission.decorat
 import { PermissionGuard } from '../../common/permission.guard';
 import { PermissionActions, ScopeAction } from '../../contracts/permission-actions.enum';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
+import { Public } from '../../common/decorator/public.decorator';
 
 @Controller()
 export class StaffMessageController {
@@ -29,8 +30,9 @@ export class StaffMessageController {
 
   //Completed but additional
   //Get all staffs by role
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Staff', PermissionActions.READ)
+  // @UseGuards(PermissionGuard, RateLimitGuard)
+  // @CheckPermission('Staff', PermissionActions.READ)
+  @Public()
   @MessagePattern(PATTERNS.STAFF_FIND_BY_ROLE)
   async findStaffByRole(
     @Payload()
@@ -54,8 +56,9 @@ export class StaffMessageController {
 
   //COmpleted as marshal wanted
   //Get all staffs
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Staff', PermissionActions.READ)
+  // @UseGuards(PermissionGuard, RateLimitGuard)
+  // @CheckPermission('Staff', PermissionActions.READ)
+  @Public()
   @MessagePattern(PATTERNS.STAFF_FIND_ALL)
   async findStaff(@Payload() payload: { query: ListQueryDto }) {
       const result = await this.usecases.findAllStaff(payload.query);
@@ -84,16 +87,18 @@ export class StaffMessageController {
       return IResponse.success('Staff deleted successfully', result);
   }
 
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Staff', PermissionActions.READ)
+  // @UseGuards(PermissionGuard, RateLimitGuard)
+  // @CheckPermission('Staff', PermissionActions.READ)
+  @Public()
   @MessagePattern(PATTERNS.STAFF_FIND_BY_ID)
   async findStaffById(@Payload() payload: { id: string }) {
       const result = await this.usecases.findStaffById(payload.id);
       return IResponse.success('User fetched successfully', result);
   }
 
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Staff', PermissionActions.UPDATE)
+  // @UseGuards(PermissionGuard, RateLimitGuard)
+  // @CheckPermission('Staff', PermissionActions.UPDATE)
+  @Public()
   @MessagePattern(PATTERNS.STAFF_UPDATE)
   async updateStaff(@Payload() payload: { id: string; data: UpdateStaffDto }) {
       const result = await this.usecases.updateStaff(payload.id, payload.data);
@@ -137,8 +142,9 @@ export class StaffMessageController {
     
   }
 
-    @UseGuards(PermissionGuard, RateLimitGuard)
-    @CheckPermission('User', PermissionActions.CREATE, ScopeAction.APPROVE)
+    // @UseGuards(PermissionGuard, RateLimitGuard)
+    // @CheckPermission('User', PermissionActions.CREATE, ScopeAction.APPROVE)
+    @Public()
     @MessagePattern(PATTERNS.STAFF_CREATE_DRIVER)
     async createDriver(@Payload() payload: { data: CreateDriver; user: any }) {
       const userId = payload.user.sub;
@@ -148,8 +154,9 @@ export class StaffMessageController {
         result,
       );
     }
-    @UseGuards(PermissionGuard, RateLimitGuard)
-    @CheckPermission('User', PermissionActions.READ)
+    // @UseGuards(PermissionGuard, RateLimitGuard)
+    // @CheckPermission('User', PermissionActions.READ)
+    @Public()
     @MessagePattern(PATTERNS.STAFF_FIND_DRIVER)
     async findDriver(@Payload() payload: { query: ListQueryDto }) {
       const result = await this.usecases.findDriver(payload.query);

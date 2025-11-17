@@ -67,6 +67,7 @@ export const PATTERNS = {
   ROLE_UPDATE_PERMISSION: 'role.updatePermission',
   ROLE_ASSIGN_USER: 'role.assignUser',
   ROLE_UPDATE_BY_ID: 'role.updateById',
+  ROLE_FIND_ALL_FREE: 'role.findAllFree',
 
   // ===== PERMISSION =====
   PERMISSION_CREATE: 'permission.create',

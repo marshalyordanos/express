@@ -8,6 +8,8 @@ import {
   ChangeRolePermissionDto,
   PermissionActionDto,
 } from './access_control.entity';
+import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Injectable()
 export class AccessControlRepository {
@@ -21,6 +23,45 @@ export class AccessControlRepository {
     });
   }
 
+    async findAllRole(payload: ListQueryDto) {
+  
+          const feature = new PrismaQueryFeature({
+            search: payload.search,
+            filter: payload.filter,
+            sort: payload.sort,
+            page: payload.page,
+            pageSize: payload.pageSize,
+            searchableFields: ['name', 'description',],
+          });
+      
+          const query = feature.getQuery();
+          console.log('quest1: ', query);
+      
+          const results = await Promise.all([
+            this.prisma.role.findMany({
+              ...query,
+      
+              where: query.where || {},
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            }),
+            this.prisma.role.count({ where: query.where || {} }),
+          ])
+  
+          const roles = results[0] || [];
+          const total = results[1] || 0;
+      
+          return {
+            roles,
+            pagination: feature.getPagination(total),
+          }
+    }
+  
   async findAllRoles(
     page: number,
     pageSize: number,

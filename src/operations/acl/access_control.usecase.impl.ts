@@ -11,6 +11,7 @@ import {
 } from './access_control.entity';
 import { RpcException } from '@nestjs/microservices';
 import { AppLogger } from '../../common/app-logger.service';
+import { ListQueryDto } from 'src/common/query/query.dto';
 
 @Injectable()
 export class AccessControlUsecaseImpl implements AccessControlUsecase {
@@ -339,4 +340,25 @@ export class AccessControlUsecaseImpl implements AccessControlUsecase {
       });
     }
   }
+
+     async findAllRoles(query: ListQueryDto) {
+      try {
+        this.logger.log(
+          `Retrieving all roles with query: ${JSON.stringify(query)}`,
+        );
+  
+        const roles = await this.repo.findAllRole(query);
+  
+        this.logger.log(
+          `Fetched ${roles.pagination.total || 0} roles successfully`,
+        );
+        return roles;
+      } catch (error) {
+        this.logger.error(
+          `Error retrieving all roles : ${error.message}`,
+          error.stack,
+        );
+        throw new RpcException(error.message || 'Failed to retrieve roles');
+      }
+    }
 }

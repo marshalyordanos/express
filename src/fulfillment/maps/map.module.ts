@@ -53,16 +53,16 @@ import { NavigationWsService } from '../../websocket/services/navigation.ws.serv
     PrismaService,
     RouteCacheService,
     RouteOptimizerService,
-      DriverLocationWsService, // ✅ Export
-    NavigationWsService,  
+    DriverLocationWsService, // ✅ Export
+    NavigationWsService,
   ],
   exports: [
     DriverLocationService,
     MapsService,
     RouteCacheService,
     RouteOptimizerService,
-      DriverLocationWsService, // ✅ Export
-    NavigationWsService,  
+    DriverLocationWsService, // ✅ Export
+    NavigationWsService,
   ],
 })
 export class MapsModule {}

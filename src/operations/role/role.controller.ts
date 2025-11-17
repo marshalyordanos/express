@@ -10,6 +10,7 @@ import { CheckPermission } from '../../common/decorator/check-permission.decorat
 import { PermissionGuard } from '../../common/permission.guard';
 import { PermissionActions } from '../../contracts/permission-actions.enum';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
+import { Public } from '../../common/decorator/public.decorator';
 
 @Controller()
 export class RoleMessageController {
@@ -23,8 +24,9 @@ export class RoleMessageController {
     return IResponse.success('Role created successfully', result);
   }
 
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Role', PermissionActions.READ)
+  // @UseGuards(PermissionGuard, RateLimitGuard)
+  // @CheckPermission('Role', PermissionActions.READ)
+  @Public()
   @MessagePattern(PATTERNS.ROLE_FIND_BY_ID)
   async findRole(@Payload() payload: { id: string }) {
     const result = await this.usecases.findRole(payload.id);
@@ -42,6 +44,22 @@ export class RoleMessageController {
     },
   ) {
     const user = payload.headers;
+    const result = await this.usecases.findAllRoles(payload.query);
+    return IResponse.success(
+      'Roles fetched successfully',
+      result.roles,
+      result.pagination,
+    );
+  }
+
+    @Public()
+  @MessagePattern(PATTERNS.ROLE_FIND_ALL_FREE)
+  async getAllRolesFree(
+    @Payload()
+    payload: {
+      query: ListQueryDto;
+    },
+  ) {
     const result = await this.usecases.findAllRoles(payload.query);
     return IResponse.success(
       'Roles fetched successfully',

@@ -1739,12 +1739,18 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         orderId,
         driverId,
       );
+
       if (result.count === 0) {
         this.logger.warn(
           `Order ${orderId} already assigned — driver ${driverId} rejected`,
         );
         return { assigned: false, reason: 'already_assigned' };
       }
+      const routesegment= await this.dispatchRepo.findRouteSegmentByOrderId(orderId);
+
+      // if(routesegment.length < 0){
+      //   const orderSegment= await this.dispatchRepo.createSegmentRoute()
+      // }
 
       // Mark winner & expire others in parallel
       await Promise.all([

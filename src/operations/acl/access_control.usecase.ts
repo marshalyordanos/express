@@ -6,6 +6,7 @@ import {
   PermissionActionDto,
 } from './access_control.entity';
 import { Role, Permission } from '@prisma/client';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 export interface AccessControlUsecase {
   // Roles
@@ -43,4 +44,5 @@ export interface AccessControlUsecase {
     data: PermissionActionDto,
   ): Promise<Role>;
   removePermissionFromRole(roleId: string, permissionId: string): Promise<Role>;
+  findAllRoles(query: ListQueryDto): Promise<any>;
 }

@@ -13,8 +13,13 @@ import { IResponse } from '../../common/types';
 import { handleCatch } from '../../common/handleCatch';
 import { CheckPermission } from '../../common/decorator/check-permission.decorator';
 import { PermissionGuard } from '../../common/permission.guard';
-import { PermissionActions, ScopeAction } from '../../contracts/permission-actions.enum';
+import {
+  PermissionActions,
+  ScopeAction,
+} from '../../contracts/permission-actions.enum';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
+import { Public } from '../../common/decorator/public.decorator';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Controller()
 export class AccessControlMessageController {
@@ -22,8 +27,9 @@ export class AccessControlMessageController {
 
   // ----------- ROLES -----------
 
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Role', PermissionActions.READ)
+  // @UseGuards(PermissionGuard, RateLimitGuard)
+  // @CheckPermission('Role', PermissionActions.READ)
+  @Public()
   @MessagePattern(PATTERNS.ROLE_FIND_BY_ID)
   async findRoleById(@Payload() payload: { id: string }) {
     const result = await this.usecases.getRole(payload.id);
@@ -65,6 +71,22 @@ export class AccessControlMessageController {
   async deleteRole(@Payload() payload: { id: string }) {
     const result = await this.usecases.deleteRole(payload.id);
     return IResponse.success('Role deleted successfully', result);
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.ROLE_FIND_ALL_FREE)
+  async getAllRolesFree(
+    @Payload()
+    payload: {
+      query: ListQueryDto;
+    },
+  ) {
+    const result = await this.usecases.findAllRoles(payload.query);
+    return IResponse.success(
+      'Roles fetched successfully',
+      result.roles,
+      result.pagination,
+    );
   }
 
   // ----------- PERMISSIONS -----------

@@ -13,6 +13,7 @@ import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class DispatchRepository {
+
   constructor(private prisma: PrismaService) {}
 
   async findExcludedDrivers(
@@ -33,7 +34,13 @@ export class DispatchRepository {
     // return array of driverIds
     return losers.map((l) => l.driverId);
   }
-
+   async findRouteSegmentByOrderId(orderId: string) {
+    return this.prisma.orderRouteSegment.findMany({
+      where: {
+        orderId,
+      },
+    })
+  }
   async assignDriverForPickup(
     driverId: string,
     orderId: string,
