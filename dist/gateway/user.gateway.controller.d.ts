@@ -1,0 +1,31 @@
+import { ClientProxy } from '@nestjs/microservices';
+import { AddressDto, AddressUpdateDto, AssignCustomerToCategory, CreateDriver, CustomerCategoryDto, NotificationPreferencesDto, PreferencesDto, UnAssignCustomerToCategory, UpdateCorporateInfoDto, UpdateCustomerCategoryDto, UserDto } from '../operations/user/user.entity';
+import { ListQueryDto } from '../common/query/query.dto';
+export declare class UserGatewayController {
+    private readonly usersClient;
+    constructor(usersClient: ClientProxy);
+    addAddress(dto: AddressDto, req: any): Promise<import("rxjs").Observable<any>>;
+    listAddresses(req: any): Promise<import("rxjs").Observable<any>>;
+    updateAddress(req: any, id: string, dto: AddressUpdateDto): Promise<import("rxjs").Observable<any>>;
+    deleteAddress(req: any, id: string): Promise<import("rxjs").Observable<any>>;
+    updatePreferences(req: any, id: string, dto: PreferencesDto): Promise<import("rxjs").Observable<any>>;
+    updateCorporateInfo(req: any, id: string, dto: UpdateCorporateInfoDto): Promise<import("rxjs").Observable<any>>;
+    findUser(id: string, req: any): Promise<import("rxjs").Observable<any>>;
+    getNotificationPreference(req: any): Promise<import("rxjs").Observable<any>>;
+    createDriver(data: CreateDriver, req: any): Promise<import("rxjs").Observable<any>>;
+    findDriver(query: ListQueryDto, req: any): Promise<import("rxjs").Observable<any>>;
+    createNotificationPreference(req: any, dto: NotificationPreferencesDto): Promise<import("rxjs").Observable<any>>;
+    updateNotificationPreference(req: any, dto: NotificationPreferencesDto): Promise<import("rxjs").Observable<any>>;
+    getCustomerOrder(req: any, query: ListQueryDto): Promise<import("rxjs").Observable<any>>;
+    findAllCustomers(req: any, query: ListQueryDto): Promise<import("rxjs").Observable<any>>;
+    findAll(req: any, query: ListQueryDto): Promise<import("rxjs").Observable<any>>;
+    updateUser(dto: Partial<UserDto>, req: any): Promise<import("rxjs").Observable<any>>;
+    deleteUser(id: string, req: any): Promise<import("rxjs").Observable<any>>;
+    getCustomerCategory(req: any, query: ListQueryDto): Promise<import("rxjs").Observable<any>>;
+    getCustomerCategoryById(id: string, req: any): Promise<import("rxjs").Observable<any>>;
+    createCustomerCategory(dto: CustomerCategoryDto, req: any): Promise<import("rxjs").Observable<any>>;
+    updateCustomerCategory(id: string, dto: UpdateCustomerCategoryDto, req: any): Promise<import("rxjs").Observable<any>>;
+    deleteCustomerCategory(id: string, req: any): Promise<import("rxjs").Observable<any>>;
+    assignCustomerCategoryToUser(dto: AssignCustomerToCategory, req: any): Promise<import("rxjs").Observable<any>>;
+    unAssignCustomerCategoryToUser(dto: UnAssignCustomerToCategory, req: any): Promise<import("rxjs").Observable<any>>;
+}
