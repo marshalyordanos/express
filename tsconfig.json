@@ -12,7 +12,7 @@
     "moduleResolution": "node",
     "outDir": "./dist",
     "baseUrl": "./",
-    "incremental": true, 
+    "incremental": true,
     "strictNullChecks": false,
     "noImplicitAny": false,
     "strictBindCallApply": false,
@@ -20,6 +20,8 @@
     "noFallthroughCasesInSwitch": false,
     "ignoreDeprecations": "5.0",
     "disableReferencedProjectLoad": true,
-    "noErrorTruncation": true
+    "noErrorTruncation": true,
+    "typeRoots": ["./node_modules/@types"],
+    "types": ["node", "express", "multer"]
   }
 }
