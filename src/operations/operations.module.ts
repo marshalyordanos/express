@@ -29,7 +29,7 @@ import { DashboardReportRepository } from './report/repositories/dashboard.repos
 import { AppLogger } from '../common/app-logger.service';
 import { MapsService } from '../fulfillment/maps/maps.service';
 import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
-import { CommonOCRService } from '../common/ocr/ocr.service';
+// import { CommonOCRService } from '../common/ocr/ocr.service';
 import { RedisModule } from '../redis/redis.module';
 
 @Module({
@@ -72,7 +72,7 @@ import { RedisModule } from '../redis/redis.module';
     AppLogger,
     MapsService,
     CloudinaryUploaderService,
-    CommonOCRService,
+    // CommonOCRService,
   ],
   exports: [
     UserUseCasesImp,

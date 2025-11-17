@@ -15,7 +15,7 @@ import { AppLogger } from '../../common/app-logger.service';
 import { PasswordValidator } from '../../common/password-validator';
 import { RedisService } from '../..//redis/redis.service';
 import { CloudinaryUploaderService } from '../../common/cloudinary/cloudinary-uploader.service';
-import { CommonOCRService } from '../../common/ocr/ocr.service';
+// import { CommonOCRService } from '../../common/ocr/ocr.service';
 
 @Injectable()
 export class StaffUseCasesImpl implements StaffUsecase {
@@ -24,7 +24,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
     private readonly logger: AppLogger,
     private readonly redis: RedisService,
     private readonly cloudinaryUploader: CloudinaryUploaderService,
-    private readonly ocrService: CommonOCRService,
+    // private readonly ocrService: CommonOCRService,
   ) {
     this.logger.setContext('OperationsService', 'RoleUseCaseImpl');
   }
