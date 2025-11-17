@@ -268,7 +268,7 @@ export class DispatchGatewayController {
     });
   }
 
-    @Post('/driver/requests')
+  @Post('/driver/requests')
   async createDriverAssignmentRequests(
     @Body() data: CreateAssignmentRequestsDto,
     @Req() req,
@@ -384,7 +384,9 @@ export class DispatchGatewayController {
   @Post('/complete-delivery')
   @UseInterceptors(FilesInterceptor('podImages', 5))
   async completeDelivery(
-    @UploadedFiles() files: Express.Multer.File[],
+    // @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles() files: any[],
+
     @Body() data: CompleteDeliveryDto,
     @Req() req,
   ) {
@@ -401,7 +403,7 @@ export class DispatchGatewayController {
           fileStreamsOrBuffers,
           `pod_images/${data.driverId}/${data.orderId}`,
         );
-        
+
         data.podImages = uploadedImages;
         console.log('Proof of delivery images uploaded successfully.');
       } catch (error) {
@@ -522,8 +524,7 @@ export class DispatchGatewayController {
     });
   }
 
-
-   @Get("/officer")
+  @Get('/officer')
   async getDispatchesForOfficer(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
@@ -538,13 +539,15 @@ export class DispatchGatewayController {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
 
-    
-    return this.dispatchClient.send(PATTERNS.DISPATCH_FIND_DELIVERED_AND_ONGOING, {
-      headers: { authorization: authHeader },
-      user: decodedUser, // ✅ send user info
-      ip,
-      query,
-    });
+    return this.dispatchClient.send(
+      PATTERNS.DISPATCH_FIND_DELIVERED_AND_ONGOING,
+      {
+        headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+        query,
+      },
+    );
   }
 
   //Need Sanitization

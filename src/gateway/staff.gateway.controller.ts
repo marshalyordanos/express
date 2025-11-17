@@ -28,6 +28,11 @@ import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
 import { SanitizePipe } from '../common/sanitize.pipe';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { Express } from 'express';
+// import { Express } from 'express';
+// import { File as MulterFile } from 'multer';
+// import { File } from 'multer';
+
 
 @Controller('staff')
 export class StaffGatewayController {
@@ -269,7 +274,11 @@ export class StaffGatewayController {
 @Post('/driver')
 @UseInterceptors(FilesInterceptor('licenseImages', 2))
 async createDriver(
-  @UploadedFiles() files: Express.Multer.File[],
+  // @UploadedFiles() files: Express.Multer.File[],
+  // @UploadedFiles() files: File[],
+  // @UploadedFiles() files: Express.Multer.File[],
+  // @UploadedFiles() files: MulterFile[],
+  @UploadedFiles() files: any[],
   @Body() body: any,
   @Req() req,
 ) {

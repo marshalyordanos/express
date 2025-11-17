@@ -22,6 +22,6 @@
     "disableReferencedProjectLoad": true,
     "noErrorTruncation": true,
     "typeRoots": ["./node_modules/@types"],
-    "types": ["node", "express","jest", "multer"]
+    "types": ["node", "express","jest"]
   }
 }
