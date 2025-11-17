@@ -273,9 +273,9 @@ async createDriver(
   @Body() body: any,
   @Req() req,
 ) {
-  const authHeader = req.headers['authorization'] || null;
-  const token = authHeader?.replace('Bearer ', '');
-  const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
+  // const authHeader = req.headers['authorization'] || null;
+  // const token = authHeader?.replace('Bearer ', '');
+  // const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
 
   // Attach files (as buffer/base64)
   // Attach file buffers
@@ -288,29 +288,29 @@ async createDriver(
 
   return this.staffClient.send(PATTERNS.STAFF_CREATE_DRIVER, {
     data: body,
-    headers: { authorization: authHeader },
-    user: decodedUser,
+    // headers: { authorization: authHeader },
+    user: null,
     ip,
   });
 }
 
   @Get('/driver')
   async findDriver(@Query() query: ListQueryDto, @Req() req) {
-    const authHeader = req.headers['authorization'] || null;
-    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+    // const authHeader = req.headers['authorization'] || null;
+    // let token = req.headers['authorization']?.replace('Bearer ', '') || null;
 
     const forwarded = (req.headers['x-forwarded-for'] as string) || '';
     const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
     let decodedUser = null;
-    try {
-      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
-      // decodedUser = this.jwtService.verify(token);
-    } catch (err) {
-      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
-    }
+    // try {
+    //   decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+    //   // decodedUser = this.jwtService.verify(token);
+    // } catch (err) {
+    //   throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    // }
     return this.staffClient.send(PATTERNS.STAFF_FIND_DRIVER, {
       query,
-      headers: { authorization: authHeader },
+      // headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
       ip,
     });
