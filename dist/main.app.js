@@ -9,4 +9,4 @@ const child_process_1 = require("child_process");
     console.log(stdout);
     console.error(stderr);
 });
-//# sourceMappingURL=main.container.js.map
+//# sourceMappingURL=main.app.js.map
