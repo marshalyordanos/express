@@ -1,4 +1,3 @@
-import { MapLocationGateway } from '../../websocket/gateways/map-location.gateway';
 import { RedisService } from '../../redis/redis.service';
 import { MapsRepository } from './maps.repository';
 import { RouteOptimizerService } from './route-optimizer.service';
@@ -25,13 +24,12 @@ interface RouteCache {
     originalOptimizedOrder?: string[];
 }
 export declare class RouteCacheService {
-    private readonly wsGateway;
     private readonly mapRepo;
     private readonly redisClient;
     private readonly routeOptimizer;
     private readonly mapsService;
     private readonly logger;
-    constructor(wsGateway: MapLocationGateway, mapRepo: MapsRepository, redisClient: RedisService, routeOptimizer: RouteOptimizerService, mapsService: MapsService);
+    constructor(mapRepo: MapsRepository, redisClient: RedisService, routeOptimizer: RouteOptimizerService, mapsService: MapsService);
     saveDriverRoute(driverId: string, route: RouteCache): Promise<void>;
     deleteDriverRoute(driverId: string): Promise<void>;
     getDriverRoute(driverId: string): Promise<RouteCache | null>;

@@ -1,6 +1,5 @@
 import { RedisService } from '../../redis/redis.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { WebSocketEventService } from '../../websocket/services/websocket-event.service';
 export interface NearbyDriver {
     driverId: string;
     distanceKm: number;
@@ -24,13 +23,12 @@ export interface RankedDriver {
 export declare class DriverLocationService {
     private readonly redisService;
     private readonly prisma;
-    private websocketEventService;
     private readonly GEO_KEY;
     private readonly LOCATION_TTL_SECONDS;
     private readonly STATUS_PERSIST_MINUTES;
     private readonly LOCATION_LOG_INTERVAL_SECONDS;
     private readonly logger;
-    constructor(redisService: RedisService, prisma: PrismaService, websocketEventService: WebSocketEventService);
+    constructor(redisService: RedisService, prisma: PrismaService);
     updateDriverLocation(data: {
         driverId: string;
         lon: number;

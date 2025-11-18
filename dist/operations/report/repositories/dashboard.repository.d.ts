@@ -55,6 +55,7 @@ export declare class DashboardReportRepository {
             type: import(".prisma/client").$Enums.DriverType;
             status: import(".prisma/client").$Enums.DriverStatus;
             vehicleId: string | null;
+            currentLat: number | null;
             availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;
             licenseExpiry: Date | null;
@@ -62,7 +63,6 @@ export declare class DashboardReportRepository {
             frontImageUrl: string | null;
             backImageUrl: string | null;
             verifiedByOCR: boolean;
-            currentLat: number | null;
             currentLon: number | null;
         };
         fleetLogs: {
@@ -160,10 +160,6 @@ export declare class DashboardReportRepository {
             status: import(".prisma/client").$Enums.OrderStatus;
             validatedBy: string | null;
             validatedNotes: string | null;
-            distance: number | null;
-            currency: string | null;
-            tariffId: string | null;
-            finalPrice: number | null;
             pickupDriverId: string | null;
             deliveryDriverId: string | null;
             pickupAddressId: string | null;
@@ -172,6 +168,7 @@ export declare class DashboardReportRepository {
             dropoffConfirmed: boolean;
             actualPickupDate: Date | null;
             actualDropoffDate: Date | null;
+            distance: number | null;
             validatedAt: Date | null;
             pickupAssignedBy: string | null;
             pickupAssignedAt: Date | null;
@@ -180,6 +177,9 @@ export declare class DashboardReportRepository {
             estimatedDeliveryAt: Date | null;
             actualDeliveryAt: Date | null;
             batchId: string | null;
+            tariffId: string | null;
+            finalPrice: number | null;
+            currency: string | null;
             optimizationJobId: string | null;
         }[];
         origin: {
@@ -228,13 +228,13 @@ export declare class DashboardReportRepository {
         category: string[];
         isFragile: boolean;
         status: import(".prisma/client").$Enums.DispatchStatus;
-        vehicleId: string | null;
         originId: string | null;
         destinationId: string | null;
         batchCode: string;
         createdById: string | null;
         shipmentDate: Date | null;
         createdUser: string | null;
+        vehicleId: string | null;
         awbNumber: string | null;
         officerId: string | null;
     })[]>;
@@ -367,10 +367,6 @@ export declare class DashboardReportRepository {
             status: import(".prisma/client").$Enums.OrderStatus;
             validatedBy: string | null;
             validatedNotes: string | null;
-            distance: number | null;
-            currency: string | null;
-            tariffId: string | null;
-            finalPrice: number | null;
             pickupDriverId: string | null;
             deliveryDriverId: string | null;
             pickupAddressId: string | null;
@@ -379,6 +375,7 @@ export declare class DashboardReportRepository {
             dropoffConfirmed: boolean;
             actualPickupDate: Date | null;
             actualDropoffDate: Date | null;
+            distance: number | null;
             validatedAt: Date | null;
             pickupAssignedBy: string | null;
             pickupAssignedAt: Date | null;
@@ -387,6 +384,9 @@ export declare class DashboardReportRepository {
             estimatedDeliveryAt: Date | null;
             actualDeliveryAt: Date | null;
             batchId: string | null;
+            tariffId: string | null;
+            finalPrice: number | null;
+            currency: string | null;
             optimizationJobId: string | null;
         };
     } & {
@@ -397,6 +397,7 @@ export declare class DashboardReportRepository {
         weight: number;
         orderId: string;
         distance: number | null;
+        finalPrice: number;
         currency: string;
         surcharges: import("@prisma/client/runtime/library").JsonValue;
         discounts: import("@prisma/client/runtime/library").JsonValue;
@@ -404,6 +405,5 @@ export declare class DashboardReportRepository {
         baseRate: number;
         appliedRate: number;
         profit: import("@prisma/client/runtime/library").JsonValue;
-        finalPrice: number;
     })[]>;
 }

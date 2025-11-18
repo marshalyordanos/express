@@ -15,7 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
 import { MapGatewayController } from './maps.gateway.controller';
 import { RedisService } from '../redis/redis.service';
-import { WebSocketModule } from '../websocket/socket.module';
+// import { WebSocketModule } from '../websocket/socket.module';//temporary fix only
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { ReportGatewayController } from './report.gateway.controller';
 import { AppLogger } from '../common/app-logger.service';
@@ -23,7 +23,7 @@ import { SanitizePipe } from '../common/sanitize.pipe';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
-import { NotificationModule } from '../notification/notification.module';
+// import { NotificationModule } from '../notification/notification.module'; //temporary fix only
 import Redis from 'ioredis';
 import { RedisModule } from '../redis/redis.module';
 
@@ -34,8 +34,8 @@ import { RedisModule } from '../redis/redis.module';
       limits: { files: 5, fileSize: 5 * 1024 * 1024 },
     }),
     forwardRef(() => FulfillmentModule),
-    WebSocketModule,
-    NotificationModule,
+    // WebSocketModule, //temporary fix only
+    // NotificationModule,
     MicroserviceClientsModule,
     RedisModule,
     ConfigModule.forRoot({ isGlobal: true }),

@@ -305,10 +305,10 @@ export declare class UserRepository {
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-                baseFee: number;
-                perKgRate: number;
-                perKmRate: number;
                 currency: string;
+                baseFee: number;
+                perKmRate: number;
+                perKgRate: number;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             }[];
@@ -508,6 +508,7 @@ export declare class UserRepository {
             type: import(".prisma/client").$Enums.DriverType;
             status: import(".prisma/client").$Enums.DriverStatus;
             vehicleId: string | null;
+            currentLat: number | null;
             availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;
             licenseExpiry: Date | null;
@@ -515,7 +516,6 @@ export declare class UserRepository {
             frontImageUrl: string | null;
             backImageUrl: string | null;
             verifiedByOCR: boolean;
-            currentLat: number | null;
             currentLon: number | null;
         })[];
         pagination: {

@@ -60,8 +60,8 @@ export declare class MapsRepository {
         createdBy: string | null;
         city: string | null;
         country: string | null;
-        longitude: number;
         latitude: number;
+        longitude: number;
     }>;
     findAddressByCoords(lat: string, long: string): Promise<{
         branchId: string | null;
@@ -85,9 +85,9 @@ export declare class MapsRepository {
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        distanceKm: number | null;
         originId: string;
         destinationId: string;
-        distanceKm: number | null;
         durationMin: number | null;
         routePath: import("@prisma/client/runtime/library").JsonValue | null;
         optimized: boolean;
@@ -102,9 +102,9 @@ export declare class MapsRepository {
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        distanceKm: number | null;
         originId: string;
         destinationId: string;
-        distanceKm: number | null;
         durationMin: number | null;
         routePath: import("@prisma/client/runtime/library").JsonValue | null;
         optimized: boolean;
@@ -123,8 +123,8 @@ export declare class MapsRepository {
         createdBy: string | null;
         city: string | null;
         country: string | null;
-        longitude: number;
         latitude: number;
+        longitude: number;
     }>;
     createRoute(data: {
         originId: string;
@@ -140,9 +140,9 @@ export declare class MapsRepository {
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        distanceKm: number | null;
         originId: string;
         destinationId: string;
-        distanceKm: number | null;
         durationMin: number | null;
         routePath: import("@prisma/client/runtime/library").JsonValue | null;
         optimized: boolean;

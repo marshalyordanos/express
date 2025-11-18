@@ -1,48 +1,48 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { MapsService } from '../../fulfillment/maps/maps.service';
-import { OrderUseCasesImpl } from '../../fulfillment/order/order.usecase.impl';
-import { PricingUseCasesImpl } from '../../fulfillment/pricing/pricing.usecase.impl';
+// import { forwardRef, Inject, Injectable } from '@nestjs/common';
+// import { MapsService } from '../../fulfillment/maps/maps.service';
+// import { OrderUseCasesImpl } from '../../fulfillment/order/order.usecase.impl';
+// import { PricingUseCasesImpl } from '../../fulfillment/pricing/pricing.usecase.impl';
 
-@Injectable()
-export class OrderDistanceWsService {
-  constructor(
-    private readonly mapService: MapsService,
-    @Inject(forwardRef(() => OrderUseCasesImpl))
-    private readonly orderUseCases: OrderUseCasesImpl,
-    @Inject(forwardRef(() => PricingUseCasesImpl))
-    private readonly pricingUseCases: PricingUseCasesImpl,
-  ) {}
+// @Injectable()
+// export class OrderDistanceWsService {
+//   constructor(
+//     private readonly mapService: MapsService,
+//     @Inject(forwardRef(() => OrderUseCasesImpl))
+//     private readonly orderUseCases: OrderUseCasesImpl,
+//     @Inject(forwardRef(() => PricingUseCasesImpl))
+//     private readonly pricingUseCases: PricingUseCasesImpl,
+//   ) {}
 
-  async calculateDistanceAndPrice(payload: {
-    orderId: string;
-    origin: { lat: number; lon: number };
-    destination: { lat: number; lon: number };
-  }) {
-    const distance = await this.mapService.calculateDistance(
-      payload.origin,
-      payload.destination,
-    );
+//   async calculateDistanceAndPrice(payload: {
+//     orderId: string;
+//     origin: { lat: number; lon: number };
+//     destination: { lat: number; lon: number };
+//   }) {
+//     const distance = await this.mapService.calculateDistance(
+//       payload.origin,
+//       payload.destination,
+//     );
 
-    await this.orderUseCases.updateOrderDistance(payload.orderId, distance);
+//     await this.orderUseCases.updateOrderDistance(payload.orderId, distance);
 
-    const priceData = await this.pricingUseCases.calculatePrice(
-      payload.orderId,
-    );
+//     const priceData = await this.pricingUseCases.calculatePrice(
+//       payload.orderId,
+//     );
 
-    console.log(`responsing after calculating of distance ${distance} and price ${priceData}`);
+//     console.log(`responsing after calculating of distance ${distance} and price ${priceData}`);
     
-    return { distance, priceData };
-  }
+//     return { distance, priceData };
+//   }
 
-  async calculatePrice(payload: {
-    orderId: string;
-    origin: { lat: number; lon: number };
-    destination: { lat: number; lon: number };
-  }) {
-    const priceData = await this.pricingUseCases.calculatePrice(
-      payload.orderId,
-    );
+//   async calculatePrice(payload: {
+//     orderId: string;
+//     origin: { lat: number; lon: number };
+//     destination: { lat: number; lon: number };
+//   }) {
+//     const priceData = await this.pricingUseCases.calculatePrice(
+//       payload.orderId,
+//     );
 
-    return priceData;
-  }
-}
+//     return priceData;
+//   }
+// }

@@ -279,6 +279,7 @@ export declare class StaffRepository {
             type: import(".prisma/client").$Enums.DriverType;
             status: import(".prisma/client").$Enums.DriverStatus;
             vehicleId: string | null;
+            currentLat: number | null;
             availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;
             licenseExpiry: Date | null;
@@ -286,7 +287,6 @@ export declare class StaffRepository {
             frontImageUrl: string | null;
             backImageUrl: string | null;
             verifiedByOCR: boolean;
-            currentLat: number | null;
             currentLon: number | null;
         })[];
         pagination: {

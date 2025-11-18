@@ -37,10 +37,6 @@ export declare class OrderMessageController {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -49,6 +45,7 @@ export declare class OrderMessageController {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -57,6 +54,9 @@ export declare class OrderMessageController {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>>;
     createUserOrder(payload: {
@@ -90,10 +90,6 @@ export declare class OrderMessageController {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -102,6 +98,7 @@ export declare class OrderMessageController {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -110,6 +107,9 @@ export declare class OrderMessageController {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>>;
     acceptDropOffOrder(payload: {
@@ -163,10 +163,6 @@ export declare class OrderMessageController {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -175,6 +171,7 @@ export declare class OrderMessageController {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -183,6 +180,9 @@ export declare class OrderMessageController {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>>;
     markUnusualOrder(payload: {
@@ -217,10 +217,6 @@ export declare class OrderMessageController {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -229,6 +225,7 @@ export declare class OrderMessageController {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -237,6 +234,9 @@ export declare class OrderMessageController {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>>;
     updateOrder(payload: {
@@ -276,10 +276,6 @@ export declare class OrderMessageController {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -288,6 +284,7 @@ export declare class OrderMessageController {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -296,6 +293,9 @@ export declare class OrderMessageController {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>>;
     cancelOrder(payload: {
@@ -400,16 +400,16 @@ export declare class OrderMessageController {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string;
         validatedNotes: string;
-        distance: number;
-        currency: string;
-        finalPrice: number;
         pickupDriverId: string;
         deliveryDriverId: string;
         pickupAddressId: string;
         deliveryAddressId: string;
+        distance: number;
         estimatedDeliveryAt: Date;
         actualDeliveryAt: Date;
         batchId: string;
+        finalPrice: number;
+        currency: string;
         customer: {
             name: string;
             email: string;
@@ -480,10 +480,6 @@ export declare class OrderMessageController {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -492,6 +488,7 @@ export declare class OrderMessageController {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -500,6 +497,9 @@ export declare class OrderMessageController {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }[]>>;
 }

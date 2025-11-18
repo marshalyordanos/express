@@ -52,10 +52,6 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
             status: import(".prisma/client").$Enums.OrderStatus;
             validatedBy: string | null;
             validatedNotes: string | null;
-            distance: number | null;
-            currency: string | null;
-            tariffId: string | null;
-            finalPrice: number | null;
             pickupDriverId: string | null;
             deliveryDriverId: string | null;
             pickupAddressId: string | null;
@@ -64,6 +60,7 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
             dropoffConfirmed: boolean;
             actualPickupDate: Date | null;
             actualDropoffDate: Date | null;
+            distance: number | null;
             validatedAt: Date | null;
             pickupAssignedBy: string | null;
             pickupAssignedAt: Date | null;
@@ -72,6 +69,9 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
             estimatedDeliveryAt: Date | null;
             actualDeliveryAt: Date | null;
             batchId: string | null;
+            tariffId: string | null;
+            finalPrice: number | null;
+            currency: string | null;
             optimizationJobId: string | null;
         };
     }>;
@@ -122,10 +122,6 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -134,6 +130,7 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -142,6 +139,9 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>;
     removeDriverFromOrder(orderId: string): Promise<any>;
@@ -192,13 +192,13 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
             category: string[];
             isFragile: boolean;
             status: import(".prisma/client").$Enums.DispatchStatus;
-            vehicleId: string | null;
             originId: string | null;
             destinationId: string | null;
             batchCode: string;
             createdById: string | null;
             shipmentDate: Date | null;
             createdUser: string | null;
+            vehicleId: string | null;
             awbNumber: string | null;
             officerId: string | null;
         };
@@ -247,13 +247,13 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
             category: string[];
             isFragile: boolean;
             status: import(".prisma/client").$Enums.DispatchStatus;
-            vehicleId: string | null;
             originId: string | null;
             destinationId: string | null;
             batchCode: string;
             createdById: string | null;
             shipmentDate: Date | null;
             createdUser: string | null;
+            vehicleId: string | null;
             awbNumber: string | null;
             officerId: string | null;
         };
@@ -335,10 +335,6 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
                 status: import(".prisma/client").$Enums.OrderStatus;
                 validatedBy: string | null;
                 validatedNotes: string | null;
-                distance: number | null;
-                currency: string | null;
-                tariffId: string | null;
-                finalPrice: number | null;
                 pickupDriverId: string | null;
                 deliveryDriverId: string | null;
                 pickupAddressId: string | null;
@@ -347,6 +343,7 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
                 dropoffConfirmed: boolean;
                 actualPickupDate: Date | null;
                 actualDropoffDate: Date | null;
+                distance: number | null;
                 validatedAt: Date | null;
                 pickupAssignedBy: string | null;
                 pickupAssignedAt: Date | null;
@@ -355,6 +352,9 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
                 estimatedDeliveryAt: Date | null;
                 actualDeliveryAt: Date | null;
                 batchId: string | null;
+                tariffId: string | null;
+                finalPrice: number | null;
+                currency: string | null;
                 optimizationJobId: string | null;
             }[];
         } & {
@@ -369,13 +369,13 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
             category: string[];
             isFragile: boolean;
             status: import(".prisma/client").$Enums.DispatchStatus;
-            vehicleId: string | null;
             originId: string | null;
             destinationId: string | null;
             batchCode: string;
             createdById: string | null;
             shipmentDate: Date | null;
             createdUser: string | null;
+            vehicleId: string | null;
             awbNumber: string | null;
             officerId: string | null;
         })[];
@@ -441,6 +441,7 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
         type: import(".prisma/client").$Enums.DriverType;
         status: import(".prisma/client").$Enums.DriverStatus;
         vehicleId: string | null;
+        currentLat: number | null;
         availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
         licenseNumber: string | null;
         licenseExpiry: Date | null;
@@ -448,7 +449,6 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
         frontImageUrl: string | null;
         backImageUrl: string | null;
         verifiedByOCR: boolean;
-        currentLat: number | null;
         currentLon: number | null;
     }>;
     findDriver(query: ListQueryDto): Promise<{
@@ -473,6 +473,7 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
             type: import(".prisma/client").$Enums.DriverType;
             status: import(".prisma/client").$Enums.DriverStatus;
             vehicleId: string | null;
+            currentLat: number | null;
             availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;
             licenseExpiry: Date | null;
@@ -480,7 +481,6 @@ export declare class DispatchUseCasesImpl implements DispatchUseCases {
             frontImageUrl: string | null;
             backImageUrl: string | null;
             verifiedByOCR: boolean;
-            currentLat: number | null;
             currentLon: number | null;
         })[];
         pagination: {

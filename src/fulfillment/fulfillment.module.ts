@@ -16,7 +16,7 @@ import { MapsService } from './maps/maps.service';
 import { DriverLocationService } from './maps/driver-location.service';
 import { RouteOptimizerService } from './maps/route-optimizer.service';
 import { ScheduleModule } from '@nestjs/schedule';
-import { WebSocketModule } from '../websocket/socket.module';
+// import { WebSocketModule } from '../websocket/socket.module'; // for temporary fix only
 import { MapsUseCasesImpl } from './maps/maps.usecase.impl';
 import { MapsRepository } from './maps/maps.repository';
 import { MapMessageController } from './maps/maps.controller';
@@ -33,7 +33,7 @@ import { RedisModule } from '../redis/redis.module';
 @Module({
   imports: [
     RedisModule,
-    forwardRef(() => WebSocketModule),
+    // forwardRef(() => WebSocketModule),// temporary fix only
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.register({

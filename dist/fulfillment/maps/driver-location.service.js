@@ -8,27 +8,21 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var __param = (this && this.__param) || function (paramIndex, decorator) {
-    return function (target, key) { decorator(target, key, paramIndex); }
-};
 var DriverLocationService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DriverLocationService = void 0;
 const common_1 = require("@nestjs/common");
 const redis_service_1 = require("../../redis/redis.service");
 const prisma_service_1 = require("../../prisma/prisma.service");
-const websocket_event_service_1 = require("../../websocket/services/websocket-event.service");
 let DriverLocationService = DriverLocationService_1 = class DriverLocationService {
-    constructor(redisService, prisma, websocketEventService) {
+    constructor(redisService, prisma) {
         this.redisService = redisService;
         this.prisma = prisma;
-        this.websocketEventService = websocketEventService;
         this.GEO_KEY = 'drivers:locations';
         this.LOCATION_TTL_SECONDS = 300;
         this.STATUS_PERSIST_MINUTES = 3;
         this.LOCATION_LOG_INTERVAL_SECONDS = 120;
         this.logger = new common_1.Logger(DriverLocationService_1.name);
-        this.onlineEmitter = this.websocketEventService.emitDriverStatus.bind(this.websocketEventService);
     }
     async updateDriverLocation(data) {
         const client = this.redisService.getClient();
@@ -62,13 +56,6 @@ let DriverLocationService = DriverLocationService_1 = class DriverLocationServic
                 });
                 this.logger.log(`Driver ${data.driverId} came ONLINE — saved in DB.`);
             }
-            this.websocketEventService.emitDriverLocationToSubscribers({
-                driverId: data.driverId,
-                lat: data.lat,
-                lon: data.lon,
-                speed: data.speed,
-                heading: data.heading,
-            });
         }
         catch (err) {
             this.logger.error(`Failed to update location for driver ${data.driverId}`, err);
@@ -418,9 +405,7 @@ let DriverLocationService = DriverLocationService_1 = class DriverLocationServic
 exports.DriverLocationService = DriverLocationService;
 exports.DriverLocationService = DriverLocationService = DriverLocationService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => websocket_event_service_1.WebSocketEventService))),
     __metadata("design:paramtypes", [redis_service_1.RedisService,
-        prisma_service_1.PrismaService,
-        websocket_event_service_1.WebSocketEventService])
+        prisma_service_1.PrismaService])
 ], DriverLocationService);
 //# sourceMappingURL=driver-location.service.js.map

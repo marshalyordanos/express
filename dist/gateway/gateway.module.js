@@ -23,7 +23,6 @@ const Permission_Bootstrapper_1 = require("./Permission.Bootstrapper");
 const prisma_service_1 = require("../prisma/prisma.service");
 const config_1 = require("@nestjs/config");
 const maps_gateway_controller_1 = require("./maps.gateway.controller");
-const socket_module_1 = require("../websocket/socket.module");
 const fulfillment_module_1 = require("../fulfillment/fulfillment.module");
 const report_gateway_controller_1 = require("./report.gateway.controller");
 const app_logger_service_1 = require("../common/app-logger.service");
@@ -31,7 +30,6 @@ const sanitize_pipe_1 = require("../common/sanitize.pipe");
 const platform_express_1 = require("@nestjs/platform-express");
 const multer_1 = require("multer");
 const cloudinary_uploader_service_1 = require("../common/cloudinary/cloudinary-uploader.service");
-const notification_module_1 = require("../notification/notification.module");
 const redis_module_1 = require("../redis/redis.module");
 let GatewayModule = class GatewayModule {
 };
@@ -44,8 +42,6 @@ exports.GatewayModule = GatewayModule = __decorate([
                 limits: { files: 5, fileSize: 5 * 1024 * 1024 },
             }),
             (0, common_1.forwardRef)(() => fulfillment_module_1.FulfillmentModule),
-            socket_module_1.WebSocketModule,
-            notification_module_1.NotificationModule,
             clients_module_1.MicroserviceClientsModule,
             redis_module_1.RedisModule,
             config_1.ConfigModule.forRoot({ isGlobal: true }),

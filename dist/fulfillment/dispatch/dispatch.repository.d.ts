@@ -12,14 +12,14 @@ export declare class DispatchRepository {
         updatedAt: Date;
         driverId: string | null;
         orderId: string;
-        originId: string;
-        destinationId: string;
         distanceKm: number | null;
         estimatedDurationMin: number | null;
         actualDurationMin: number | null;
         startTime: Date | null;
         endTime: Date | null;
         sequence: number;
+        originId: string;
+        destinationId: string;
     }[]>;
     assignDriverForPickup(driverId: string, orderId: string, userId: string): Promise<{
         id: string;
@@ -50,6 +50,7 @@ export declare class DispatchRepository {
         type: import(".prisma/client").$Enums.DriverType;
         status: import(".prisma/client").$Enums.DriverStatus;
         vehicleId: string | null;
+        currentLat: number | null;
         availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
         licenseNumber: string | null;
         licenseExpiry: Date | null;
@@ -57,7 +58,6 @@ export declare class DispatchRepository {
         frontImageUrl: string | null;
         backImageUrl: string | null;
         verifiedByOCR: boolean;
-        currentLat: number | null;
         currentLon: number | null;
     }>;
     collectBatchByCargoOfficer(batchIds: string[], officerId: string): Promise<Prisma.BatchPayload>;
@@ -114,10 +114,6 @@ export declare class DispatchRepository {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -126,6 +122,7 @@ export declare class DispatchRepository {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -134,6 +131,9 @@ export declare class DispatchRepository {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>;
     assignOrder(orderId: string, driverId: string, userId: string): Promise<{
@@ -149,13 +149,13 @@ export declare class DispatchRepository {
             category: string[];
             isFragile: boolean;
             status: import(".prisma/client").$Enums.DispatchStatus;
-            vehicleId: string | null;
             originId: string | null;
             destinationId: string | null;
             batchCode: string;
             createdById: string | null;
             shipmentDate: Date | null;
             createdUser: string | null;
+            vehicleId: string | null;
             awbNumber: string | null;
             officerId: string | null;
         };
@@ -188,10 +188,6 @@ export declare class DispatchRepository {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -200,6 +196,7 @@ export declare class DispatchRepository {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -208,6 +205,9 @@ export declare class DispatchRepository {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>;
     lastMileDelivery(orderId: string, driverId: string, notes?: string): Promise<{
@@ -239,10 +239,6 @@ export declare class DispatchRepository {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -251,6 +247,7 @@ export declare class DispatchRepository {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -259,6 +256,9 @@ export declare class DispatchRepository {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>;
     deliverOrderWithPodImages(orderId: string, driverId: string, notes?: string, podImages?: {
@@ -313,10 +313,6 @@ export declare class DispatchRepository {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -325,6 +321,7 @@ export declare class DispatchRepository {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -333,6 +330,9 @@ export declare class DispatchRepository {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>;
     completeDelivery(data: AssignDriverForPickup): Promise<{
@@ -364,10 +364,6 @@ export declare class DispatchRepository {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -376,6 +372,7 @@ export declare class DispatchRepository {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -384,6 +381,9 @@ export declare class DispatchRepository {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>;
     findOrderById(orderId: string): Promise<{
@@ -415,10 +415,6 @@ export declare class DispatchRepository {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -427,6 +423,7 @@ export declare class DispatchRepository {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -435,6 +432,9 @@ export declare class DispatchRepository {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>;
     findUserById(id: string): Promise<{
@@ -470,13 +470,13 @@ export declare class DispatchRepository {
         category: string[];
         isFragile: boolean;
         status: import(".prisma/client").$Enums.DispatchStatus;
-        vehicleId: string | null;
         originId: string | null;
         destinationId: string | null;
         batchCode: string;
         createdById: string | null;
         shipmentDate: Date | null;
         createdUser: string | null;
+        vehicleId: string | null;
         awbNumber: string | null;
         officerId: string | null;
     }[]>;
@@ -509,10 +509,6 @@ export declare class DispatchRepository {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -521,6 +517,7 @@ export declare class DispatchRepository {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -529,6 +526,9 @@ export declare class DispatchRepository {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>;
     changeDriverForOrder(orderId: string, driverId: string): Promise<{
@@ -560,10 +560,6 @@ export declare class DispatchRepository {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -572,6 +568,7 @@ export declare class DispatchRepository {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -580,6 +577,9 @@ export declare class DispatchRepository {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>;
     findOrdersByIds(orderIds: string[]): Promise<({
@@ -629,10 +629,6 @@ export declare class DispatchRepository {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -641,6 +637,7 @@ export declare class DispatchRepository {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -649,6 +646,9 @@ export declare class DispatchRepository {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     })[]>;
     createBatchDispatch(dto: BatchDispatchDto, batchCode: string, userId: string): Promise<{
@@ -697,13 +697,13 @@ export declare class DispatchRepository {
             category: string[];
             isFragile: boolean;
             status: import(".prisma/client").$Enums.DispatchStatus;
-            vehicleId: string | null;
             originId: string | null;
             destinationId: string | null;
             batchCode: string;
             createdById: string | null;
             shipmentDate: Date | null;
             createdUser: string | null;
+            vehicleId: string | null;
             awbNumber: string | null;
             officerId: string | null;
         };
@@ -752,13 +752,13 @@ export declare class DispatchRepository {
             category: string[];
             isFragile: boolean;
             status: import(".prisma/client").$Enums.DispatchStatus;
-            vehicleId: string | null;
             originId: string | null;
             destinationId: string | null;
             batchCode: string;
             createdById: string | null;
             shipmentDate: Date | null;
             createdUser: string | null;
+            vehicleId: string | null;
             awbNumber: string | null;
             officerId: string | null;
         };
@@ -815,10 +815,6 @@ export declare class DispatchRepository {
             status: import(".prisma/client").$Enums.OrderStatus;
             validatedBy: string | null;
             validatedNotes: string | null;
-            distance: number | null;
-            currency: string | null;
-            tariffId: string | null;
-            finalPrice: number | null;
             pickupDriverId: string | null;
             deliveryDriverId: string | null;
             pickupAddressId: string | null;
@@ -827,6 +823,7 @@ export declare class DispatchRepository {
             dropoffConfirmed: boolean;
             actualPickupDate: Date | null;
             actualDropoffDate: Date | null;
+            distance: number | null;
             validatedAt: Date | null;
             pickupAssignedBy: string | null;
             pickupAssignedAt: Date | null;
@@ -835,6 +832,9 @@ export declare class DispatchRepository {
             estimatedDeliveryAt: Date | null;
             actualDeliveryAt: Date | null;
             batchId: string | null;
+            tariffId: string | null;
+            finalPrice: number | null;
+            currency: string | null;
             optimizationJobId: string | null;
         })[];
         origin: {
@@ -866,13 +866,13 @@ export declare class DispatchRepository {
         category: string[];
         isFragile: boolean;
         status: import(".prisma/client").$Enums.DispatchStatus;
-        vehicleId: string | null;
         originId: string | null;
         destinationId: string | null;
         batchCode: string;
         createdById: string | null;
         shipmentDate: Date | null;
         createdUser: string | null;
+        vehicleId: string | null;
         awbNumber: string | null;
         officerId: string | null;
     }>;
@@ -949,10 +949,6 @@ export declare class DispatchRepository {
                 status: import(".prisma/client").$Enums.OrderStatus;
                 validatedBy: string | null;
                 validatedNotes: string | null;
-                distance: number | null;
-                currency: string | null;
-                tariffId: string | null;
-                finalPrice: number | null;
                 pickupDriverId: string | null;
                 deliveryDriverId: string | null;
                 pickupAddressId: string | null;
@@ -961,6 +957,7 @@ export declare class DispatchRepository {
                 dropoffConfirmed: boolean;
                 actualPickupDate: Date | null;
                 actualDropoffDate: Date | null;
+                distance: number | null;
                 validatedAt: Date | null;
                 pickupAssignedBy: string | null;
                 pickupAssignedAt: Date | null;
@@ -969,6 +966,9 @@ export declare class DispatchRepository {
                 estimatedDeliveryAt: Date | null;
                 actualDeliveryAt: Date | null;
                 batchId: string | null;
+                tariffId: string | null;
+                finalPrice: number | null;
+                currency: string | null;
                 optimizationJobId: string | null;
             }[];
         } & {
@@ -983,13 +983,13 @@ export declare class DispatchRepository {
             category: string[];
             isFragile: boolean;
             status: import(".prisma/client").$Enums.DispatchStatus;
-            vehicleId: string | null;
             originId: string | null;
             destinationId: string | null;
             batchCode: string;
             createdById: string | null;
             shipmentDate: Date | null;
             createdUser: string | null;
+            vehicleId: string | null;
             awbNumber: string | null;
             officerId: string | null;
         })[];
@@ -1064,10 +1064,6 @@ export declare class DispatchRepository {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -1076,6 +1072,7 @@ export declare class DispatchRepository {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -1084,6 +1081,9 @@ export declare class DispatchRepository {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>;
     findOrdersByBatchIds(batchIds: string[]): Promise<{
@@ -1146,10 +1146,6 @@ export declare class DispatchRepository {
             status: import(".prisma/client").$Enums.OrderStatus;
             validatedBy: string | null;
             validatedNotes: string | null;
-            distance: number | null;
-            currency: string | null;
-            tariffId: string | null;
-            finalPrice: number | null;
             pickupDriverId: string | null;
             deliveryDriverId: string | null;
             pickupAddressId: string | null;
@@ -1158,6 +1154,7 @@ export declare class DispatchRepository {
             dropoffConfirmed: boolean;
             actualPickupDate: Date | null;
             actualDropoffDate: Date | null;
+            distance: number | null;
             validatedAt: Date | null;
             pickupAssignedBy: string | null;
             pickupAssignedAt: Date | null;
@@ -1166,6 +1163,9 @@ export declare class DispatchRepository {
             estimatedDeliveryAt: Date | null;
             actualDeliveryAt: Date | null;
             batchId: string | null;
+            tariffId: string | null;
+            finalPrice: number | null;
+            currency: string | null;
             optimizationJobId: string | null;
         };
     } & {
@@ -1208,10 +1208,6 @@ export declare class DispatchRepository {
             status: import(".prisma/client").$Enums.OrderStatus;
             validatedBy: string | null;
             validatedNotes: string | null;
-            distance: number | null;
-            currency: string | null;
-            tariffId: string | null;
-            finalPrice: number | null;
             pickupDriverId: string | null;
             deliveryDriverId: string | null;
             pickupAddressId: string | null;
@@ -1220,6 +1216,7 @@ export declare class DispatchRepository {
             dropoffConfirmed: boolean;
             actualPickupDate: Date | null;
             actualDropoffDate: Date | null;
+            distance: number | null;
             validatedAt: Date | null;
             pickupAssignedBy: string | null;
             pickupAssignedAt: Date | null;
@@ -1228,6 +1225,9 @@ export declare class DispatchRepository {
             estimatedDeliveryAt: Date | null;
             actualDeliveryAt: Date | null;
             batchId: string | null;
+            tariffId: string | null;
+            finalPrice: number | null;
+            currency: string | null;
             optimizationJobId: string | null;
         }[];
         origin: {
@@ -1276,13 +1276,13 @@ export declare class DispatchRepository {
         category: string[];
         isFragile: boolean;
         status: import(".prisma/client").$Enums.DispatchStatus;
-        vehicleId: string | null;
         originId: string | null;
         destinationId: string | null;
         batchCode: string;
         createdById: string | null;
         shipmentDate: Date | null;
         createdUser: string | null;
+        vehicleId: string | null;
         awbNumber: string | null;
         officerId: string | null;
     })[]>;
@@ -1315,6 +1315,7 @@ export declare class DispatchRepository {
         type: import(".prisma/client").$Enums.DriverType;
         status: import(".prisma/client").$Enums.DriverStatus;
         vehicleId: string | null;
+        currentLat: number | null;
         availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
         licenseNumber: string | null;
         licenseExpiry: Date | null;
@@ -1322,7 +1323,6 @@ export declare class DispatchRepository {
         frontImageUrl: string | null;
         backImageUrl: string | null;
         verifiedByOCR: boolean;
-        currentLat: number | null;
         currentLon: number | null;
     }>;
     findVehicleById(vehicleId: string): Promise<{
@@ -1359,6 +1359,7 @@ export declare class DispatchRepository {
             type: import(".prisma/client").$Enums.DriverType;
             status: import(".prisma/client").$Enums.DriverStatus;
             vehicleId: string | null;
+            currentLat: number | null;
             availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;
             licenseExpiry: Date | null;
@@ -1366,7 +1367,6 @@ export declare class DispatchRepository {
             frontImageUrl: string | null;
             backImageUrl: string | null;
             verifiedByOCR: boolean;
-            currentLat: number | null;
             currentLon: number | null;
         })[];
         pagination: {

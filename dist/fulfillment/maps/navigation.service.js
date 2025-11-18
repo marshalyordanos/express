@@ -8,21 +8,16 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var __param = (this && this.__param) || function (paramIndex, decorator) {
-    return function (target, key) { decorator(target, key, paramIndex); }
-};
 var RouteCacheService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RouteCacheService = void 0;
-const map_location_gateway_1 = require("../../websocket/gateways/map-location.gateway");
 const redis_service_1 = require("../../redis/redis.service");
 const maps_repository_1 = require("./maps.repository");
 const common_1 = require("@nestjs/common");
 const route_optimizer_service_1 = require("./route-optimizer.service");
 const maps_service_1 = require("./maps.service");
 let RouteCacheService = RouteCacheService_1 = class RouteCacheService {
-    constructor(wsGateway, mapRepo, redisClient, routeOptimizer, mapsService) {
-        this.wsGateway = wsGateway;
+    constructor(mapRepo, redisClient, routeOptimizer, mapsService) {
         this.mapRepo = mapRepo;
         this.redisClient = redisClient;
         this.routeOptimizer = routeOptimizer;
@@ -44,7 +39,6 @@ let RouteCacheService = RouteCacheService_1 = class RouteCacheService {
         await this.redisClient.set(key, JSON.stringify(route), { EX: 3600 });
         await this.redisClient.set(`driver:${driverId}:routeFinish`, routeFinishISO, { EX: 3600 });
         this.logger.debug(`Saved route for driver ${driverId} in Redis (finish: ${routeFinishISO})`);
-        this.wsGateway.broadcastDriverRoute(driverId, route);
     }
     async deleteDriverRoute(driverId) {
         await this.redisClient.del(`driver:${driverId}:currentRoute`);
@@ -126,11 +120,6 @@ let RouteCacheService = RouteCacheService_1 = class RouteCacheService {
         route.remainingDurationSec = Math.round((cumulativeRemainingKm / speed) * 3600);
         route.estimatedArrivalTime = new Date(Date.now() + Math.round(etaToNextMin * 60000)).toISOString();
         await this.saveDriverRoute(driverId, route);
-        this.wsGateway.emitNextStopEta(driverId, nextStop, {
-            lat,
-            lon,
-            speedKmh: speed,
-        });
         const deviationThresholdMeters = 300;
         if (distanceToNextKm * 1000 > deviationThresholdMeters) {
             const { route: recalculatedRoute, recalculated } = await this.routeOptimizer.recalculateRouteIfDeviation(driverId, { lat, lon }, {
@@ -161,11 +150,6 @@ let RouteCacheService = RouteCacheService_1 = class RouteCacheService {
                         recalculatedRoute.orderedStopIds,
                 };
                 await this.saveDriverRoute(driverId, rc);
-                this.wsGateway.broadcastDriverRoute(driverId, rc);
-                this.wsGateway.broadcastDriverLocationToDriver('route:recalculated', {
-                    driverId,
-                    recalculatedRoute: rc,
-                });
             }
         }
         else {
@@ -176,8 +160,6 @@ let RouteCacheService = RouteCacheService_1 = class RouteCacheService {
                 remainingDistanceMeters: Math.round(cumulativeRemainingKm * 1000),
                 recalculated: false,
             };
-            this.wsGateway.broadcastDriverLocationToDriver(driverId, etaData);
-            this.wsGateway.broadcastETAtoCustomer(etaData);
         }
         return {
             nextStop: {
@@ -214,7 +196,6 @@ let RouteCacheService = RouteCacheService_1 = class RouteCacheService {
                         recalculatedRoute.orderedStopIds,
                 };
                 await this.saveDriverRoute(driverId, rc);
-                this.wsGateway.broadcastDriverRoute(driverId, rc);
             }
         }
         catch (err) {
@@ -258,7 +239,6 @@ let RouteCacheService = RouteCacheService_1 = class RouteCacheService {
                 }
             }
             await this.removeDriverRoute(driverId);
-            this.wsGateway.broadcastDriverRouteCompletion(driverId, route.optimizationJobId);
             this.logger.debug(`Route completed for driver ${driverId}`);
         }
         catch (err) {
@@ -269,9 +249,7 @@ let RouteCacheService = RouteCacheService_1 = class RouteCacheService {
 exports.RouteCacheService = RouteCacheService;
 exports.RouteCacheService = RouteCacheService = RouteCacheService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, common_1.Inject)((0, common_1.forwardRef)(() => map_location_gateway_1.MapLocationGateway))),
-    __metadata("design:paramtypes", [map_location_gateway_1.MapLocationGateway,
-        maps_repository_1.MapsRepository,
+    __metadata("design:paramtypes", [maps_repository_1.MapsRepository,
         redis_service_1.RedisService,
         route_optimizer_service_1.RouteOptimizerService,
         maps_service_1.MapsService])

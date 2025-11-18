@@ -81,10 +81,6 @@ export declare class OrderUseCasesImpl implements OrderUseCases {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -93,6 +89,7 @@ export declare class OrderUseCasesImpl implements OrderUseCases {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -101,6 +98,9 @@ export declare class OrderUseCasesImpl implements OrderUseCases {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>;
     markUnusualOrder(orderId: string, data: any): Promise<{
@@ -132,10 +132,6 @@ export declare class OrderUseCasesImpl implements OrderUseCases {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -144,6 +140,7 @@ export declare class OrderUseCasesImpl implements OrderUseCases {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -152,6 +149,9 @@ export declare class OrderUseCasesImpl implements OrderUseCases {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>;
     approveOrder(orderId: string, reason: string, userId: string): Promise<{
@@ -183,10 +183,6 @@ export declare class OrderUseCasesImpl implements OrderUseCases {
         status: import(".prisma/client").$Enums.OrderStatus;
         validatedBy: string | null;
         validatedNotes: string | null;
-        distance: number | null;
-        currency: string | null;
-        tariffId: string | null;
-        finalPrice: number | null;
         pickupDriverId: string | null;
         deliveryDriverId: string | null;
         pickupAddressId: string | null;
@@ -195,6 +191,7 @@ export declare class OrderUseCasesImpl implements OrderUseCases {
         dropoffConfirmed: boolean;
         actualPickupDate: Date | null;
         actualDropoffDate: Date | null;
+        distance: number | null;
         validatedAt: Date | null;
         pickupAssignedBy: string | null;
         pickupAssignedAt: Date | null;
@@ -203,6 +200,9 @@ export declare class OrderUseCasesImpl implements OrderUseCases {
         estimatedDeliveryAt: Date | null;
         actualDeliveryAt: Date | null;
         batchId: string | null;
+        tariffId: string | null;
+        finalPrice: number | null;
+        currency: string | null;
         optimizationJobId: string | null;
     }>;
     getAllOrders(query: ListQueryDto): Promise<{
@@ -235,16 +235,16 @@ export declare class OrderUseCasesImpl implements OrderUseCases {
             status: import(".prisma/client").$Enums.OrderStatus;
             validatedBy: string;
             validatedNotes: string;
-            distance: number;
-            currency: string;
-            finalPrice: number;
             pickupDriverId: string;
             deliveryDriverId: string;
             pickupAddressId: string;
             deliveryAddressId: string;
+            distance: number;
             estimatedDeliveryAt: Date;
             actualDeliveryAt: Date;
             batchId: string;
+            finalPrice: number;
+            currency: string;
             customer: {
                 name: string;
                 email: string;
@@ -393,10 +393,6 @@ export declare class OrderUseCasesImpl implements OrderUseCases {
             status: import(".prisma/client").$Enums.OrderStatus;
             validatedBy: string | null;
             validatedNotes: string | null;
-            distance: number | null;
-            currency: string | null;
-            tariffId: string | null;
-            finalPrice: number | null;
             pickupDriverId: string | null;
             deliveryDriverId: string | null;
             pickupAddressId: string | null;
@@ -405,6 +401,7 @@ export declare class OrderUseCasesImpl implements OrderUseCases {
             dropoffConfirmed: boolean;
             actualPickupDate: Date | null;
             actualDropoffDate: Date | null;
+            distance: number | null;
             validatedAt: Date | null;
             pickupAssignedBy: string | null;
             pickupAssignedAt: Date | null;
@@ -413,6 +410,9 @@ export declare class OrderUseCasesImpl implements OrderUseCases {
             estimatedDeliveryAt: Date | null;
             actualDeliveryAt: Date | null;
             batchId: string | null;
+            tariffId: string | null;
+            finalPrice: number | null;
+            currency: string | null;
             optimizationJobId: string | null;
         }[];
         pagination: {

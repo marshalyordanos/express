@@ -1,4 +1,4 @@
-import { MapLocationGateway } from '../../websocket/gateways/map-location.gateway';
+// import { MapLocationGateway } from '../../websocket/gateways/map-location.gateway'; //temporary fix
 import { RedisService } from '../../redis/redis.service';
 import { MapsRepository } from './maps.repository';
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
@@ -32,8 +32,8 @@ export class RouteCacheService {
   private readonly logger = new Logger(RouteCacheService.name);
 
   constructor(
-    @Inject(forwardRef(() => MapLocationGateway))
-    private readonly wsGateway: MapLocationGateway,
+    // @Inject(forwardRef(() => MapLocationGateway)) //temporary fix
+    // private readonly wsGateway: MapLocationGateway,
     private readonly mapRepo: MapsRepository,
     private readonly redisClient: RedisService,
     private readonly routeOptimizer: RouteOptimizerService,
@@ -82,7 +82,7 @@ export class RouteCacheService {
     );
 
     // Broadcast via WebSocket (route object sent to subscribers)
-    this.wsGateway.broadcastDriverRoute(driverId, route);
+    // this.wsGateway.broadcastDriverRoute(driverId, route); //temporary fix
   }
 
   async deleteDriverRoute(driverId: string): Promise<void> {
@@ -227,12 +227,12 @@ export class RouteCacheService {
     // Persist route + routeFinish so nearby logic can read accurate finish time
     await this.saveDriverRoute(driverId, route);
 
-    // Notify subscribed customers about next stop ETA (cheap)
-    this.wsGateway.emitNextStopEta(driverId, nextStop, {
-      lat,
-      lon,
-      speedKmh: speed,
-    });
+    // Notify subscribed customers about next stop ETA (cheap) //temporary fix
+    // this.wsGateway.emitNextStopEta(driverId, nextStop, {
+    //   lat,
+    //   lon,
+    //   speedKmh: speed,
+    // });
 
     // Deviation check: delegate to optimizer, but only when necessary
     // We decide deviation by checking distanceToNextKm (meters)
@@ -281,12 +281,12 @@ export class RouteCacheService {
         // Save recalculated route (this will set routeFinish accordingly)
         await this.saveDriverRoute(driverId, rc);
 
-        // Broadcast recalculated route to driver and customers
-        this.wsGateway.broadcastDriverRoute(driverId, rc);
-        this.wsGateway.broadcastDriverLocationToDriver('route:recalculated', {
-          driverId,
-          recalculatedRoute: rc,
-        });
+        // Broadcast recalculated route to driver and customers //temporary fix
+        // this.wsGateway.broadcastDriverRoute(driverId, rc);
+        // this.wsGateway.broadcastDriverLocationToDriver('route:recalculated', {
+        //   driverId,
+        //   recalculatedRoute: rc,
+        // });
       }
     } else {
       // No significant deviation; just broadcast ETA update
@@ -297,8 +297,8 @@ export class RouteCacheService {
         remainingDistanceMeters: Math.round(cumulativeRemainingKm * 1000),
         recalculated: false,
       };
-      this.wsGateway.broadcastDriverLocationToDriver(driverId, etaData);
-      this.wsGateway.broadcastETAtoCustomer(etaData);
+      // this.wsGateway.broadcastDriverLocationToDriver(driverId, etaData); //temporary fix
+      // this.wsGateway.broadcastETAtoCustomer(etaData);
     }
 
     return {
@@ -359,7 +359,7 @@ export class RouteCacheService {
         };
 
         await this.saveDriverRoute(driverId, rc);
-        this.wsGateway.broadcastDriverRoute(driverId, rc);
+        // this.wsGateway.broadcastDriverRoute(driverId, rc); //temporary fix
       }
     } catch (err) {
       this.logger.error(
@@ -424,11 +424,11 @@ export class RouteCacheService {
       // 3️⃣ Remove from Redis
       await this.removeDriverRoute(driverId);
 
-      // 4️⃣ Broadcast completion
-      this.wsGateway.broadcastDriverRouteCompletion(
-        driverId,
-        route.optimizationJobId,
-      );
+      // 4️⃣ Broadcast completion //temporary fix
+      // this.wsGateway.broadcastDriverRouteCompletion(
+      //   driverId,
+      //   route.optimizationJobId,
+      // );
 
       this.logger.debug(`Route completed for driver ${driverId}`);
     } catch (err) {

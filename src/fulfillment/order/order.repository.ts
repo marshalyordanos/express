@@ -5,7 +5,7 @@ import { OrderStatus, Address, Order, ApprovalStatus, OrderRouteSegment } from '
 import { ListQueryDto } from '../../common/query/query.dto';
 import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 import { RpcException } from '@nestjs/microservices';
-import { WebSocketEventService } from '../../websocket/services/websocket-event.service';
+// import { WebSocketEventService } from '../../websocket/services/websocket-event.service'; //temporary fix only
 
 @Injectable()
 export class OrderRepository {

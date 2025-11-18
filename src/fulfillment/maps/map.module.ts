@@ -9,10 +9,10 @@ import { MapsRepository } from './maps.repository';
 import { RedisService } from '../../redis/redis.service';
 import { MapMessageController } from './maps.controller';
 import { PrismaService } from '../../prisma/prisma.service';
-import { WebSocketModule } from '../../websocket/socket.module';
 import { AppLogger } from '../../common/app-logger.service';
-import { DriverLocationWsService } from '../../websocket/services/driver-location.ws.service';
-import { NavigationWsService } from '../../websocket/services/navigation.ws.service';
+// import { WebSocketModule } from '../../websocket/socket.module'; //temporary fix
+// import { DriverLocationWsService } from '../../websocket/services/driver-location.ws.service';
+// import { NavigationWsService } from '../../websocket/services/navigation.ws.service';
 
 // @Module({
 //   imports: [forwardRef(() => WebSocketModule)],
@@ -43,7 +43,7 @@ import { NavigationWsService } from '../../websocket/services/navigation.ws.serv
 
 // maps.module.ts
 @Module({
-  imports: [forwardRef(() => WebSocketModule)],
+  // imports: [forwardRef(() => WebSocketModule)], //temporary fix
   providers: [
     DriverLocationService,
     MapsRepository,
@@ -53,16 +53,16 @@ import { NavigationWsService } from '../../websocket/services/navigation.ws.serv
     PrismaService,
     RouteCacheService,
     RouteOptimizerService,
-    DriverLocationWsService, // ✅ Export
-    NavigationWsService,
+    // DriverLocationWsService, // ✅ Export //temporary fix
+    // NavigationWsService,
   ],
   exports: [
     DriverLocationService,
     MapsService,
     RouteCacheService,
     RouteOptimizerService,
-    DriverLocationWsService, // ✅ Export
-    NavigationWsService,
+    // DriverLocationWsService, // ✅ Export //temporary fix
+    // NavigationWsService,
   ],
 })
 export class MapsModule {}

@@ -24,7 +24,6 @@ const maps_service_1 = require("./maps/maps.service");
 const driver_location_service_1 = require("./maps/driver-location.service");
 const route_optimizer_service_1 = require("./maps/route-optimizer.service");
 const schedule_1 = require("@nestjs/schedule");
-const socket_module_1 = require("../websocket/socket.module");
 const maps_usecase_impl_1 = require("./maps/maps.usecase.impl");
 const maps_repository_1 = require("./maps/maps.repository");
 const maps_controller_1 = require("./maps/maps.controller");
@@ -39,7 +38,6 @@ exports.FulfillmentModule = FulfillmentModule = __decorate([
     (0, common_1.Module)({
         imports: [
             redis_module_1.RedisModule,
-            (0, common_1.forwardRef)(() => socket_module_1.WebSocketModule),
             schedule_1.ScheduleModule.forRoot(),
             config_1.ConfigModule.forRoot({ isGlobal: true }),
             jwt_1.JwtModule.register({
