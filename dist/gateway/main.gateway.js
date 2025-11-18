@@ -37,7 +37,7 @@ async function bootstrap() {
     const document = swagger_1.SwaggerModule.createDocument(app, config);
     swagger_1.SwaggerModule.setup('api', app, document);
     fs.writeFileSync('./openapi.json', JSON.stringify(document));
-    const port = Number(process.env.GATEWAY_PORT ?? 3000);
+    const port = Number(process.env.GATEWAY_PORT ?? 10000);
     await app.listen(port, '0.0.0.0');
     console.log(`Gateway listening on port ${port}`);
 }

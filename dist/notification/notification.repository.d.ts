@@ -9,31 +9,31 @@ export declare class NotificationRepository {
         message: string;
         payload?: any;
     }): Promise<{
+        message: string;
         id: string;
         createdAt: Date;
         createdBy: string | null;
         userId: string;
-        message: string;
         type: string;
         read: boolean;
         payload: import("@prisma/client/runtime/library").JsonValue | null;
     }>;
     markAsRead(notificationId: string): Promise<{
+        message: string;
         id: string;
         createdAt: Date;
         createdBy: string | null;
         userId: string;
-        message: string;
         type: string;
         read: boolean;
         payload: import("@prisma/client/runtime/library").JsonValue | null;
     }>;
     getUserNotifications(userId: string, unreadOnly?: boolean): Promise<{
+        message: string;
         id: string;
         createdAt: Date;
         createdBy: string | null;
         userId: string;
-        message: string;
         type: string;
         read: boolean;
         payload: import("@prisma/client/runtime/library").JsonValue | null;
@@ -95,11 +95,11 @@ export declare class NotificationRepository {
     }[]>;
     findAllNotifications(payload: ListQueryDto, userId: string): Promise<{
         notifications: {
+            message: string;
             id: string;
             createdAt: Date;
             createdBy: string | null;
             userId: string;
-            message: string;
             type: string;
             read: boolean;
             payload: import("@prisma/client/runtime/library").JsonValue | null;
@@ -112,11 +112,11 @@ export declare class NotificationRepository {
         };
     }>;
     findNotification(userId: string, id: string): Promise<{
+        message: string;
         id: string;
         createdAt: Date;
         createdBy: string | null;
         userId: string;
-        message: string;
         type: string;
         read: boolean;
         payload: import("@prisma/client/runtime/library").JsonValue | null;
