@@ -1,7 +1,7 @@
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../../redis/redis.service';
 import { PrismaService } from '../../prisma/prisma.service';
-// import { WebSocketEventService } from '../../websocket/services/websocket-event.service';
+import { WebSocketEventService } from '../../websocket/services/websocket-event.service';
 import { LogOutput } from 'concurrently';
 
 export interface NearbyDriver {
@@ -44,12 +44,12 @@ export class DriverLocationService {
   constructor(
     private readonly redisService: RedisService,
     private readonly prisma: PrismaService,
-    // @Inject(forwardRef(() => WebSocketEventService)) //temporary fix only
-    // private websocketEventService: WebSocketEventService,
+    @Inject(forwardRef(() => WebSocketEventService)) //temporary fix only
+    private websocketEventService: WebSocketEventService,
   ) {
-    // this.onlineEmitter = this.websocketEventService.emitDriverStatus.bind( //temporary fix only
-    //   this.websocketEventService,
-    // );
+    this.onlineEmitter = this.websocketEventService.emitDriverStatus.bind( //temporary fix only
+      this.websocketEventService,
+    );
   }
 
   // -------------------------------
@@ -116,13 +116,13 @@ export class DriverLocationService {
       }
 
       // Notify subscribed clients (always) //temporary fix
-      // this.websocketEventService.emitDriverLocationToSubscribers({
-      //   driverId: data.driverId,
-      //   lat: data.lat,
-      //   lon: data.lon,
-      //   speed: data.speed,
-      //   heading: data.heading,
-      // });
+      this.websocketEventService.emitDriverLocationToSubscribers({
+        driverId: data.driverId,
+        lat: data.lat,
+        lon: data.lon,
+        speed: data.speed,
+        heading: data.heading,
+      });
     } catch (err) {
       this.logger.error(
         `Failed to update location for driver ${data.driverId}`,

@@ -24,7 +24,6 @@ import {
   ScopeAction,
 } from '../../contracts/permission-actions.enum';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
-import { stat } from 'fs';
 
 @Controller()
 export class DispatchMessageController {
