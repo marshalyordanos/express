@@ -9,52 +9,53 @@ export declare class NotificationRepository {
         message: string;
         payload?: any;
     }): Promise<{
-        type: string;
-        message: string;
         id: string;
-        payload: import("@prisma/client/runtime/library").JsonValue | null;
         createdAt: Date;
         createdBy: string | null;
         userId: string;
+        message: string;
+        type: string;
         read: boolean;
+        payload: import("@prisma/client/runtime/library").JsonValue | null;
     }>;
     markAsRead(notificationId: string): Promise<{
-        type: string;
-        message: string;
         id: string;
-        payload: import("@prisma/client/runtime/library").JsonValue | null;
         createdAt: Date;
         createdBy: string | null;
         userId: string;
+        message: string;
+        type: string;
         read: boolean;
+        payload: import("@prisma/client/runtime/library").JsonValue | null;
     }>;
     getUserNotifications(userId: string, unreadOnly?: boolean): Promise<{
-        type: string;
-        message: string;
         id: string;
-        payload: import("@prisma/client/runtime/library").JsonValue | null;
         createdAt: Date;
         createdBy: string | null;
         userId: string;
+        message: string;
+        type: string;
         read: boolean;
+        payload: import("@prisma/client/runtime/library").JsonValue | null;
     }[]>;
     getUserPrefs(userId: any): Promise<{
-        push: boolean;
-        id: string;
         email: boolean;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
         inApp: boolean;
+        push: boolean;
+        userId: string;
     }>;
     findUser(userId: string): Promise<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -64,22 +65,22 @@ export declare class NotificationRepository {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }>;
     findUsersByEmail(emails: string[]): Promise<{
-        id: string;
         email: string;
+        id: string;
     }[]>;
     findUsersByRole(roleId: string): Promise<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -89,20 +90,19 @@ export declare class NotificationRepository {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }[]>;
     findAllNotifications(payload: ListQueryDto, userId: string): Promise<{
         notifications: {
-            type: string;
-            message: string;
             id: string;
-            payload: import("@prisma/client/runtime/library").JsonValue | null;
             createdAt: Date;
             createdBy: string | null;
             userId: string;
+            message: string;
+            type: string;
             read: boolean;
+            payload: import("@prisma/client/runtime/library").JsonValue | null;
         }[];
         pagination: {
             total: number;
@@ -112,13 +112,13 @@ export declare class NotificationRepository {
         };
     }>;
     findNotification(userId: string, id: string): Promise<{
-        type: string;
-        message: string;
         id: string;
-        payload: import("@prisma/client/runtime/library").JsonValue | null;
         createdAt: Date;
         createdBy: string | null;
         userId: string;
+        message: string;
+        type: string;
         read: boolean;
+        payload: import("@prisma/client/runtime/library").JsonValue | null;
     }>;
 }

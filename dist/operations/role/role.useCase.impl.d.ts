@@ -14,9 +14,9 @@ export declare class RoleUseCaseImpl implements RoleUseCases {
         roles: {
             name: string;
             id: string;
-            description: string;
             createdAt: Date;
             updatedAt: Date;
+            description: string;
         }[];
         pagination: {
             total: number;

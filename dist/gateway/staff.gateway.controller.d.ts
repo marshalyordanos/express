@@ -13,7 +13,7 @@ export declare class StaffGatewayController {
     updateStaff(id: string, dto: UpdateStaffDto, req: any): Promise<import("rxjs").Observable<any>>;
     findStaffById(id: string, req: any): Promise<import("rxjs").Observable<any>>;
     findStaffByBranch(req: any, branchId: string, query: ListQueryDto): Promise<import("rxjs").Observable<any>>;
-    createDriver(files: Express.Multer.File[], body: any, req: any): Promise<import("rxjs").Observable<any>>;
+    createDriver(files: any[], body: any, req: any): Promise<import("rxjs").Observable<any>>;
     findDriver(query: ListQueryDto, req: any): Promise<import("rxjs").Observable<any>>;
     assignBranch(dto: AssignStaffToBranchDto, req: any): Promise<import("rxjs").Observable<any>>;
 }

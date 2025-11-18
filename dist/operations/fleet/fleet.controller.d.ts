@@ -7,56 +7,56 @@ export declare class FleetMessageController {
     createVehicle(payload: {
         data: CreateVehicleDto;
     }): Promise<IResponse<{
-        type: string;
-        status: import(".prisma/client").$Enums.VehicleStatus;
         id: string;
-        model: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
-        plateNumber: string;
+        type: string;
         driverId: string | null;
+        status: import(".prisma/client").$Enums.VehicleStatus;
+        plateNumber: string;
+        model: string | null;
         maxLoad: number | null;
     }>>;
     getAllVehicles(payload: any): Promise<IResponse<Partial<{
-        type: string;
-        status: import(".prisma/client").$Enums.VehicleStatus;
         id: string;
-        model: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
-        plateNumber: string;
+        type: string;
         driverId: string | null;
+        status: import(".prisma/client").$Enums.VehicleStatus;
+        plateNumber: string;
+        model: string | null;
         maxLoad: number | null;
     }>[]>>;
     getVehicleById(payload: {
         id: string;
     }): Promise<IResponse<{
-        type: string;
-        status: import(".prisma/client").$Enums.VehicleStatus;
         id: string;
-        model: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
-        plateNumber: string;
+        type: string;
         driverId: string | null;
+        status: import(".prisma/client").$Enums.VehicleStatus;
+        plateNumber: string;
+        model: string | null;
         maxLoad: number | null;
     }>>;
     updateVehicle(payload: {
         id: string;
         data: UpdateVehicleDto;
     }): Promise<IResponse<{
-        type: string;
-        status: import(".prisma/client").$Enums.VehicleStatus;
         id: string;
-        model: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
-        plateNumber: string;
+        type: string;
         driverId: string | null;
+        status: import(".prisma/client").$Enums.VehicleStatus;
+        plateNumber: string;
+        model: string | null;
         maxLoad: number | null;
     }>>;
     deleteVehicle(payload: {
@@ -65,77 +65,77 @@ export declare class FleetMessageController {
     assignVehicle(payload: {
         data: AssignVehicleDto;
     }): Promise<IResponse<{
-        type: string;
-        status: import(".prisma/client").$Enums.VehicleStatus;
         id: string;
-        model: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
-        plateNumber: string;
+        type: string;
         driverId: string | null;
+        status: import(".prisma/client").$Enums.VehicleStatus;
+        plateNumber: string;
+        model: string | null;
         maxLoad: number | null;
     }>>;
     unassignVehicle(payload: {
         vehicleId: string;
     }): Promise<IResponse<{
-        type: string;
-        status: import(".prisma/client").$Enums.VehicleStatus;
         id: string;
-        model: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
-        plateNumber: string;
+        type: string;
         driverId: string | null;
+        status: import(".prisma/client").$Enums.VehicleStatus;
+        plateNumber: string;
+        model: string | null;
         maxLoad: number | null;
     }>>;
     getVehiclesByDriver(payload: {
         driverId: string;
     }): Promise<IResponse<{
-        type: string;
-        status: import(".prisma/client").$Enums.VehicleStatus;
         id: string;
-        model: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
-        plateNumber: string;
+        type: string;
         driverId: string | null;
+        status: import(".prisma/client").$Enums.VehicleStatus;
+        plateNumber: string;
+        model: string | null;
         maxLoad: number | null;
     }[]>>;
     logVehicleMaintenance(payload: {
         data: VehicleMaintenanceDto;
     }): Promise<IResponse<{
         id: string;
-        date: Date;
         createdBy: string | null;
+        cost: number | null;
         vehicleId: string;
         maintenance: string;
-        cost: number | null;
+        date: Date;
     }>>;
     getMaintenanceHistory(payload: {
         vehicleId: string;
         query?: VehicleMaintenanceQueryDto;
     }): Promise<IResponse<{
         id: string;
-        date: Date;
         createdBy: string | null;
+        cost: number | null;
         vehicleId: string;
         maintenance: string;
-        cost: number | null;
+        date: Date;
     }[]>>;
     getFleetSummary(): Promise<IResponse<any>>;
     getAvailableVehicles(): Promise<IResponse<{
-        type: string;
-        status: import(".prisma/client").$Enums.VehicleStatus;
         id: string;
-        model: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
-        plateNumber: string;
+        type: string;
         driverId: string | null;
+        status: import(".prisma/client").$Enums.VehicleStatus;
+        plateNumber: string;
+        model: string | null;
         maxLoad: number | null;
     }[]>>;
     getVehicleHistory(payload: {
@@ -144,24 +144,24 @@ export declare class FleetMessageController {
     retireVehicle(payload: {
         vehicleId: string;
     }): Promise<IResponse<{
-        type: string;
-        status: import(".prisma/client").$Enums.VehicleStatus;
         id: string;
-        model: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
-        plateNumber: string;
+        type: string;
         driverId: string | null;
+        status: import(".prisma/client").$Enums.VehicleStatus;
+        plateNumber: string;
+        model: string | null;
         maxLoad: number | null;
     }>>;
     getFleetAlerts(): Promise<IResponse<{
         id: string;
-        date: Date;
         createdBy: string | null;
+        cost: number | null;
         vehicleId: string;
         maintenance: string;
-        cost: number | null;
+        date: Date;
     }[]>>;
     getDriverVehicleHistory(payload: {
         driverId: string;

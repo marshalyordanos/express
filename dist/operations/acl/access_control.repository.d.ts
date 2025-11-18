@@ -11,9 +11,9 @@ export declare class AccessControlRepository {
         roles: {
             name: string;
             id: string;
-            description: string;
             createdAt: Date;
             updatedAt: Date;
+            description: string;
         }[];
         pagination: {
             total: number;

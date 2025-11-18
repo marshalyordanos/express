@@ -12,9 +12,9 @@ export declare class RoleRepository {
         roles: {
             name: string;
             id: string;
-            description: string;
             createdAt: Date;
             updatedAt: Date;
+            description: string;
         }[];
         pagination: {
             total: number;
@@ -26,18 +26,18 @@ export declare class RoleRepository {
     deleteByName(name: string): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>;
     deleteById(id: string): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>;
     updateRole(id: string, data: RoleUpdateDto): Promise<Role>;
 }

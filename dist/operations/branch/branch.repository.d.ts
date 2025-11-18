@@ -6,13 +6,14 @@ export declare class BranchRepository {
     private readonly prisma;
     constructor(prisma: PrismaService);
     findBranchAndBranchManager(managerId: string, branchId: string): Promise<[{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -22,18 +23,18 @@ export declare class BranchRepository {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }, {
         manager: {
-            password: string;
             name: string;
+            email: string;
+            password: string;
+            branchId: string | null;
+            customerType: import(".prisma/client").$Enums.CustomerType | null;
+            phone: string | null;
             id: string;
             customId: string | null;
-            email: string;
-            phone: string | null;
-            branchId: string | null;
             createdAt: Date;
             updatedAt: Date;
             emailVerified: boolean;
@@ -43,7 +44,6 @@ export declare class BranchRepository {
             emergencyContactName: string | null;
             emergencyContactPhone: string | null;
             isActive: boolean;
-            customerType: import(".prisma/client").$Enums.CustomerType | null;
             customerCategoryId: string | null;
             createdBy: string | null;
         };
@@ -86,8 +86,8 @@ export declare class BranchRepository {
     }, never, import("@prisma/client/runtime/library").DefaultArgs, import(".prisma/client").Prisma.PrismaClientOptions>;
     updateBranch(id: string, data: Partial<BranchUpdateDto>): Promise<{
         address: {
-            label: string;
             id: string;
+            label: string;
             city: string;
             state: string;
             country: string;

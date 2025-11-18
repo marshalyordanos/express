@@ -33,9 +33,9 @@ export declare class AccessControlUsecaseImpl implements AccessControlUsecase {
         roles: {
             name: string;
             id: string;
-            description: string;
             createdAt: Date;
             updatedAt: Date;
+            description: string;
         }[];
         pagination: {
             total: number;

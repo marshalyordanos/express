@@ -6,13 +6,14 @@ export declare class AuthMessageController {
     constructor(usecases: AuthUseCaseImpl);
     private readonly logger;
     register(dto: AuthRegisterDto): Promise<IResponse<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -22,7 +23,6 @@ export declare class AuthMessageController {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }>>;
@@ -40,13 +40,14 @@ export declare class AuthMessageController {
     }>>;
     refreshToken(data: any): Promise<IResponse<import("./auth.entity").AuthTokens>>;
     getAuthenticatedUser(data: any): Promise<IResponse<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -56,7 +57,6 @@ export declare class AuthMessageController {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }>>;

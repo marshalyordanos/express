@@ -8,13 +8,14 @@ export declare class UserMessageController {
     findById(payload: {
         id: string;
     }): Promise<IResponse<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -24,7 +25,6 @@ export declare class UserMessageController {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }>>;
@@ -32,20 +32,34 @@ export declare class UserMessageController {
         query: ListQueryDto;
     }): Promise<IResponse<{
         name: string;
+        email: string;
         role: {
             name: string;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             createdBy: string | null;
+            description: string | null;
         };
-        email: string;
+        customerType: import(".prisma/client").$Enums.CustomerType;
         phone: string;
         createdAt: Date;
         isStaff: boolean;
         isSuperAdmin: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType;
+        corporateInfo: {
+            companyName: string;
+            taxId: string | null;
+            contactPerson: string | null;
+            contactPhone: string | null;
+            contactEmail: string | null;
+            industryType: string | null;
+            website: string | null;
+            address: string | null;
+            notes: string | null;
+            createdBy: string | null;
+            userId: string;
+            registrationNo: string | null;
+        };
         branch: {
             name: string;
             id: string;
@@ -56,13 +70,13 @@ export declare class UserMessageController {
             managerId: string | null;
         };
         addresses: {
-            label: string;
-            id: string;
             branchId: string | null;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             createdBy: string | null;
             userId: string | null;
+            label: string;
             addressLine: string;
             city: string;
             state: string | null;
@@ -82,32 +96,19 @@ export declare class UserMessageController {
             defaultDropoffBranch: string | null;
             deliveryNotes: string | null;
         };
-        corporateInfo: {
-            createdBy: string | null;
-            userId: string;
-            companyName: string;
-            taxId: string | null;
-            registrationNo: string | null;
-            contactPerson: string | null;
-            contactPhone: string | null;
-            contactEmail: string | null;
-            industryType: string | null;
-            website: string | null;
-            address: string | null;
-            notes: string | null;
-        };
     }[]>>;
     update(payload: {
         data: Partial<UserDto>;
         user: any;
     }): Promise<IResponse<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -117,20 +118,20 @@ export declare class UserMessageController {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }>>;
     deleteUser(payload: {
         id: string;
     }): Promise<IResponse<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -140,20 +141,20 @@ export declare class UserMessageController {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }>>;
     findByEmail(payload: {
         email: string;
     }): Promise<IResponse<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -163,20 +164,19 @@ export declare class UserMessageController {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }>>;
     addAddress(payload: {
         data: AddressDto;
     }): Promise<IResponse<{
-        label: string;
-        id: string;
         branchId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
         userId: string | null;
+        label: string;
         addressLine: string;
         city: string;
         state: string | null;
@@ -187,13 +187,13 @@ export declare class UserMessageController {
         purpose: import(".prisma/client").$Enums.AddressPurpose;
     }>>;
     listAddresses(data: any): Promise<IResponse<{
-        label: string;
-        id: string;
         branchId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
         userId: string | null;
+        label: string;
         addressLine: string;
         city: string;
         state: string | null;
@@ -208,13 +208,13 @@ export declare class UserMessageController {
         data: any;
         user: any;
     }): Promise<IResponse<{
-        label: string;
-        id: string;
         branchId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
         userId: string | null;
+        label: string;
         addressLine: string;
         city: string;
         state: string | null;
@@ -245,11 +245,8 @@ export declare class UserMessageController {
         userId: string;
         data: UpdateCorporateInfoDto;
     }): Promise<IResponse<{
-        createdBy: string | null;
-        userId: string;
         companyName: string;
         taxId: string | null;
-        registrationNo: string | null;
         contactPerson: string | null;
         contactPhone: string | null;
         contactEmail: string | null;
@@ -257,25 +254,42 @@ export declare class UserMessageController {
         website: string | null;
         address: string | null;
         notes: string | null;
+        createdBy: string | null;
+        userId: string;
+        registrationNo: string | null;
     }>>;
     findAllCustomers(payload: {
         query: ListQueryDto;
     }): Promise<IResponse<{
         name: string;
+        email: string;
         role: {
             name: string;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             createdBy: string | null;
+            description: string | null;
         };
-        email: string;
+        customerType: import(".prisma/client").$Enums.CustomerType;
         phone: string;
         createdAt: Date;
         isStaff: boolean;
         isSuperAdmin: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType;
+        corporateInfo: {
+            companyName: string;
+            taxId: string | null;
+            contactPerson: string | null;
+            contactPhone: string | null;
+            contactEmail: string | null;
+            industryType: string | null;
+            website: string | null;
+            address: string | null;
+            notes: string | null;
+            createdBy: string | null;
+            userId: string;
+            registrationNo: string | null;
+        };
         branch: {
             name: string;
             id: string;
@@ -286,13 +300,13 @@ export declare class UserMessageController {
             managerId: string | null;
         };
         addresses: {
-            label: string;
-            id: string;
             branchId: string | null;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             createdBy: string | null;
             userId: string | null;
+            label: string;
             addressLine: string;
             city: string;
             state: string | null;
@@ -312,20 +326,6 @@ export declare class UserMessageController {
             defaultDropoffBranch: string | null;
             deliveryNotes: string | null;
         };
-        corporateInfo: {
-            createdBy: string | null;
-            userId: string;
-            companyName: string;
-            taxId: string | null;
-            registrationNo: string | null;
-            contactPerson: string | null;
-            contactPhone: string | null;
-            contactEmail: string | null;
-            industryType: string | null;
-            website: string | null;
-            address: string | null;
-            notes: string | null;
-        };
     }[]>>;
     getCustomerOrder(payload: {
         user: any;
@@ -336,23 +336,24 @@ export declare class UserMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     listCategories(payload: {
         query: ListQueryDto;
     }): Promise<IResponse<{
         models: ({
             users: {
-                password: string;
                 name: string;
+                email: string;
+                password: string;
+                branchId: string | null;
+                customerType: import(".prisma/client").$Enums.CustomerType | null;
+                phone: string | null;
                 id: string;
                 customId: string | null;
-                email: string;
-                phone: string | null;
-                branchId: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 emailVerified: boolean;
@@ -362,7 +363,6 @@ export declare class UserMessageController {
                 emergencyContactName: string | null;
                 emergencyContactPhone: string | null;
                 isActive: boolean;
-                customerType: import(".prisma/client").$Enums.CustomerType | null;
                 customerCategoryId: string | null;
                 createdBy: string | null;
             }[];
@@ -376,10 +376,10 @@ export declare class UserMessageController {
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-                currency: string;
                 baseFee: number;
-                perKmRate: number;
                 perKgRate: number;
+                perKmRate: number;
+                currency: string;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             }[];
@@ -396,16 +396,16 @@ export declare class UserMessageController {
                 adjustmentValue: number;
             }[];
             discountRules: {
-                value: number;
-                type: string;
                 name: string;
+                value: number;
                 id: string;
-                description: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 isActive: boolean;
                 customerCategoryId: string | null;
                 createdBy: string | null;
+                description: string | null;
+                type: string;
                 serviceType: import(".prisma/client").$Enums.ServiceType | null;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
                 tariffId: string;
@@ -415,10 +415,10 @@ export declare class UserMessageController {
         } & {
             name: string;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             createdBy: string | null;
+            description: string | null;
         })[];
         pagination: {
             total: number;
@@ -432,10 +432,10 @@ export declare class UserMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     updateCategory(payload: {
         id: string;
@@ -443,10 +443,10 @@ export declare class UserMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     deleteCategory(payload: {
         id: string;
@@ -460,13 +460,14 @@ export declare class UserMessageController {
             customerCategoryId: string;
         };
     }): Promise<IResponse<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -476,7 +477,6 @@ export declare class UserMessageController {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }[]>>;
@@ -484,13 +484,14 @@ export declare class UserMessageController {
         customerIds: string[];
         customerCategoryId: string;
     }): Promise<IResponse<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -500,43 +501,42 @@ export declare class UserMessageController {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }[]>>;
     createUserNotificationPreference(payload: {
         user: any;
     }): Promise<IResponse<{
-        push: boolean;
-        id: string;
         email: boolean;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
         inApp: boolean;
+        push: boolean;
+        userId: string;
     }>>;
     updateUserNotificationPreference(payload: {
         user: any;
         data: NotificationPreferencesDto;
     }): Promise<IResponse<{
-        push: boolean;
-        id: string;
         email: boolean;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
         inApp: boolean;
+        push: boolean;
+        userId: string;
     }>>;
     getUserNotificationPreference(payload: {
         user: any;
     }): Promise<IResponse<{
-        push: boolean;
-        id: string;
         email: boolean;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
         inApp: boolean;
+        push: boolean;
+        userId: string;
     }>>;
     createDriver(payload: {
         data: CreateDriver;
@@ -548,16 +548,16 @@ export declare class UserMessageController {
             driver: {
                 vehicleId: string;
                 roleId: string;
+                id: string;
                 type: import(".prisma/client").$Enums.DriverType;
                 status: import(".prisma/client").$Enums.DriverStatus;
-                id: string;
                 licenseNumber: string;
                 licenseExpiry: Date;
             };
             name: string;
-            id: string;
             email: string;
             phone: string;
+            id: string;
             roleId: string;
         };
     }>>;
@@ -567,23 +567,23 @@ export declare class UserMessageController {
         drivers: ({
             user: {
                 name: string;
-                id: string;
                 email: string;
                 phone: string;
+                id: string;
             };
             vehicles: {
-                status: import(".prisma/client").$Enums.VehicleStatus;
                 id: string;
-                model: string;
+                status: import(".prisma/client").$Enums.VehicleStatus;
                 plateNumber: string;
+                model: string;
             }[];
         } & {
-            type: import(".prisma/client").$Enums.DriverType;
-            status: import(".prisma/client").$Enums.DriverStatus;
             id: string;
             updatedAt: Date | null;
             createdBy: string | null;
             userId: string;
+            type: import(".prisma/client").$Enums.DriverType;
+            status: import(".prisma/client").$Enums.DriverStatus;
             vehicleId: string | null;
             availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;

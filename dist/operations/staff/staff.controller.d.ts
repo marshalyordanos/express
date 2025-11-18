@@ -18,13 +18,13 @@ export declare class StaffMessageController {
         };
     }): Promise<IResponse<{
         name: string;
+        email: string;
         role: {
             name: string;
             id: string;
         };
-        id: string;
-        email: string;
         phone: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -38,13 +38,13 @@ export declare class StaffMessageController {
         query: ListQueryDto;
     }): Promise<IResponse<{
         name: string;
+        email: string;
         role: {
             name: string;
             id: string;
         };
-        id: string;
-        email: string;
         phone: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -57,13 +57,14 @@ export declare class StaffMessageController {
     changeUserRole(payload: {
         data: ChangeRoleDto;
     }): Promise<IResponse<Partial<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -73,7 +74,6 @@ export declare class StaffMessageController {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }>>>;
@@ -83,13 +83,14 @@ export declare class StaffMessageController {
     findStaffById(payload: {
         id: string;
     }): Promise<IResponse<Partial<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -99,7 +100,6 @@ export declare class StaffMessageController {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }>>>;
@@ -107,13 +107,14 @@ export declare class StaffMessageController {
         id: string;
         data: UpdateStaffDto;
     }): Promise<IResponse<Partial<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -123,7 +124,6 @@ export declare class StaffMessageController {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }>>>;
@@ -135,13 +135,13 @@ export declare class StaffMessageController {
         };
     }): Promise<IResponse<{
         name: string;
+        email: string;
         role: {
             name: string;
             id: string;
         };
-        id: string;
-        email: string;
         phone: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -163,16 +163,16 @@ export declare class StaffMessageController {
         data: {
             user: {
                 name: string;
-                id: string;
-                customId: string;
                 email: string;
                 phone: string;
+                id: string;
+                customId: string;
                 roleId: string;
             };
             driver: {
+                id: string;
                 type: import(".prisma/client").$Enums.DriverType;
                 status: import(".prisma/client").$Enums.DriverStatus;
-                id: string;
                 vehicleId: string;
                 licenseNumber: string;
                 licenseExpiry: Date;
@@ -185,23 +185,23 @@ export declare class StaffMessageController {
         drivers: ({
             user: {
                 name: string;
-                id: string;
                 email: string;
                 phone: string;
+                id: string;
             };
             vehicles: {
-                status: import(".prisma/client").$Enums.VehicleStatus;
                 id: string;
-                model: string;
+                status: import(".prisma/client").$Enums.VehicleStatus;
                 plateNumber: string;
+                model: string;
             }[];
         } & {
-            type: import(".prisma/client").$Enums.DriverType;
-            status: import(".prisma/client").$Enums.DriverStatus;
             id: string;
             updatedAt: Date | null;
             createdBy: string | null;
             userId: string;
+            type: import(".prisma/client").$Enums.DriverType;
+            status: import(".prisma/client").$Enums.DriverStatus;
             vehicleId: string | null;
             availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;

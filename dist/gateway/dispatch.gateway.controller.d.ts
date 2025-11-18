@@ -19,7 +19,7 @@ export declare class DispatchGatewayController {
     driverAccept(orderId: string, req: any): Promise<any>;
     assignDriverForDelivery(data: AssignDriverForPickup, req: any): Promise<any>;
     lastMileDelivery(data: LastMileDeliveryDto, req: any): Promise<any>;
-    completeDelivery(files: Express.Multer.File[], data: CompleteDeliveryDto, req: any): Promise<import("rxjs").Observable<any>>;
+    completeDelivery(files: any[], data: CompleteDeliveryDto, req: any): Promise<import("rxjs").Observable<any>>;
     changeDriverForOrder(data: AssignDriverForPickup, req: any): Promise<any>;
     removeDriverFromOrder(orderId: string, req: any): Promise<any>;
     getAllDispatches(req: any, query: ListQueryDto): Promise<import("rxjs").Observable<any>>;

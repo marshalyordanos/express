@@ -72,12 +72,12 @@ export declare class DispatchMessageController {
     createDriver(payload: {
         data: CreateDriver;
     }): Promise<IResponse<{
-        type: import(".prisma/client").$Enums.DriverType;
-        status: import(".prisma/client").$Enums.DriverStatus;
         id: string;
         updatedAt: Date | null;
         createdBy: string | null;
         userId: string;
+        type: import(".prisma/client").$Enums.DriverType;
+        status: import(".prisma/client").$Enums.DriverStatus;
         vehicleId: string | null;
         availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
         licenseNumber: string | null;
@@ -95,23 +95,23 @@ export declare class DispatchMessageController {
         drivers: ({
             user: {
                 name: string;
-                id: string;
                 email: string;
                 phone: string;
+                id: string;
             };
             vehicles: {
-                status: import(".prisma/client").$Enums.VehicleStatus;
                 id: string;
-                model: string;
+                status: import(".prisma/client").$Enums.VehicleStatus;
                 plateNumber: string;
+                model: string;
             }[];
         } & {
-            type: import(".prisma/client").$Enums.DriverType;
-            status: import(".prisma/client").$Enums.DriverStatus;
             id: string;
             updatedAt: Date | null;
             createdBy: string | null;
             userId: string;
+            type: import(".prisma/client").$Enums.DriverType;
+            status: import(".prisma/client").$Enums.DriverStatus;
             vehicleId: string | null;
             availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;

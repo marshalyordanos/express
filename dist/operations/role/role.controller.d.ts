@@ -10,20 +10,20 @@ export declare class RoleMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     findRole(payload: {
         id: string;
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     getAllRoles(payload: {
         query: ListQueryDto;
@@ -33,18 +33,18 @@ export declare class RoleMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string;
         createdAt: Date;
         updatedAt: Date;
+        description: string;
     }[]>>;
     getAllRolesFree(payload: {
         query: ListQueryDto;
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string;
         createdAt: Date;
         updatedAt: Date;
+        description: string;
     }[]>>;
     deleteRole(payload: {
         id: string;
@@ -55,9 +55,9 @@ export declare class RoleMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
 }

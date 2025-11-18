@@ -17,13 +17,13 @@ export declare class StaffUseCasesImpl implements StaffUsecase {
     findStaffByRole(query: ListQueryDto, role: string): Promise<{
         Staffs: {
             name: string;
+            email: string;
             role: {
                 name: string;
                 id: string;
             };
-            id: string;
-            email: string;
             phone: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             emailVerified: boolean;
@@ -43,13 +43,13 @@ export declare class StaffUseCasesImpl implements StaffUsecase {
     findAllStaff(query: ListQueryDto): Promise<{
         Staffs: {
             name: string;
+            email: string;
             role: {
                 name: string;
                 id: string;
             };
-            id: string;
-            email: string;
             phone: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             emailVerified: boolean;
@@ -73,13 +73,13 @@ export declare class StaffUseCasesImpl implements StaffUsecase {
     findStaffByBranch(query: ListQueryDto, branchId: string): Promise<{
         Staffs: {
             name: string;
+            email: string;
             role: {
                 name: string;
                 id: string;
             };
-            id: string;
-            email: string;
             phone: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             emailVerified: boolean;
@@ -98,8 +98,8 @@ export declare class StaffUseCasesImpl implements StaffUsecase {
     }>;
     deactivateStaff(id: string, userId: string): Promise<{
         name: string;
-        id: string;
         email: string;
+        id: string;
     }>;
     assignStaffToBranch(staffIds: string[], branchId: string): Promise<Prisma.BatchPayload>;
     createDriver(data: any, userId: string): Promise<{
@@ -108,16 +108,16 @@ export declare class StaffUseCasesImpl implements StaffUsecase {
         data: {
             user: {
                 name: string;
-                id: string;
-                customId: string;
                 email: string;
                 phone: string;
+                id: string;
+                customId: string;
                 roleId: string;
             };
             driver: {
+                id: string;
                 type: import(".prisma/client").$Enums.DriverType;
                 status: import(".prisma/client").$Enums.DriverStatus;
-                id: string;
                 vehicleId: string;
                 licenseNumber: string;
                 licenseExpiry: Date;
@@ -128,23 +128,23 @@ export declare class StaffUseCasesImpl implements StaffUsecase {
         drivers: ({
             user: {
                 name: string;
-                id: string;
                 email: string;
                 phone: string;
+                id: string;
             };
             vehicles: {
-                status: import(".prisma/client").$Enums.VehicleStatus;
                 id: string;
-                model: string;
+                status: import(".prisma/client").$Enums.VehicleStatus;
                 plateNumber: string;
+                model: string;
             }[];
         } & {
-            type: import(".prisma/client").$Enums.DriverType;
-            status: import(".prisma/client").$Enums.DriverStatus;
             id: string;
             updatedAt: Date | null;
             createdBy: string | null;
             userId: string;
+            type: import(".prisma/client").$Enums.DriverType;
+            status: import(".prisma/client").$Enums.DriverStatus;
             vehicleId: string | null;
             availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;

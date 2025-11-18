@@ -17,10 +17,10 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        currency: string;
         baseFee: number;
-        perKmRate: number;
         perKgRate: number;
+        perKmRate: number;
+        currency: string;
         effectiveFrom: Date;
         effectiveTo: Date | null;
     }>;
@@ -45,12 +45,12 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            serviceType: import(".prisma/client").$Enums.ServiceType;
-            shippingScope: import(".prisma/client").$Enums.ShippingScope;
             tariff: {
                 name: string;
                 id: string;
             };
+            serviceType: import(".prisma/client").$Enums.ServiceType;
+            shippingScope: import(".prisma/client").$Enums.ShippingScope;
             percentage: number;
             minAmount: number;
             maxAmount: number;
@@ -73,10 +73,10 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            currency: string;
             baseFee: number;
-            perKmRate: number;
             perKgRate: number;
+            perKmRate: number;
+            currency: string;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
@@ -123,10 +123,10 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         perKgRate: number | null;
         effectiveFrom: Date;
         effectiveTo: Date | null;
+        tariffId: string;
         airportCode: string;
         flatFee: number | null;
     }>;
@@ -142,10 +142,10 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-                currency: string;
                 baseFee: number;
-                perKmRate: number;
                 perKgRate: number;
+                perKmRate: number;
+                currency: string;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             };
@@ -156,10 +156,10 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType | null;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            tariffId: string;
             perKgRate: number | null;
             effectiveFrom: Date;
             effectiveTo: Date | null;
+            tariffId: string;
             airportCode: string;
             flatFee: number | null;
         })[];
@@ -181,10 +181,10 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            currency: string;
             baseFee: number;
-            perKmRate: number;
             perKgRate: number;
+            perKmRate: number;
+            currency: string;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
@@ -195,10 +195,10 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         perKgRate: number | null;
         effectiveFrom: Date;
         effectiveTo: Date | null;
+        tariffId: string;
         airportCode: string;
         flatFee: number | null;
     }>;
@@ -209,10 +209,10 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         perKgRate: number | null;
         effectiveFrom: Date;
         effectiveTo: Date | null;
+        tariffId: string;
         airportCode: string;
         flatFee: number | null;
     }>;
@@ -223,29 +223,29 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         perKgRate: number | null;
         effectiveFrom: Date;
         effectiveTo: Date | null;
+        tariffId: string;
         airportCode: string;
         flatFee: number | null;
     }>;
     createMiscFee(data: MiscellaneousFeeDto): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         currency: string | null;
-        amount: number;
         effectiveFrom: Date | null;
         effectiveTo: Date | null;
-        feeType: import(".prisma/client").$Enums.FeeType | null;
+        tariffId: string;
+        amount: number;
         isPercentage: boolean;
+        feeType: import(".prisma/client").$Enums.FeeType | null;
         condition: import("@prisma/client/runtime/library").JsonValue | null;
     }>;
     findAllMiscFees(query: ListQueryDto): Promise<{
@@ -260,29 +260,29 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-                currency: string;
                 baseFee: number;
-                perKmRate: number;
                 perKgRate: number;
+                perKmRate: number;
+                currency: string;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             };
         } & {
             name: string;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             createdBy: string | null;
+            description: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType | null;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            tariffId: string;
             currency: string | null;
-            amount: number;
             effectiveFrom: Date | null;
             effectiveTo: Date | null;
-            feeType: import(".prisma/client").$Enums.FeeType | null;
+            tariffId: string;
+            amount: number;
             isPercentage: boolean;
+            feeType: import(".prisma/client").$Enums.FeeType | null;
             condition: import("@prisma/client/runtime/library").JsonValue | null;
         })[];
         pagination: {
@@ -303,91 +303,91 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            currency: string;
             baseFee: number;
-            perKmRate: number;
             perKgRate: number;
+            perKmRate: number;
+            currency: string;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
     } & {
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         currency: string | null;
-        amount: number;
         effectiveFrom: Date | null;
         effectiveTo: Date | null;
-        feeType: import(".prisma/client").$Enums.FeeType | null;
+        tariffId: string;
+        amount: number;
         isPercentage: boolean;
+        feeType: import(".prisma/client").$Enums.FeeType | null;
         condition: import("@prisma/client/runtime/library").JsonValue | null;
     }>;
     updateMiscFee(id: string, data: Partial<UpdateMiscellaneousFeeDto>): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         currency: string | null;
-        amount: number;
         effectiveFrom: Date | null;
         effectiveTo: Date | null;
-        feeType: import(".prisma/client").$Enums.FeeType | null;
+        tariffId: string;
+        amount: number;
         isPercentage: boolean;
+        feeType: import(".prisma/client").$Enums.FeeType | null;
         condition: import("@prisma/client/runtime/library").JsonValue | null;
     }>;
     deleteMiscFee(id: string): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         currency: string | null;
-        amount: number;
         effectiveFrom: Date | null;
         effectiveTo: Date | null;
-        feeType: import(".prisma/client").$Enums.FeeType | null;
+        tariffId: string;
+        amount: number;
         isPercentage: boolean;
+        feeType: import(".prisma/client").$Enums.FeeType | null;
         condition: import("@prisma/client/runtime/library").JsonValue | null;
     }>;
     createSurcharge(data: SurchargeDto): Promise<{
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
     }>;
     updateSurcharge(id: string, data: Partial<UpdateSurchargeDto>): Promise<{
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
@@ -404,23 +404,23 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-                currency: string;
                 baseFee: number;
-                perKmRate: number;
                 perKgRate: number;
+                perKmRate: number;
+                currency: string;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             };
         } & {
-            value: number;
-            type: string;
             name: string;
+            value: number;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
             createdBy: string | null;
+            description: string | null;
+            type: string;
             serviceType: import(".prisma/client").$Enums.ServiceType | null;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
             tariffId: string;
@@ -433,42 +433,34 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         };
     }>;
     findSurchargeById(id: string): Promise<{
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
     }>;
     deleteSurcharge(id: string): Promise<{
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
     }>;
     createDiscount(data: DiscountDto): Promise<{
-        customerCategory: {
-            name: string;
-            id: string;
-            description: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            createdBy: string | null;
-        };
         tariff: {
             name: string;
             id: string;
@@ -479,24 +471,32 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            currency: string;
             baseFee: number;
-            perKmRate: number;
             perKgRate: number;
+            perKmRate: number;
+            currency: string;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
+        customerCategory: {
+            name: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            description: string | null;
+        };
     } & {
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         customerCategoryId: string | null;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
@@ -504,14 +504,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         validTo: Date | null;
     }>;
     updateDiscount(id: string, data: Partial<UpdateDiscountDto>): Promise<{
-        customerCategory: {
-            name: string;
-            id: string;
-            description: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            createdBy: string | null;
-        };
         tariff: {
             name: string;
             id: string;
@@ -522,24 +514,32 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            currency: string;
             baseFee: number;
-            perKmRate: number;
             perKgRate: number;
+            perKmRate: number;
+            currency: string;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
+        customerCategory: {
+            name: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            description: string | null;
+        };
     } & {
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         customerCategoryId: string | null;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
@@ -548,14 +548,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
     }>;
     findAllDiscount(query: ListQueryDto): Promise<{
         discounts: ({
-            customerCategory: {
-                name: string;
-                id: string;
-                description: string | null;
-                createdAt: Date;
-                updatedAt: Date;
-                createdBy: string | null;
-            };
             tariff: {
                 name: string;
                 id: string;
@@ -566,24 +558,32 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-                currency: string;
                 baseFee: number;
-                perKmRate: number;
                 perKgRate: number;
+                perKmRate: number;
+                currency: string;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             };
+            customerCategory: {
+                name: string;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                createdBy: string | null;
+                description: string | null;
+            };
         } & {
-            value: number;
-            type: string;
             name: string;
+            value: number;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
             customerCategoryId: string | null;
             createdBy: string | null;
+            description: string | null;
+            type: string;
             serviceType: import(".prisma/client").$Enums.ServiceType | null;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
             tariffId: string;
@@ -598,14 +598,6 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         };
     }>;
     findDiscountById(id: string): Promise<{
-        customerCategory: {
-            name: string;
-            id: string;
-            description: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            createdBy: string | null;
-        };
         tariff: {
             name: string;
             id: string;
@@ -616,24 +608,32 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            currency: string;
             baseFee: number;
-            perKmRate: number;
             perKgRate: number;
+            perKmRate: number;
+            currency: string;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
+        customerCategory: {
+            name: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            description: string | null;
+        };
     } & {
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         customerCategoryId: string | null;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
@@ -641,16 +641,16 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         validTo: Date | null;
     }>;
     deleteDiscount(id: string): Promise<{
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         customerCategoryId: string | null;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
@@ -660,24 +660,24 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
     createCustomerCategory(data: CustomerCategoryDto): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>;
     findAllCustomerCategory(query: ListQueryDto): Promise<{
         customerCategories: ({
             discountRules: {
-                value: number;
-                type: string;
                 name: string;
+                value: number;
                 id: string;
-                description: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 isActive: boolean;
                 customerCategoryId: string | null;
                 createdBy: string | null;
+                description: string | null;
+                type: string;
                 serviceType: import(".prisma/client").$Enums.ServiceType | null;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
                 tariffId: string;
@@ -687,10 +687,10 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
         } & {
             name: string;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             createdBy: string | null;
+            description: string | null;
         })[];
         pagination: {
             total: number;
@@ -701,16 +701,16 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
     }>;
     findCustomerCategoryById(id: string): Promise<{
         discountRules: {
-            value: number;
-            type: string;
             name: string;
+            value: number;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
             customerCategoryId: string | null;
             createdBy: string | null;
+            description: string | null;
+            type: string;
             serviceType: import(".prisma/client").$Enums.ServiceType | null;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
             tariffId: string;
@@ -720,26 +720,26 @@ export declare class PricingUseCasesImpl implements PricingUseCases {
     } & {
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>;
     updateCustomerCategory(id: string, data: UpdateCustomerCategoryDto): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>;
     deleteCustomerCategory(id: string): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>;
     createPriceCalculationLog(data: any): Promise<any>;
     findAllPriceCalculationLog(query: ListQueryDto): Promise<any>;

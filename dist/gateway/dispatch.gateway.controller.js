@@ -598,7 +598,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], DispatchGatewayController.prototype, "getAllDispatches", null);
 __decorate([
-    (0, common_1.Get)("/officer"),
+    (0, common_1.Get)('/officer'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),

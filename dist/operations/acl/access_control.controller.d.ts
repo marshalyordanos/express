@@ -10,10 +10,10 @@ export declare class AccessControlMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     findAllRoles(payload: any): Promise<IResponse<Partial<RoleDto>[]>>;
     createRole(payload: {
@@ -21,10 +21,10 @@ export declare class AccessControlMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     updateRole(payload: {
         id: string;
@@ -32,38 +32,38 @@ export declare class AccessControlMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     deleteRole(payload: {
         id: string;
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     getAllRolesFree(payload: {
         query: ListQueryDto;
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string;
         createdAt: Date;
         updatedAt: Date;
+        description: string;
     }[]>>;
     findPermissionById(payload: {
         id: string;
     }): Promise<IResponse<{
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
         resource: string;
     }>>;
     findAllPermissions(payload: any): Promise<IResponse<Partial<PermissionDto>[]>>;
@@ -71,10 +71,10 @@ export declare class AccessControlMessageController {
         data: PermissionDto;
     }): Promise<IResponse<{
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
         resource: string;
     }>>;
     updatePermission(payload: {
@@ -82,20 +82,20 @@ export declare class AccessControlMessageController {
         data: Partial<PermissionDto>;
     }): Promise<IResponse<{
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
         resource: string;
     }>>;
     deletePermission(payload: {
         id: string;
     }): Promise<IResponse<{
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
         resource: string;
     }>>;
     assignPermissionsToRole(payload: {
@@ -103,10 +103,10 @@ export declare class AccessControlMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     updatePermissionFromRole(payload: {
         roleId: string;
@@ -114,10 +114,10 @@ export declare class AccessControlMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     removePermissionFromRole(payload: {
         roleId: string;
@@ -125,21 +125,22 @@ export declare class AccessControlMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     assignUserRole(payload: {
         data: AssignUserRoleDto;
     }): Promise<IResponse<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -149,7 +150,6 @@ export declare class AccessControlMessageController {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }>>;

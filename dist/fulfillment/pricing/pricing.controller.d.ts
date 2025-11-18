@@ -17,10 +17,10 @@ export declare class PricingMessageController {
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        currency: string;
         baseFee: number;
-        perKmRate: number;
         perKgRate: number;
+        perKmRate: number;
+        currency: string;
         effectiveFrom: Date;
         effectiveTo: Date | null;
     }>>;
@@ -58,12 +58,12 @@ export declare class PricingMessageController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            serviceType: import(".prisma/client").$Enums.ServiceType;
-            shippingScope: import(".prisma/client").$Enums.ShippingScope;
             tariff: {
                 name: string;
                 id: string;
             };
+            serviceType: import(".prisma/client").$Enums.ServiceType;
+            shippingScope: import(".prisma/client").$Enums.ShippingScope;
             percentage: number;
             minAmount: number;
             maxAmount: number;
@@ -103,10 +103,10 @@ export declare class PricingMessageController {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            currency: string;
             baseFee: number;
-            perKmRate: number;
             perKgRate: number;
+            perKmRate: number;
+            currency: string;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
@@ -145,10 +145,10 @@ export declare class PricingMessageController {
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         perKgRate: number | null;
         effectiveFrom: Date;
         effectiveTo: Date | null;
+        tariffId: string;
         airportCode: string;
         flatFee: number | null;
     }>>;
@@ -166,10 +166,10 @@ export declare class PricingMessageController {
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-                currency: string;
                 baseFee: number;
-                perKmRate: number;
                 perKgRate: number;
+                perKmRate: number;
+                currency: string;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             };
@@ -180,10 +180,10 @@ export declare class PricingMessageController {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType | null;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            tariffId: string;
             perKgRate: number | null;
             effectiveFrom: Date;
             effectiveTo: Date | null;
+            tariffId: string;
             airportCode: string;
             flatFee: number | null;
         })[];
@@ -204,10 +204,10 @@ export declare class PricingMessageController {
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         perKgRate: number | null;
         effectiveFrom: Date;
         effectiveTo: Date | null;
+        tariffId: string;
         airportCode: string;
         flatFee: number | null;
     }>>;
@@ -224,10 +224,10 @@ export declare class PricingMessageController {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            currency: string;
             baseFee: number;
-            perKmRate: number;
             perKgRate: number;
+            perKmRate: number;
+            currency: string;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
@@ -238,10 +238,10 @@ export declare class PricingMessageController {
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         perKgRate: number | null;
         effectiveFrom: Date;
         effectiveTo: Date | null;
+        tariffId: string;
         airportCode: string;
         flatFee: number | null;
     }>>;
@@ -254,10 +254,10 @@ export declare class PricingMessageController {
         createdBy: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         perKgRate: number | null;
         effectiveFrom: Date;
         effectiveTo: Date | null;
+        tariffId: string;
         airportCode: string;
         flatFee: number | null;
     }>>;
@@ -266,19 +266,19 @@ export declare class PricingMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         currency: string | null;
-        amount: number;
         effectiveFrom: Date | null;
         effectiveTo: Date | null;
-        feeType: import(".prisma/client").$Enums.FeeType | null;
+        tariffId: string;
+        amount: number;
         isPercentage: boolean;
+        feeType: import(".prisma/client").$Enums.FeeType | null;
         condition: import("@prisma/client/runtime/library").JsonValue | null;
     }>>;
     getMiscFee(payload: {
@@ -295,29 +295,29 @@ export declare class PricingMessageController {
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-                currency: string;
                 baseFee: number;
-                perKmRate: number;
                 perKgRate: number;
+                perKmRate: number;
+                currency: string;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             };
         } & {
             name: string;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             createdBy: string | null;
+            description: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType | null;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            tariffId: string;
             currency: string | null;
-            amount: number;
             effectiveFrom: Date | null;
             effectiveTo: Date | null;
-            feeType: import(".prisma/client").$Enums.FeeType | null;
+            tariffId: string;
+            amount: number;
             isPercentage: boolean;
+            feeType: import(".prisma/client").$Enums.FeeType | null;
             condition: import("@prisma/client/runtime/library").JsonValue | null;
         })[];
         pagination: {
@@ -333,19 +333,19 @@ export declare class PricingMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         currency: string | null;
-        amount: number;
         effectiveFrom: Date | null;
         effectiveTo: Date | null;
-        feeType: import(".prisma/client").$Enums.FeeType | null;
+        tariffId: string;
+        amount: number;
         isPercentage: boolean;
+        feeType: import(".prisma/client").$Enums.FeeType | null;
         condition: import("@prisma/client/runtime/library").JsonValue | null;
     }>>;
     getMiscFeeById(payload: {
@@ -361,29 +361,29 @@ export declare class PricingMessageController {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            currency: string;
             baseFee: number;
-            perKmRate: number;
             perKgRate: number;
+            perKmRate: number;
+            currency: string;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
     } & {
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         currency: string | null;
-        amount: number;
         effectiveFrom: Date | null;
         effectiveTo: Date | null;
-        feeType: import(".prisma/client").$Enums.FeeType | null;
+        tariffId: string;
+        amount: number;
         isPercentage: boolean;
+        feeType: import(".prisma/client").$Enums.FeeType | null;
         condition: import("@prisma/client/runtime/library").JsonValue | null;
     }>>;
     deleteMiscFee(payload: {
@@ -391,33 +391,33 @@ export declare class PricingMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-        tariffId: string;
         currency: string | null;
-        amount: number;
         effectiveFrom: Date | null;
         effectiveTo: Date | null;
-        feeType: import(".prisma/client").$Enums.FeeType | null;
+        tariffId: string;
+        amount: number;
         isPercentage: boolean;
+        feeType: import(".prisma/client").$Enums.FeeType | null;
         condition: import("@prisma/client/runtime/library").JsonValue | null;
     }>>;
     createSurcharge(payload: {
         data: SurchargeDto;
     }): Promise<IResponse<{
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
@@ -436,23 +436,23 @@ export declare class PricingMessageController {
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-                currency: string;
                 baseFee: number;
-                perKmRate: number;
                 perKgRate: number;
+                perKmRate: number;
+                currency: string;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             };
         } & {
-            value: number;
-            type: string;
             name: string;
+            value: number;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
             createdBy: string | null;
+            description: string | null;
+            type: string;
             serviceType: import(".prisma/client").$Enums.ServiceType | null;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
             tariffId: string;
@@ -468,15 +468,15 @@ export declare class PricingMessageController {
         id: string;
         data: UpdateSurchargeDto;
     }): Promise<IResponse<{
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
@@ -484,15 +484,15 @@ export declare class PricingMessageController {
     deleteSurcharge(payload: {
         id: string;
     }): Promise<IResponse<{
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
@@ -500,15 +500,15 @@ export declare class PricingMessageController {
     getSurchargeById(payload: {
         id: string;
     }): Promise<IResponse<{
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
@@ -516,14 +516,6 @@ export declare class PricingMessageController {
     createDiscount(payload: {
         data: DiscountDto;
     }): Promise<IResponse<{
-        customerCategory: {
-            name: string;
-            id: string;
-            description: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            createdBy: string | null;
-        };
         tariff: {
             name: string;
             id: string;
@@ -534,24 +526,32 @@ export declare class PricingMessageController {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            currency: string;
             baseFee: number;
-            perKmRate: number;
             perKgRate: number;
+            perKmRate: number;
+            currency: string;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
+        customerCategory: {
+            name: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            description: string | null;
+        };
     } & {
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         customerCategoryId: string | null;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
@@ -562,14 +562,6 @@ export declare class PricingMessageController {
         query: ListQueryDto;
     }): Promise<IResponse<{
         discounts: ({
-            customerCategory: {
-                name: string;
-                id: string;
-                description: string | null;
-                createdAt: Date;
-                updatedAt: Date;
-                createdBy: string | null;
-            };
             tariff: {
                 name: string;
                 id: string;
@@ -580,24 +572,32 @@ export declare class PricingMessageController {
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-                currency: string;
                 baseFee: number;
-                perKmRate: number;
                 perKgRate: number;
+                perKmRate: number;
+                currency: string;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             };
+            customerCategory: {
+                name: string;
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                createdBy: string | null;
+                description: string | null;
+            };
         } & {
-            value: number;
-            type: string;
             name: string;
+            value: number;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
             customerCategoryId: string | null;
             createdBy: string | null;
+            description: string | null;
+            type: string;
             serviceType: import(".prisma/client").$Enums.ServiceType | null;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
             tariffId: string;
@@ -615,14 +615,6 @@ export declare class PricingMessageController {
         id: string;
         data: UpdateDiscountDto;
     }): Promise<IResponse<{
-        customerCategory: {
-            name: string;
-            id: string;
-            description: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            createdBy: string | null;
-        };
         tariff: {
             name: string;
             id: string;
@@ -633,24 +625,32 @@ export declare class PricingMessageController {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            currency: string;
             baseFee: number;
-            perKmRate: number;
             perKgRate: number;
+            perKmRate: number;
+            currency: string;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
+        customerCategory: {
+            name: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            description: string | null;
+        };
     } & {
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         customerCategoryId: string | null;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
@@ -660,16 +660,16 @@ export declare class PricingMessageController {
     deleteDiscount(payload: {
         id: string;
     }): Promise<IResponse<{
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         customerCategoryId: string | null;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
@@ -679,14 +679,6 @@ export declare class PricingMessageController {
     getDiscountById(payload: {
         id: string;
     }): Promise<IResponse<{
-        customerCategory: {
-            name: string;
-            id: string;
-            description: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            createdBy: string | null;
-        };
         tariff: {
             name: string;
             id: string;
@@ -697,24 +689,32 @@ export declare class PricingMessageController {
             createdBy: string | null;
             serviceType: import(".prisma/client").$Enums.ServiceType;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-            currency: string;
             baseFee: number;
-            perKmRate: number;
             perKgRate: number;
+            perKmRate: number;
+            currency: string;
             effectiveFrom: Date;
             effectiveTo: Date | null;
         };
+        customerCategory: {
+            name: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            description: string | null;
+        };
     } & {
-        value: number;
-        type: string;
         name: string;
+        value: number;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         isActive: boolean;
         customerCategoryId: string | null;
         createdBy: string | null;
+        description: string | null;
+        type: string;
         serviceType: import(".prisma/client").$Enums.ServiceType | null;
         shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
         tariffId: string;
@@ -726,26 +726,26 @@ export declare class PricingMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     getCustomerCategory(payload: {
         query: ListQueryDto;
     }): Promise<IResponse<{
         customerCategories: ({
             discountRules: {
-                value: number;
-                type: string;
                 name: string;
+                value: number;
                 id: string;
-                description: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 isActive: boolean;
                 customerCategoryId: string | null;
                 createdBy: string | null;
+                description: string | null;
+                type: string;
                 serviceType: import(".prisma/client").$Enums.ServiceType | null;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
                 tariffId: string;
@@ -755,10 +755,10 @@ export declare class PricingMessageController {
         } & {
             name: string;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             createdBy: string | null;
+            description: string | null;
         })[];
         pagination: {
             total: number;
@@ -773,35 +773,35 @@ export declare class PricingMessageController {
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     deleteCustomerCategory(payload: {
         id: string;
     }): Promise<IResponse<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     getCustomerCategoryById(payload: {
         id: string;
     }): Promise<IResponse<{
         discountRules: {
-            value: number;
-            type: string;
             name: string;
+            value: number;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
             customerCategoryId: string | null;
             createdBy: string | null;
+            description: string | null;
+            type: string;
             serviceType: import(".prisma/client").$Enums.ServiceType | null;
             shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
             tariffId: string;
@@ -811,10 +811,10 @@ export declare class PricingMessageController {
     } & {
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>>;
     getPriceCalculationLog(payload: {
         query: ListQueryDto;

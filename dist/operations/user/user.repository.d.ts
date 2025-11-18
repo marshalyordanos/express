@@ -8,20 +8,20 @@ export declare class UserRepository {
     findRoleById(roleId: string): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>;
     findUserById(id: string): Promise<User | null>;
     findAddressById(id: string): Promise<{
-        label: string;
-        id: string;
         branchId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
         userId: string | null;
+        label: string;
         addressLine: string;
         city: string;
         state: string | null;
@@ -34,20 +34,34 @@ export declare class UserRepository {
     findAll(payload: ListQueryDto): Promise<{
         models: {
             name: string;
+            email: string;
             role: {
                 name: string;
                 id: string;
-                description: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 createdBy: string | null;
+                description: string | null;
             };
-            email: string;
+            customerType: import(".prisma/client").$Enums.CustomerType;
             phone: string;
             createdAt: Date;
             isStaff: boolean;
             isSuperAdmin: boolean;
-            customerType: import(".prisma/client").$Enums.CustomerType;
+            corporateInfo: {
+                companyName: string;
+                taxId: string | null;
+                contactPerson: string | null;
+                contactPhone: string | null;
+                contactEmail: string | null;
+                industryType: string | null;
+                website: string | null;
+                address: string | null;
+                notes: string | null;
+                createdBy: string | null;
+                userId: string;
+                registrationNo: string | null;
+            };
             branch: {
                 name: string;
                 id: string;
@@ -58,13 +72,13 @@ export declare class UserRepository {
                 managerId: string | null;
             };
             addresses: {
-                label: string;
-                id: string;
                 branchId: string | null;
+                id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 createdBy: string | null;
                 userId: string | null;
+                label: string;
                 addressLine: string;
                 city: string;
                 state: string | null;
@@ -83,20 +97,6 @@ export declare class UserRepository {
                 defaultPayment: string | null;
                 defaultDropoffBranch: string | null;
                 deliveryNotes: string | null;
-            };
-            corporateInfo: {
-                createdBy: string | null;
-                userId: string;
-                companyName: string;
-                taxId: string | null;
-                registrationNo: string | null;
-                contactPerson: string | null;
-                contactPhone: string | null;
-                contactEmail: string | null;
-                industryType: string | null;
-                website: string | null;
-                address: string | null;
-                notes: string | null;
             };
         }[];
         pagination: {
@@ -109,20 +109,34 @@ export declare class UserRepository {
     getAllCustomer(payload: ListQueryDto, roleId: string): Promise<{
         models: {
             name: string;
+            email: string;
             role: {
                 name: string;
                 id: string;
-                description: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 createdBy: string | null;
+                description: string | null;
             };
-            email: string;
+            customerType: import(".prisma/client").$Enums.CustomerType;
             phone: string;
             createdAt: Date;
             isStaff: boolean;
             isSuperAdmin: boolean;
-            customerType: import(".prisma/client").$Enums.CustomerType;
+            corporateInfo: {
+                companyName: string;
+                taxId: string | null;
+                contactPerson: string | null;
+                contactPhone: string | null;
+                contactEmail: string | null;
+                industryType: string | null;
+                website: string | null;
+                address: string | null;
+                notes: string | null;
+                createdBy: string | null;
+                userId: string;
+                registrationNo: string | null;
+            };
             branch: {
                 name: string;
                 id: string;
@@ -133,13 +147,13 @@ export declare class UserRepository {
                 managerId: string | null;
             };
             addresses: {
-                label: string;
-                id: string;
                 branchId: string | null;
+                id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 createdBy: string | null;
                 userId: string | null;
+                label: string;
                 addressLine: string;
                 city: string;
                 state: string | null;
@@ -158,20 +172,6 @@ export declare class UserRepository {
                 defaultPayment: string | null;
                 defaultDropoffBranch: string | null;
                 deliveryNotes: string | null;
-            };
-            corporateInfo: {
-                createdBy: string | null;
-                userId: string;
-                companyName: string;
-                taxId: string | null;
-                registrationNo: string | null;
-                contactPerson: string | null;
-                contactPhone: string | null;
-                contactEmail: string | null;
-                industryType: string | null;
-                website: string | null;
-                address: string | null;
-                notes: string | null;
             };
         }[];
         pagination: {
@@ -185,13 +185,13 @@ export declare class UserRepository {
     deleteUser(id: string): Promise<User>;
     findUserByEmail(email: string): Promise<User | null>;
     addAddress(data: AddressDto): Promise<{
-        label: string;
-        id: string;
         branchId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
         userId: string | null;
+        label: string;
         addressLine: string;
         city: string;
         state: string | null;
@@ -202,13 +202,13 @@ export declare class UserRepository {
         purpose: import(".prisma/client").$Enums.AddressPurpose;
     }>;
     listAddresses(userId: string): Promise<{
-        label: string;
-        id: string;
         branchId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
         userId: string | null;
+        label: string;
         addressLine: string;
         city: string;
         state: string | null;
@@ -219,13 +219,13 @@ export declare class UserRepository {
         purpose: import(".prisma/client").$Enums.AddressPurpose;
     }[]>;
     updateAddress(id: string, data: any): Promise<{
-        label: string;
-        id: string;
         branchId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
         userId: string | null;
+        label: string;
         addressLine: string;
         city: string;
         state: string | null;
@@ -236,13 +236,13 @@ export declare class UserRepository {
         purpose: import(".prisma/client").$Enums.AddressPurpose;
     }>;
     deleteAddress(id: string): Promise<{
-        label: string;
-        id: string;
         branchId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
         userId: string | null;
+        label: string;
         addressLine: string;
         city: string;
         state: string | null;
@@ -267,21 +267,22 @@ export declare class UserRepository {
     findRoleByName(name: string): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>;
     listCategories(payload: ListQueryDto): Promise<{
         models: ({
             users: {
-                password: string;
                 name: string;
+                email: string;
+                password: string;
+                branchId: string | null;
+                customerType: import(".prisma/client").$Enums.CustomerType | null;
+                phone: string | null;
                 id: string;
                 customId: string | null;
-                email: string;
-                phone: string | null;
-                branchId: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 emailVerified: boolean;
@@ -291,7 +292,6 @@ export declare class UserRepository {
                 emergencyContactName: string | null;
                 emergencyContactPhone: string | null;
                 isActive: boolean;
-                customerType: import(".prisma/client").$Enums.CustomerType | null;
                 customerCategoryId: string | null;
                 createdBy: string | null;
             }[];
@@ -305,10 +305,10 @@ export declare class UserRepository {
                 createdBy: string | null;
                 serviceType: import(".prisma/client").$Enums.ServiceType;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
-                currency: string;
                 baseFee: number;
-                perKmRate: number;
                 perKgRate: number;
+                perKmRate: number;
+                currency: string;
                 effectiveFrom: Date;
                 effectiveTo: Date | null;
             }[];
@@ -325,16 +325,16 @@ export declare class UserRepository {
                 adjustmentValue: number;
             }[];
             discountRules: {
-                value: number;
-                type: string;
                 name: string;
+                value: number;
                 id: string;
-                description: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 isActive: boolean;
                 customerCategoryId: string | null;
                 createdBy: string | null;
+                description: string | null;
+                type: string;
                 serviceType: import(".prisma/client").$Enums.ServiceType | null;
                 shippingScope: import(".prisma/client").$Enums.ShippingScope | null;
                 tariffId: string;
@@ -344,10 +344,10 @@ export declare class UserRepository {
         } & {
             name: string;
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
             createdBy: string | null;
+            description: string | null;
         })[];
         pagination: {
             total: number;
@@ -359,43 +359,44 @@ export declare class UserRepository {
     deleteCategory(id: string): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>;
     findCategory(id: string): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>;
     updateCategory(id: string, data: Partial<UpdateCustomerCategoryDto>): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>;
     createCategory(data: CustomerCategoryDto): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>;
     assignCustomersToCategory(customerIds: string[], customerCategoryId: string): Promise<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -405,18 +406,18 @@ export declare class UserRepository {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }[]>;
     removeCustomersFromCategory(customerIds: string[]): Promise<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -426,87 +427,86 @@ export declare class UserRepository {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }[]>;
     updateUserNotificationPreferences(userId: string, data: NotificationPreferencesDto): Promise<{
-        push: boolean;
-        id: string;
         email: boolean;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
         inApp: boolean;
+        push: boolean;
+        userId: string;
     }>;
     getUserNotificationPreferences(userId: string): Promise<{
-        push: boolean;
-        id: string;
         email: boolean;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
         inApp: boolean;
+        push: boolean;
+        userId: string;
     }>;
     createUserNotificationPreferences(userId: string): Promise<{
-        push: boolean;
-        id: string;
         email: boolean;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
         inApp: boolean;
+        push: boolean;
+        userId: string;
     }>;
     createDriver(data: CreateDriver, userId: string): Promise<{
         user: {
             name: string;
-            id: string;
             email: string;
             phone: string;
+            id: string;
             roleId: string;
         };
         driver: {
+            id: string;
             type: import(".prisma/client").$Enums.DriverType;
             status: import(".prisma/client").$Enums.DriverStatus;
-            id: string;
             vehicleId: string;
             licenseNumber: string;
             licenseExpiry: Date;
         };
     }>;
     findVehicleById(vehicleId: string): Promise<{
-        type: string;
-        status: import(".prisma/client").$Enums.VehicleStatus;
         id: string;
-        model: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
-        plateNumber: string;
+        type: string;
         driverId: string | null;
+        status: import(".prisma/client").$Enums.VehicleStatus;
+        plateNumber: string;
+        model: string | null;
         maxLoad: number | null;
     }>;
     findDriver(payload: ListQueryDto): Promise<{
         drivers: ({
             user: {
                 name: string;
-                id: string;
                 email: string;
                 phone: string;
+                id: string;
             };
             vehicles: {
-                status: import(".prisma/client").$Enums.VehicleStatus;
                 id: string;
-                model: string;
+                status: import(".prisma/client").$Enums.VehicleStatus;
                 plateNumber: string;
+                model: string;
             }[];
         } & {
-            type: import(".prisma/client").$Enums.DriverType;
-            status: import(".prisma/client").$Enums.DriverStatus;
             id: string;
             updatedAt: Date | null;
             createdBy: string | null;
             userId: string;
+            type: import(".prisma/client").$Enums.DriverType;
+            status: import(".prisma/client").$Enums.DriverStatus;
             vehicleId: string | null;
             availablityStatus: import(".prisma/client").$Enums.DriverAvailabilityStatus;
             licenseNumber: string | null;

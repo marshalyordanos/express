@@ -7,12 +7,12 @@ export declare class MapsRepository {
     createDriverLocation(body: any): Promise<any>;
     createDriver(body: any): Promise<any>;
     updateOptimizationJobStatus(jobId: string, status: OptimizationStatus): Promise<{
-        type: import(".prisma/client").$Enums.OptimizationType;
-        status: import(".prisma/client").$Enums.OptimizationStatus;
         id: string;
         createdAt: Date;
         createdBy: string | null;
+        type: import(".prisma/client").$Enums.OptimizationType;
         driverId: string | null;
+        status: import(".prisma/client").$Enums.OptimizationStatus;
         batchId: string | null;
         jobCode: string;
         totalDistance: number | null;
@@ -29,12 +29,12 @@ export declare class MapsRepository {
         totalDistance: number;
         totalDuration: number;
     }): Promise<{
-        type: import(".prisma/client").$Enums.OptimizationType;
-        status: import(".prisma/client").$Enums.OptimizationStatus;
         id: string;
         createdAt: Date;
         createdBy: string | null;
+        type: import(".prisma/client").$Enums.OptimizationType;
         driverId: string | null;
+        status: import(".prisma/client").$Enums.OptimizationStatus;
         batchId: string | null;
         jobCode: string;
         totalDistance: number | null;
@@ -53,24 +53,24 @@ export declare class MapsRepository {
         };
     }): Promise<{
         name: string | null;
+        address: string | null;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
-        address: string | null;
         city: string | null;
         country: string | null;
-        latitude: number;
         longitude: number;
+        latitude: number;
     }>;
     findAddressByCoords(lat: string, long: string): Promise<{
-        label: string;
-        id: string;
         branchId: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
         userId: string | null;
+        label: string;
         addressLine: string;
         city: string;
         state: string | null;
@@ -116,15 +116,15 @@ export declare class MapsRepository {
         name?: string;
     }): Promise<{
         name: string | null;
+        address: string | null;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
-        address: string | null;
         city: string | null;
         country: string | null;
-        latitude: number;
         longitude: number;
+        latitude: number;
     }>;
     createRoute(data: {
         originId: string;
@@ -152,13 +152,14 @@ export declare class MapsRepository {
     getDrivers(payload: ListQueryDto): Promise<any>;
     getDriverById(id: string): Promise<any>;
     findUserById(userId: string): Promise<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -168,7 +169,6 @@ export declare class MapsRepository {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }>;

@@ -7,22 +7,22 @@ export declare class AuthRepository {
     findByEmail(email: string): Promise<User | null>;
     findByPhone(phone: string): Promise<User | null>;
     createNotificationPreferences(id: string): Promise<{
-        push: boolean;
-        id: string;
         email: boolean;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
         inApp: boolean;
+        push: boolean;
+        userId: string;
     }>;
     findById(id: string): Promise<User | null>;
     findRoleById(id: string): Promise<{
         name: string;
         id: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
+        description: string | null;
     }>;
     createUser(data: AuthRegisterDto, hashedPassword: string): Promise<User>;
     saveRefreshToken(userId: string, token: string): Promise<void>;
@@ -45,13 +45,14 @@ export declare class AuthRepository {
     markEmailAsVerified(userId: string): Promise<void>;
     sendResetPasswordEmail(email: string, token: string): Promise<void>;
     createSuperAdmin(): Promise<{
-        password: string;
         name: string;
+        email: string;
+        password: string;
+        branchId: string | null;
+        customerType: import(".prisma/client").$Enums.CustomerType | null;
+        phone: string | null;
         id: string;
         customId: string | null;
-        email: string;
-        phone: string | null;
-        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         emailVerified: boolean;
@@ -61,7 +62,6 @@ export declare class AuthRepository {
         emergencyContactName: string | null;
         emergencyContactPhone: string | null;
         isActive: boolean;
-        customerType: import(".prisma/client").$Enums.CustomerType | null;
         customerCategoryId: string | null;
         createdBy: string | null;
     }>;
