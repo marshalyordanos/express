@@ -11,6 +11,8 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+docker-compose.yml
+Dockerfile
 
 # OS
 .DS_Store
