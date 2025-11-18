@@ -47,11 +47,11 @@ const MAX_STRING_LENGTH = 3000;
 @Injectable({ scope: Scope.REQUEST })
 export class SanitizePipe implements PipeTransform {
   constructor(private readonly logger: AppLogger) {
-    try {
-      this.logger?.setContext?.('Security', 'SanitizePipe');
-    } catch (e) {
-      console.warn('SanitizePipe: logger.setContext failed', e);
-    }
+    // try {
+    //   // this.logger?.setContext?.('Security', 'SanitizePipe');
+    // } catch (e) {
+    //   console.warn('SanitizePipe: logger.setContext failed', e);
+    // }
   }
 
   transform(value: any, metadata: ArgumentMetadata) {

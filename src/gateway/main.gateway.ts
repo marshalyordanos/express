@@ -7,13 +7,13 @@ import { PermissionBootstrapper } from './Permission.Bootstrapper';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as fs from 'fs';
 import { SanitizePipe } from '../common/sanitize.pipe';
-import { NestSystemLogger } from '../common/nest-system-logger.util';
+// import { NestSystemLogger } from '../common/nest-system-logger.util'; // temporary fix
 
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(GatewayModule, {
     bufferLogs: true,
-    logger: new NestSystemLogger('GatewayService', 'System'),
+    // logger: new NestSystemLogger('GatewayService', 'System'), //temporary fix
   });
   // Get the SanitizePipe instance from DI container FIRST
   // const sanitizePipe = app.get(SanitizePipe);
@@ -30,6 +30,9 @@ async function bootstrap() {
   );
   // app.useGlobalPipes(new SanitizePipe());
   app.useGlobalFilters(new AllExceptions());
+
+   app.useLogger(false); // temporary fix
+
 
   const bootstrapper = app.get(PermissionBootstrapper);
   await bootstrapper.run();

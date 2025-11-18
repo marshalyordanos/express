@@ -21,7 +21,7 @@ export class RateLimitGuard implements CanActivate {
     private readonly redisService: RedisService,
     private readonly logger: AppLogger,
   ) {
-    this.logger.setContext('Security', 'RateLimitGuard');
+    // this.logger.setContext('Security', 'RateLimitGuard');
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

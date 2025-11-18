@@ -41,7 +41,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     private readonly logger: AppLogger,
     private readonly notificationPublisher: NotificationPublisher,
   ) {
-    this.logger.setContext('FulfillmentService', 'DispatchUseCaseImpl');
+    // this.logger.setContext('FulfillmentService', 'DispatchUseCaseImpl');
   }
 
   async assignDriverForPickup(

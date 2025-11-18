@@ -2,13 +2,13 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from '../common/auth.guard';
-import { NestSystemLogger } from '../common/nest-system-logger.util';
+// import { NestSystemLogger } from '../common/nest-system-logger.util'; // temporary fix
 import { NotificationModule } from './notification.module';
 
 async function bootstrap() {
   // Create a normal NestJS app (not HTTP) because we are using WebSocket + Redis
   const app = await NestFactory.create(NotificationModule, {
-    logger: new NestSystemLogger('NotificationService', 'System'),
+    // logger: new NestSystemLogger('NotificationService', 'System'), // temporary fix
   });
 
   // Apply global validation
@@ -19,6 +19,8 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  app.useLogger(false); // temporary fix
+
 
   // Apply JWT auth guard globally if needed for WebSocket events
   const jwtService = app.get(JwtService);

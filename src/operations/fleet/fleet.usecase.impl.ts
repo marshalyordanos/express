@@ -20,7 +20,7 @@ export class FleetUseCasesImp implements FleetUsecase {
     private readonly vehicleRepo: VehicleRepository,
     private readonly logger: AppLogger,
   ) {
-    this.logger.setContext('OperationsService', 'FleetUseCasesImp');
+    // this.logger.setContext('OperationsService', 'FleetUseCasesImp');
   }
 
   // Vehicle Management

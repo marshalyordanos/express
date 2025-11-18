@@ -19,7 +19,7 @@ export class AccessControlUsecaseImpl implements AccessControlUsecase {
     private readonly repo: AccessControlRepository,
     private readonly logger: AppLogger,
   ) {
-    this.logger.setContext('OperationsService', 'AccessControlUsecaseImpl');
+    // this.logger.setContext('OperationsService', 'AccessControlUsecaseImpl');
   }
 
   // ---------- ROLES ----------

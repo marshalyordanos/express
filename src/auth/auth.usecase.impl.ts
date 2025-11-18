@@ -29,14 +29,14 @@ export class AuthUseCaseImpl implements AuthUseCase {
     private readonly logger: AppLogger,
     private readonly notificationPublisher: NotificationPublisher,
   ) {
-    this.logger.setContext('AuthService', 'AuthModule');
+    // this.logger.setContext('AuthService', 'AuthModule');
   }
 
   // ----------------- Core Authentication -----------------
   async register(data: AuthRegisterDto): Promise<User> {
-    this.logger.log(
-      `Registering new user with roleId: ${data.role} and phone/email: ${data.phone || data.email}`,
-    );
+    // this.logger.log(
+    //   `Registering new user with roleId: ${data.role} and phone/email: ${data.phone || data.email}`,
+    // );
 
     try {
       // 1️⃣ Validate Role
@@ -46,7 +46,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
         this.logger.warn(`Invalid role ID: ${roleId}`);
         throw new RpcException({ statusCode: 400, message: 'Invalid role' });
       }
-      this.logger.verbose(`Role validated: ${role.name}`);
+      // this.logger.verbose(`Role validated: ${role.name}`);
 
       // 2️⃣ Check for existing user based on role
       if (role.name === 'CUSTOMER' || role.name === 'DRIVER') {
@@ -61,7 +61,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
       } else {
         const existingUser = await this.authRepository.findByEmail(data.email);
         if (existingUser) {
-          this.logger.warn(`Email already in use: ${data.email}`);
+          // this.logger.warn(`Email already in use: ${data.email}`);
           throw new RpcException({
             statusCode: 409,
             message: 'Email already in use',
@@ -71,9 +71,9 @@ export class AuthUseCaseImpl implements AuthUseCase {
       // ✅ Validate new password strength
       const valid = PasswordValidator.validate(data.password);
       if (!valid.isValid) {
-        this.logger.warn(
-          `⚠️ Weak password attempt by user email/phone: ${data.email}, ${data.phone}`,
-        );
+        // this.logger.warn(
+        //   `⚠️ Weak password attempt by user email/phone: ${data.email}, ${data.phone}`,
+        // );
         throw new RpcException({
           statusCode: 400,
           message: valid.message,
@@ -81,18 +81,18 @@ export class AuthUseCaseImpl implements AuthUseCase {
       }
 
       // 3️⃣ Hash password securely
-      this.logger.verbose('Hashing password...');
+      // this.logger.verbose('Hashing password...');
       const hashedPassword = await bcrypt.hash(data.password, 10);
 
       // 4️⃣ Create user
       const user = await this.authRepository.createUser(data, hashedPassword);
-      this.logger.log(`User created successfully with ID: ${user.id}`);
+      // this.logger.log(`User created successfully with ID: ${user.id}`);
 
       // 5️⃣ Send verification (based on role)
       try {
         if (role.name === 'CUSTOMER' || role.name === 'DRIVER') {
           await this.authRepository.sendVerificationPhone(user.id, user.email);
-          this.logger.verbose(`Verification phone sent to user ${user.id}`);
+          // this.logger.verbose(`Verification phone sent to user ${user.id}`);
         } else {
           await this.notificationPublisher.publish('user.registration', {
             type: 'user.registration',
@@ -102,44 +102,44 @@ export class AuthUseCaseImpl implements AuthUseCase {
             // payload: { orderId: order.id, tracking: trackingCode }, // extra metadata
           });
 
-          this.logger.verbose(`Verification email sent to user ${user.id}`);
+          // this.logger.verbose(`Verification email sent to user ${user.id}`);
         }
       } catch (notifyErr) {
-        this.logger.warn(
-          `Verification sending failed for user ${user.id}: ${notifyErr.message}`,
-        );
+        // this.logger.warn(
+        //   `Verification sending failed for user ${user.id}: ${notifyErr.message}`,
+        // );
       }
 
       // 6️⃣ Clean sensitive data
       delete user.password;
-      this.logger.log(`Registration completed for user ${user.id}`);
+      // this.logger.log(`Registration completed for user ${user.id}`);
 
       await this.authRepository.createNotificationPreferences(user.id);
 
-      this.logger.log(`Notification preferences created for user ${user.id}`);
+      // this.logger.log(`Notification preferences created for user ${user.id}`);
       return user;
     } catch (error) {
-      this.logger.error(
-        `User registration failed: ${error.message}`,
-        // error.stack,
-      );
+      // this.logger.error(
+      //   `User registration failed: ${error.message}`,
+      //   // error.stack,
+      // );
       throw handleCatch(error);
     }
   }
   async login(data: AuthLoginDto): Promise<{ user: User; tokens: AuthTokens }> {
-    this.logger.log(`Login attempt for email: ${data.email}`);
+    // this.logger.log(`Login attempt for email: ${data.email}`);
 
     try {
       // 1️⃣ Find user by email
       const user = await this.authRepository.findByEmail(data.email);
       if (!user) {
-        this.logger.warn(`Login failed — user not found: ${data.email}`);
+        // this.logger.warn(`Login failed — user not found: ${data.email}`);
         throw new RpcException({
           statusCode: 401,
           message: 'Invalid credentials',
         });
       }
-      this.logger.verbose(`User found: ${user.id} (${user.email})`);
+      // this.logger.verbose(`User found: ${user.id} (${user.email})`);
 
       // 2️⃣ Validate password
       const isPasswordValid = await bcrypt.compare(
@@ -147,7 +147,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
         user.password,
       );
       if (!isPasswordValid) {
-        this.logger.warn(`Invalid password for user: ${user.email}`);
+        // this.logger.warn(`Invalid password for user: ${user.email}`);
         throw new RpcException({
           statusCode: 401,
           message: 'Invalid credentials',
@@ -155,26 +155,26 @@ export class AuthUseCaseImpl implements AuthUseCase {
       }
 
       // 3️⃣ Generate tokens
-      this.logger.verbose(
-        `Generating access and refresh tokens for user: ${user.id}`,
-      );
+      // this.logger.verbose(
+      //   `Generating access and refresh tokens for user: ${user.id}`,
+      // );
       const tokens = await this.generateTokens(user);
 
       // 4️⃣ Save refresh token securely
       await this.authRepository.saveRefreshToken(user.id, tokens.refreshToken);
-      this.logger.log(`Refresh token saved for user: ${user.id}`);
+      // this.logger.log(`Refresh token saved for user: ${user.id}`);
 
       // 5️⃣ Sanitize user data
       delete user.password;
 
       // 6️⃣ Return successful login response
-      this.logger.log(`Login successful for user: ${user.id}`);
+      // this.logger.log(`Login successful for user: ${user.id}`);
       return { user, tokens };
     } catch (error) {
-      this.logger.error(
-        `Login failed for ${data.email}: ${error.message}`,
-        error.stack,
-      );
+      // this.logger.error(
+      //   `Login failed for ${data.email}: ${error.message}`,
+      //   error.stack,
+      // );
       throw error instanceof RpcException
         ? error
         : new RpcException('Login process failed. Please try again.');
@@ -184,21 +184,21 @@ export class AuthUseCaseImpl implements AuthUseCase {
   async loginMobile(
     data: AuthLoginMobileDto,
   ): Promise<{ user: User; tokens: AuthTokens }> {
-    this.logger.log(`Mobile login attempt for phone: ${data.phone}`);
+    // this.logger.log(`Mobile login attempt for phone: ${data.phone}`);
 
     try {
       // 1️⃣ Find user by phone
       const user = await this.authRepository.findByPhone(data.phone);
       if (!user) {
-        this.logger.warn(
-          `Login failed — user not found for phone: ${data.phone}`,
-        );
+        // this.logger.warn(
+        //   `Login failed — user not found for phone: ${data.phone}`,
+        // );
         throw new RpcException({
           statusCode: 401,
           message: 'Invalid credentials',
         });
       }
-      this.logger.verbose(`User found: ${user.id} (${user.phone})`);
+      // this.logger.verbose(`User found: ${user.id} (${user.phone})`);
 
       // 2️⃣ Validate password
       const isPasswordValid = await bcrypt.compare(
@@ -206,7 +206,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
         user.password,
       );
       if (!isPasswordValid) {
-        this.logger.warn(`Invalid password for user (phone): ${data.phone}`);
+        // this.logger.warn(`Invalid password for user (phone): ${data.phone}`);
         throw new RpcException({
           statusCode: 401,
           message: 'Invalid credentials',
@@ -214,24 +214,24 @@ export class AuthUseCaseImpl implements AuthUseCase {
       }
 
       // 3️⃣ Generate tokens
-      this.logger.verbose(`Generating tokens for user: ${user.id}`);
+      // this.logger.verbose(`Generating tokens for user: ${user.id}`);
       const tokens = await this.generateTokens(user);
 
       // 4️⃣ Save refresh token
       await this.authRepository.saveRefreshToken(user.id, tokens.refreshToken);
-      this.logger.log(`Refresh token saved for user: ${user.id}`);
+      // this.logger.log(`Refresh token saved for user: ${user.id}`);
 
       // 5️⃣ Remove sensitive info
       delete user.password;
 
       // 6️⃣ Success response
-      this.logger.log(`Mobile login successful for user: ${user.id}`);
+      // this.logger.log(`Mobile login successful for user: ${user.id}`);
       return { user, tokens };
     } catch (error) {
-      this.logger.error(
-        `Mobile login failed for ${data.phone}: ${error.message}`,
-        // error.stack,
-      );
+      // this.logger.error(
+      //   `Mobile login failed for ${data.phone}: ${error.message}`,
+      //   // error.stack,
+      // );
       throw error instanceof RpcException
         ? error
         : new RpcException('Mobile login process failed. Please try again.');
@@ -239,15 +239,15 @@ export class AuthUseCaseImpl implements AuthUseCase {
   }
 
   async logout(userId: string, sessionId?: string): Promise<void> {
-    this.logger.log(
-      `Logout initiated for user: ${userId}, session: ${sessionId ?? 'N/A'}`,
-    );
+    // this.logger.log(
+    //   `Logout initiated for user: ${userId}, session: ${sessionId ?? 'N/A'}`,
+    // );
 
     try {
       await this.authRepository.removeRefreshToken(userId, sessionId);
-      this.logger.log(`Successfully logged out user: ${userId}`);
+      // this.logger.log(`Successfully logged out user: ${userId}`);
     } catch (error) {
-      this.logger.error(`Logout failed for user: ${userId}`, error.stack);
+      // this.logger.error(`Logout failed for user: ${userId}`, error.stack);
       throw new RpcException({
         statusCode: 500,
         message: 'Logout failed. Please try again.',
@@ -259,7 +259,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
     userId: string,
     refreshToken: string,
   ): Promise<AuthTokens> {
-    this.logger.log(`Refreshing token for user: ${userId}`);
+    // this.logger.log(`Refreshing token for user: ${userId}`);
 
     try {
       if (!refreshToken) {
@@ -276,7 +276,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
       );
 
       if (!session) {
-        this.logger.warn(`Invalid refresh token for user: ${userId}`);
+        // this.logger.warn(`Invalid refresh token for user: ${userId}`);
         throw new RpcException({
           statusCode: 401,
           message: 'Invalid or expired refresh token',
@@ -286,7 +286,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
       // 2️⃣ Validate user existence
       const user = await this.authRepository.findById(session.userId);
       if (!user) {
-        this.logger.warn(`User not found for session: ${session.id}`);
+        // this.logger.warn(`User not found for session: ${session.id}`);
         throw new RpcException({
           statusCode: 401,
           message: 'User not found or session invalid',
@@ -301,13 +301,13 @@ export class AuthUseCaseImpl implements AuthUseCase {
         session.id,
       );
 
-      this.logger.log(`Tokens refreshed for user: ${user.id}`);
+      // this.logger.log(`Tokens refreshed for user: ${user.id}`);
       return tokens;
     } catch (error) {
-      this.logger.error(
-        `Token refresh failed for user: ${userId} → ${error.message}`,
-        error.stack,
-      );
+      // this.logger.error(
+      //   `Token refresh failed for user: ${userId} → ${error.message}`,
+      //   error.stack,
+      // );
       throw error instanceof RpcException
         ? error
         : new RpcException({
@@ -322,12 +322,12 @@ export class AuthUseCaseImpl implements AuthUseCase {
     userId: string,
     data: AuthChangePasswordDto,
   ): Promise<void> {
-    this.logger.log(`🔐 Password change requested for user: ${userId}`);
+    // this.logger.log(`🔐 Password change requested for user: ${userId}`);
 
     try {
       const user = await this.authRepository.findById(userId);
       if (!user) {
-        this.logger.warn(`❌ User not found: ${userId}`);
+        // this.logger.warn(`❌ User not found: ${userId}`);
         throw new RpcException({
           statusCode: 404,
           message: 'User not found',
@@ -340,7 +340,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
         user.password,
       );
       if (!isOldPasswordValid) {
-        this.logger.warn(`⚠️ Invalid old password attempt for user: ${userId}`);
+        // this.logger.warn(`⚠️ Invalid old password attempt for user: ${userId}`);
         throw new RpcException({
           statusCode: 401,
           message: 'Old password is incorrect',
@@ -353,7 +353,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
         data.oldPassword,
       );
       if (!valid.isValid) {
-        this.logger.warn(`⚠️ Weak password attempt by user: ${userId}`);
+        // this.logger.warn(`⚠️ Weak password attempt by user: ${userId}`);
         throw new BadRequestException(valid.message);
       }
 
@@ -364,15 +364,15 @@ export class AuthUseCaseImpl implements AuthUseCase {
       // ✅ Invalidate existing refresh tokens (security best practice)
       await this.authRepository.invalidateRefreshToken(userId);
 
-      this.logger.log(`✅ Password successfully changed for user: ${userId}`);
+      // this.logger.log(`✅ Password successfully changed for user: ${userId}`);
 
       return;
     } catch (error) {
       // 🛑 Log unexpected errors (but don’t expose details to clients)
-      this.logger.error(
-        `❗Failed to change password for user: ${userId} | Reason: ${error.message}`,
-        // error.stack,
-      );
+      // this.logger.error(
+      //   `❗Failed to change password for user: ${userId} | Reason: ${error.message}`,
+      //   // error.stack,
+      // );
 
       if (
         error instanceof RpcException ||
@@ -390,15 +390,15 @@ export class AuthUseCaseImpl implements AuthUseCase {
   async forgotPassword(
     data: AuthForgotPasswordDto,
   ): Promise<{ success: boolean; message: string }> {
-    this.logger.log(`🔐 Forgot password requested for email: ${data.email}`);
+    // this.logger.log(`🔐 Forgot password requested for email: ${data.email}`);
 
     try {
       const user = await this.authRepository.findByEmail(data.email);
 
       if (!user) {
-        this.logger.warn(
-          `⚠️ Forgot password requested for non-existing email: ${data.email}`,
-        );
+        // this.logger.warn(
+        //   `⚠️ Forgot password requested for non-existing email: ${data.email}`,
+        // );
 
         // ✅ Silent fail to prevent email enumeration
         return {
@@ -414,7 +414,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
       // ✅ Send reset email
       await this.authRepository.sendResetPasswordEmail(user.email, resetToken);
 
-      this.logger.log(`📧 Password reset email sent to: ${user.email}`);
+      // this.logger.log(`📧 Password reset email sent to: ${user.email}`);
 
       return {
         success: true,
@@ -423,10 +423,10 @@ export class AuthUseCaseImpl implements AuthUseCase {
       };
     } catch (error) {
       // 🛑 Log internal error
-      this.logger.error(
-        `❗Failed forgot password request for ${data.email} | Reason: ${error.message}`,
-        // error.stack,
-      );
+      // this.logger.error(
+      //   `❗Failed forgot password request for ${data.email} | Reason: ${error.message}`,
+      //   // error.stack,
+      // );
 
       throw new RpcException({
         statusCode: 500,
@@ -439,17 +439,17 @@ export class AuthUseCaseImpl implements AuthUseCase {
     try {
       const user = await this.authRepository.findById(sub);
       if (!user) {
-        this.logger.warn(`Attempt to access non-existent user: ${sub}`);
+        // this.logger.warn(`Attempt to access non-existent user: ${sub}`);
         throw new RpcException({ statusCode: 404, message: 'User not found' });
       }
       delete user.password;
-      this.logger.log(`Fetching authenticated user: ${sub}`);
+      // this.logger.log(`Fetching authenticated user: ${sub}`);
       return user;
     } catch (error) {
-      this.logger.error(
-        `Error fetching authenticated user ${sub}: ${error.message}`,
-        // error.stack,
-      );
+      // this.logger.error(
+      //   `Error fetching authenticated user ${sub}: ${error.message}`,
+      //   // error.stack,
+      // );
       throw new RpcException({
         statusCode: 500,
         message: 'Failed to retrieve authenticated user',
@@ -460,14 +460,14 @@ export class AuthUseCaseImpl implements AuthUseCase {
   async resetPassword(
     data: AuthResetPasswordDto,
   ): Promise<{ success: boolean; message: string }> {
-    this.logger.log(`🔐 Password reset attempt with token: ${data.token}`);
+    // this.logger.log(`🔐 Password reset attempt with token: ${data.token}`);
 
     try {
       const userId = await this.authRepository.verifyResetToken(data.token);
       if (!userId) {
-        this.logger.warn(
-          `⚠️ Invalid or expired reset token used: ${data.token}`,
-        );
+        // this.logger.warn(
+        //   `⚠️ Invalid or expired reset token used: ${data.token}`,
+        // );
         throw new RpcException({
           statusCode: 401,
           message: 'Invalid or expired token',
@@ -481,7 +481,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
       // ✅ Invalidate the token after use
       await this.authRepository.invalidateResetToken(data.token);
 
-      this.logger.log(`✅ Password successfully reset for userId: ${userId}`);
+      // this.logger.log(`✅ Password successfully reset for userId: ${userId}`);
 
       return {
         success: true,
@@ -490,10 +490,10 @@ export class AuthUseCaseImpl implements AuthUseCase {
       };
     } catch (error) {
       // 🛑 Log unexpected errors
-      this.logger.error(
-        `❗Failed password reset using token: ${data.token} | Reason: ${error.message}`,
-        // error.stack,
-      );
+      // this.logger.error(
+      //   `❗Failed password reset using token: ${data.token} | Reason: ${error.message}`,
+      //   // error.stack,
+      // );
 
       throw new RpcException({
         statusCode: 500,
@@ -506,14 +506,14 @@ export class AuthUseCaseImpl implements AuthUseCase {
   async verifyEmail(
     data: AuthVerifyEmailDto,
   ): Promise<{ success: boolean; message: string }> {
-    this.logger.log(`🔐 Email verification attempt with token: ${data.token}`);
+    // this.logger.log(`🔐 Email verification attempt with token: ${data.token}`);
 
     try {
       const userId = await this.authRepository.verifyEmailToken(data.token);
       if (!userId) {
-        this.logger.warn(
-          `⚠️ Invalid email verification token used: ${data.token}`,
-        );
+        // this.logger.warn(
+        //   `⚠️ Invalid email verification token used: ${data.token}`,
+        // );
         throw new RpcException({
           statusCode: 401,
           message: 'Invalid verification token',
@@ -521,14 +521,14 @@ export class AuthUseCaseImpl implements AuthUseCase {
       }
 
       await this.authRepository.markEmailAsVerified(userId);
-      this.logger.log(`✅ Email successfully verified for userId: ${userId}`);
+      // this.logger.log(`✅ Email successfully verified for userId: ${userId}`);
 
       return { success: true, message: 'Email verified successfully.' };
     } catch (error) {
-      this.logger.error(
-        `❗Failed email verification with token: ${data.token} | Reason: ${error.message}`,
-        // error.stack,
-      );
+      // this.logger.error(
+      //   `❗Failed email verification with token: ${data.token} | Reason: ${error.message}`,
+      //   // error.stack,
+      // );
       throw new RpcException({
         statusCode: 500,
         message: 'Internal server error while verifying email',
@@ -538,14 +538,14 @@ export class AuthUseCaseImpl implements AuthUseCase {
   async resendVerification(
     email: string,
   ): Promise<{ success: boolean; message: string }> {
-    this.logger.log(`📧 Resend verification requested for email: ${email}`);
+    // this.logger.log(`📧 Resend verification requested for email: ${email}`);
 
     try {
       const user = await this.authRepository.findByEmail(email);
 
       // ✅ Silent fail for non-existing email (security best practice)
       if (!user || user.emailVerified) {
-        this.logger.log(`⚠️ No action needed for email: ${email}`);
+        // this.logger.log(`⚠️ No action needed for email: ${email}`);
         return {
           success: true,
           message:
@@ -554,7 +554,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
       }
 
       await this.authRepository.sendVerificationEmail(user.id, email);
-      this.logger.log(`📧 Verification email resent to: ${email}`);
+      // this.logger.log(`📧 Verification email resent to: ${email}`);
 
       return {
         success: true,
@@ -562,10 +562,10 @@ export class AuthUseCaseImpl implements AuthUseCase {
           'If your email is not verified, a verification email has been sent.',
       };
     } catch (error) {
-      this.logger.error(
-        `❗Failed to resend verification for email: ${email} | Reason: ${error.message}`,
-        // error.stack,
-      );
+      // this.logger.error(
+      //   `❗Failed to resend verification for email: ${email} | Reason: ${error.message}`,
+      //   // error.stack,
+      // );
       throw new RpcException({
         statusCode: 500,
         message: 'Internal server error while resending verification email',
@@ -576,20 +576,20 @@ export class AuthUseCaseImpl implements AuthUseCase {
   // ----------------- Helper -----------------
   private async generateTokens(user: User): Promise<AuthTokens> {
     try {
-      this.logger.log(`🔑 Generating JWT tokens for userId: ${user.id}`);
+      // this.logger.log(`🔑 Generating JWT tokens for userId: ${user.id}`);
 
       const payload = { sub: user.id, email: user.email };
 
       const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
       const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
-      this.logger.log(`✅ Tokens generated for userId: ${user.id}`);
+      // this.logger.log(`✅ Tokens generated for userId: ${user.id}`);
       return { accessToken, refreshToken };
     } catch (error) {
-      this.logger.error(
-        `❗Failed to generate tokens for userId: ${user.id} | Reason: ${error.message}`,
-        // error.stack,
-      );
+      // this.logger.error(
+      //   `❗Failed to generate tokens for userId: ${user.id} | Reason: ${error.message}`,
+      //   // error.stack,
+      // );
       throw new RpcException({
         statusCode: 500,
         message: 'Failed to generate authentication tokens',

@@ -76,7 +76,7 @@ export function createServiceLogger(
   };
 
   const logger = createLogger({
-    level: 'debug',
+    level: 'info',
     format: combine(timestamp({ format: 'YYYY-MM-DD HH:mm:ss' })),
     transports: [
       // 🖥️ Console transport
@@ -85,54 +85,54 @@ export function createServiceLogger(
       }),
 
       // 📁 File transports with rotation events
-      createRotateTransport({
-        filename: path.join(logDir, 'info-%DATE%.log'),
-        datePattern: 'YYYY-MM-DD',
-        level: 'info',
-        maxFiles: '30d',
-        zippedArchive: true,
-        format: fileFormat,
-      }),
-      createRotateTransport({
-        filename: path.join(logDir, 'debug-%DATE%.log'),
-        datePattern: 'YYYY-MM-DD',
-        level: 'debug',
-        maxFiles: '15d',
-        zippedArchive: true,
-        format: fileFormat,
-      }),
-      createRotateTransport({
-        filename: path.join(logDir, 'warn-%DATE%.log'),
-        datePattern: 'YYYY-MM-DD',
-        level: 'warn',
-        maxFiles: '30d',
-        zippedArchive: true,
-        format: fileFormat,
-      }),
-      createRotateTransport({
-        filename: path.join(logDir, 'error-%DATE%.log'),
-        datePattern: 'YYYY-MM-DD',
-        level: 'error',
-        maxFiles: '30d',
-        zippedArchive: true,
-        format: fileFormat,
-      }),
-      createRotateTransport({
-        filename: path.join(logDir, 'security-%DATE%.log'),
-        datePattern: 'YYYY-MM-DD',
-        level: 'warn',
-        maxFiles: '90d',
-        zippedArchive: true,
-        format: fileFormat,
-      }),
-      createRotateTransport({
-        filename: path.join(logDir, 'system-%DATE%.log'),
-        datePattern: 'YYYY-MM-DD',
-        level: 'info',
-        maxFiles: '90d',
-        zippedArchive: true,
-        format: fileFormat,
-      }),
+      // createRotateTransport({
+      //   filename: path.join(logDir, 'info-%DATE%.log'),
+      //   datePattern: 'YYYY-MM-DD',
+      //   level: 'info',
+      //   maxFiles: '30d',
+      //   zippedArchive: true,
+      //   format: fileFormat,
+      // }),
+      // createRotateTransport({
+      //   filename: path.join(logDir, 'debug-%DATE%.log'),
+      //   datePattern: 'YYYY-MM-DD',
+      //   level: 'debug',
+      //   maxFiles: '15d',
+      //   zippedArchive: true,
+      //   format: fileFormat,
+      // }),
+      // createRotateTransport({
+      //   filename: path.join(logDir, 'warn-%DATE%.log'),
+      //   datePattern: 'YYYY-MM-DD',
+      //   level: 'warn',
+      //   maxFiles: '30d',
+      //   zippedArchive: true,
+      //   format: fileFormat,
+      // }),
+      // createRotateTransport({
+      //   filename: path.join(logDir, 'error-%DATE%.log'),
+      //   datePattern: 'YYYY-MM-DD',
+      //   level: 'error',
+      //   maxFiles: '30d',
+      //   zippedArchive: true,
+      //   format: fileFormat,
+      // }),
+      // createRotateTransport({
+      //   filename: path.join(logDir, 'security-%DATE%.log'),
+      //   datePattern: 'YYYY-MM-DD',
+      //   level: 'warn',
+      //   maxFiles: '90d',
+      //   zippedArchive: true,
+      //   format: fileFormat,
+      // }),
+      // createRotateTransport({
+      //   filename: path.join(logDir, 'system-%DATE%.log'),
+      //   datePattern: 'YYYY-MM-DD',
+      //   level: 'info',
+      //   maxFiles: '90d',
+      //   zippedArchive: true,
+      //   format: fileFormat,
+      // }),
     ],
   });
 
