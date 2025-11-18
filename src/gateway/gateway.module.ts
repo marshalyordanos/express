@@ -23,7 +23,7 @@ import { SanitizePipe } from '../common/sanitize.pipe';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
-// import { NotificationModule } from '../notification/notification.module'; //temporary fix only
+import { NotificationModule } from '../notification/notification.module'; //temporary fix only
 import Redis from 'ioredis';
 import { RedisModule } from '../redis/redis.module';
 
@@ -35,7 +35,7 @@ import { RedisModule } from '../redis/redis.module';
     }),
     forwardRef(() => FulfillmentModule),
     WebSocketModule, //temporary fix only
-    // NotificationModule,
+    NotificationModule,
     MicroserviceClientsModule,
     RedisModule,
     ConfigModule.forRoot({ isGlobal: true }),

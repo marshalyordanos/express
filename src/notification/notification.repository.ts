@@ -1,106 +1,106 @@
-// import { Injectable } from '@nestjs/common';
-// import { PrismaService } from '../prisma/prisma.service';
-// import { ListQueryDto } from '../common/query/query.dto';
-// import { PrismaQueryFeature } from '../common/query/prisma-query-feature';
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { ListQueryDto } from '../common/query/query.dto';
+import { PrismaQueryFeature } from '../common/query/prisma-query-feature';
 
-// @Injectable()
-// export class NotificationRepository {
-//   constructor(private readonly prisma: PrismaService) {}
+@Injectable()
+export class NotificationRepository {
+  constructor(private readonly prisma: PrismaService) {}
 
-//   async createNotification(data: {
-//     userId: string;
-//     type: string;
-//     message: string;
-//     payload?: any;
-//   }) {
-//     return this.prisma.notification.create({
-//       data: { ...data, read: false },
-//     });
-//   }
+  async createNotification(data: {
+    userId: string;
+    type: string;
+    message: string;
+    payload?: any;
+  }) {
+    return this.prisma.notification.create({
+      data: { ...data, read: false },
+    });
+  }
 
-//   async markAsRead(notificationId: string) {
-//     return this.prisma.notification.update({
-//       where: { id: notificationId },
-//       data: { read: true },
-//     });
-//   }
+  async markAsRead(notificationId: string) {
+    return this.prisma.notification.update({
+      where: { id: notificationId },
+      data: { read: true },
+    });
+  }
 
-//   async getUserNotifications(userId: string, unreadOnly = false) {
-//     return this.prisma.notification.findMany({
-//       where: unreadOnly ? { userId, read: false } : { userId },
-//       orderBy: { createdAt: 'desc' },
-//     });
-//   }
+  async getUserNotifications(userId: string, unreadOnly = false) {
+    return this.prisma.notification.findMany({
+      where: unreadOnly ? { userId, read: false } : { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 
-//   async getUserPrefs(userId: any) {
-//     return this.prisma.userNotificationPreferences.findUnique({
-//       where: { userId },
-//     });
-//   }
+  async getUserPrefs(userId: any) {
+    return this.prisma.userNotificationPreferences.findUnique({
+      where: { userId },
+    });
+  }
 
-//   async findUser(userId: string) {
-//     return this.prisma.user.findUnique({
-//       where: { id: userId },
-//     });
-//   }
+  async findUser(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+  }
 
-//   async findUsersByEmail(emails: string[]) {
-//     if (!emails || emails.length === 0) return [];
+  async findUsersByEmail(emails: string[]) {
+    if (!emails || emails.length === 0) return [];
 
-//     return this.prisma.user.findMany({
-//       where: {
-//         email: {
-//           in: emails,
-//         },
-//       },
-//       select: {
-//         id: true,
-//         email: true,
-//       },
-//     });
-//   }
+    return this.prisma.user.findMany({
+      where: {
+        email: {
+          in: emails,
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+      },
+    });
+  }
 
-//   async findUsersByRole(roleId: string) {
-//     return this.prisma.user.findMany({
-//       where: { roleId },
-//     });
-//   }
+  async findUsersByRole(roleId: string) {
+    return this.prisma.user.findMany({
+      where: { roleId },
+    });
+  }
 
-//   async findAllNotifications(payload: ListQueryDto, userId: string) {
-//     const feature = new PrismaQueryFeature({
-//       search: payload.search,
-//       filter: payload.filter,
-//       sort: payload.sort,
-//       page: payload.page,
-//       pageSize: payload.pageSize,
-//       searchableFields: ['type', 'read'],
-//     });
+  async findAllNotifications(payload: ListQueryDto, userId: string) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['type', 'read'],
+    });
 
-//     const query = feature.getQuery();
-//     // ✅ Always filter by userId
-//     const where = {
-//       userId, // ✅ Force notifications of this user
-//       ...(query.where || {}), // ✅ Merge existing dynamic filters
-//     };
+    const query = feature.getQuery();
+    // ✅ Always filter by userId
+    const where = {
+      userId, // ✅ Force notifications of this user
+      ...(query.where || {}), // ✅ Merge existing dynamic filters
+    };
 
-//     const [notifications, total] = await Promise.all([
-//       this.prisma.notification.findMany({
-//         ...query,
-//         where,
-//         orderBy: { createdAt: 'desc' },
-//       }),
+    const [notifications, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        ...query,
+        where,
+        orderBy: { createdAt: 'desc' },
+      }),
 
-//       this.prisma.notification.count({ where }),
-//     ]);
-//     return {
-//       notifications,
-//       pagination: feature.getPagination(total),
-//     };
-//   }
+      this.prisma.notification.count({ where }),
+    ]);
+    return {
+      notifications,
+      pagination: feature.getPagination(total),
+    };
+  }
 
-//   async findNotification(userId: string, id: string) {
-//     return this.prisma.notification.findUnique({
-//       where: { id, userId },
-//     });
-//   }
-// }
+  async findNotification(userId: string, id: string) {
+    return this.prisma.notification.findUnique({
+      where: { id, userId },
+    });
+  }
+}
