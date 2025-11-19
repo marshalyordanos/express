@@ -26,7 +26,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
     private readonly cloudinaryUploader: CloudinaryUploaderService,
     // private readonly ocrService: CommonOCRService,
   ) {
-    // this.logger.setContext('OperationsService', 'RoleUseCaseImpl');
+    this.logger.setContext('OperationsService', 'RoleUseCaseImpl');
   }
 
   // ✅ CREATE STAFF WITH SECURITY + LOGGER

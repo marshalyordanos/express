@@ -3,11 +3,11 @@ import { fork } from 'child_process';
 import { join } from 'path';
 
 const services = [
-  'gateway/main.gateway.js',
   'auth/main.auth.js',
   'operations/main.operations.js',
   'fulfillment/main.fulfillment.js',
   'notification/main.notification.js',
+  'gateway/main.gateway.js',
 ];
 
 services.forEach((service, index) => {
@@ -21,7 +21,9 @@ services.forEach((service, index) => {
     child.on('error', (err) => console.error(`[${service}] ERROR:`, err));
     child.on('exit', (code) => {
       if (code !== 0) {
-        console.log(`[${service}] crashed with code ${code}, restarting in 5s...`);
+        console.log(
+          `[${service}] crashed with code ${code}, restarting in 5s...`,
+        );
         setTimeout(() => fork(join(__dirname, service)), 5000);
       }
     });

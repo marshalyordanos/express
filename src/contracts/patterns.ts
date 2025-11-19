@@ -55,6 +55,7 @@ export const PATTERNS = {
   BRANCH_ASSIGN_MANAGER: 'branch.assignManager',
   BRANCH_REVOKE_MANAGER: 'branch.revokeManager',
   BRANCH_FIND_ALL_FREE: 'branch.findAllFree',
+  BRANCH_FIND_ALL_FREE_SECOND: 'branch.findAllFreeSecond',
 
   ROLE_CREATE: 'role.create',
   ROLE_FIND_BY_ID_OR_NAME: 'role.findByIdOrName',

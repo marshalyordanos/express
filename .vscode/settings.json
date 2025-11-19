@@ -1,7 +1,0 @@
-{
-    "files.watcherExclude": {
-        "**/.expo/**": true,
-        "**/.next/**": true,
-        "**/node_modules/**": true
-    }
-}

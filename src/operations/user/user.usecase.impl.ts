@@ -23,7 +23,7 @@ export class UserUseCasesImp implements UserUsecase {
     private readonly userRepo: UserRepository,
     private readonly logger: AppLogger,
   ) {
-    // this.logger.setContext('OperationsService', 'UserUseCasesImp');
+    this.logger.setContext('OperationsService', 'UserUseCasesImp');
   }
 
   // ✅ FIND USER BY EMAIL (with logger + error handling)

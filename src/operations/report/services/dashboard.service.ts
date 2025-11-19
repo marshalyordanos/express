@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DashboardReportRepository } from '../repositories/dashboard.repository';
 import { RedisService } from '../../../redis/redis.service';
 import { VehicleStatus } from '@prisma/client';
+import { AppLogger } from '../../../common/app-logger.service';
+
 
 @Injectable()
 export class DashboardReportService {
@@ -10,7 +12,11 @@ export class DashboardReportService {
   constructor(
     private readonly dashboardRepo: DashboardReportRepository,
     private readonly redis: RedisService,
-  ) {}
+    private readonly logger: AppLogger,
+  ) {
+    this.logger.setContext('OperationsService', 'ReportDashboard');
+
+  }
 
   /**
    * Returns key metrics for dashboard overview
@@ -18,14 +24,14 @@ export class DashboardReportService {
    */
 
   async getOverview(token: string) {
-    // this.logger.log('Fetching dashboard overview...');
+    this.logger.log('Fetching dashboard overview...');
 
     const cacheKey = 'dashboard:overview';
 
     // Try cache first if available
     const cached = await this.redis.get(cacheKey);
     if (cached) {
-      // this.logger.log('✅ Returning cached overview data');
+      this.logger.log('✅ Returning cached overview data');
       return JSON.parse(cached as string);
     }
 
@@ -65,7 +71,7 @@ export class DashboardReportService {
 
     const cached = await this.redis.get(cacheKey);
     if (cached) {
-      // this.logger.log(`✅ Returning cached revenue (${period})`);
+      this.logger.log(`✅ Returning cached revenue (${period})`);
       return JSON.parse(cached as string);
     }
     const result = await this.dashboardRepo.getRevenueTrends(period);
@@ -78,7 +84,7 @@ export class DashboardReportService {
 
     const cached = await this.redis.get(cacheKey);
     if (cached) {
-      // this.logger.log('✅ Returning cached branch performance');
+      this.logger.log('✅ Returning cached branch performance');
       return JSON.parse(cached as string);
     }
 
@@ -94,7 +100,7 @@ export class DashboardReportService {
 
     const cached = await this.redis.get(cacheKey);
     if (cached) {
-      // this.logger.log('✅ Returning cached driver performance');
+      this.logger.log('✅ Returning cached driver performance');
       return JSON.parse(cached as string);
     }
 
@@ -108,7 +114,7 @@ export class DashboardReportService {
     const ttl = 3600; // 10 minutes
 
     return this.cacheWrap(cacheKey, ttl, async () => {
-      // this.logger.log('Fetching fresh dashboard summary...');
+      this.logger.log('Fetching fresh dashboard summary...');
       return this.dashboardRepo.getBranchDashboardSummary();
     });
   }
@@ -117,7 +123,7 @@ export class DashboardReportService {
     const ttl = 600; // 10 min
 
     return this.cacheWrap(cacheKey, ttl, async () => {
-      // this.logger.log('Fetching fresh staff dashboard summary...');
+      this.logger.log('Fetching fresh staff dashboard summary...');
       return this.dashboardRepo.getStaffDashboardSummary();
     });
   }
@@ -334,14 +340,14 @@ export class DashboardReportService {
   }
 
   async getReportOverview() {
-    // this.logger.log('Fetching price & revenue report overview...');
+    this.logger.log('Fetching price & revenue report overview...');
 
     const cacheKey = 'dashboard:price-revenue-overview';
 
     // Try Redis cache first
     const cached = await this.redis.get(cacheKey);
     if (cached) {
-      // this.logger.log('✅ Returning cached price & revenue overview');
+      this.logger.log('✅ Returning cached price & revenue overview');
       return JSON.parse(cached as string);
     }
 

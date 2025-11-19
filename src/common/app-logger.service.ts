@@ -16,18 +16,18 @@ export class AppLogger {
   //       this.logger = createServiceLogger('App', 'General');
 
   // }
-  // constructor() {
-  //   this.logger = createServiceLogger('App', 'General');
-  //   const serviceName = this.constructor.name.replace('Service', '');
-  //   this.logger = createServiceLogger(serviceName, 'DefaultModule');
-  // }
+  constructor() {
+    this.logger = createServiceLogger('App', 'General');
+    const serviceName = this.constructor.name.replace('Service', '');
+    this.logger = createServiceLogger(serviceName, 'DefaultModule');
+  }
 
   /**
    * Set logger context dynamically (e.g. service and module)
    */
-  // setContext(serviceName: string, moduleName: string) {
-  //   this.logger = createServiceLogger(serviceName, moduleName);
-  // }
+  setContext(serviceName: string, moduleName: string) {
+    this.logger = createServiceLogger(serviceName, moduleName);
+  }
 
   // Match NestJS Logger methods — same names
   log(message: string, context?: string) {

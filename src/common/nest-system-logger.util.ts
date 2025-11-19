@@ -5,9 +5,9 @@ import { createServiceLogger, ServiceLogger } from './dynamic-logger.util';
 export class NestSystemLogger implements LoggerService {
   private systemLogger: ServiceLogger;
 
-  // constructor(serviceName = 'App', moduleName = 'System') {
-  //   this.systemLogger = createServiceLogger(serviceName, moduleName);
-  // }
+  constructor(serviceName = 'App', moduleName = 'System') {
+    this.systemLogger = createServiceLogger(serviceName, moduleName);
+  }
 
   log(message: any, context?: string) {
     const msg = context ? `[${context}] ${message}` : message;

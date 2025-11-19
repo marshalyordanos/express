@@ -88,9 +88,26 @@ export class BranchMessageController {
     );
   }
 
+  BRANCH_FIND_ALL_FREE_SECOND
+
   @Public()
   @MessagePattern(PATTERNS.BRANCH_FIND_ALL_FREE)
   async findAllBranchFree(@Payload() payload: { query: ListQueryDto }) {
+    console.log("Fetching all free branches and with payload of this ::: " ,payload);
+    
+    const branches = await this.usecases.findAllBranchFree(payload.query);
+    return IResponse.success(
+      'Branches fetched successfullyy',
+      branches.branches,
+      branches.pagination,
+    );
+  }
+
+  @Public()
+  @MessagePattern(PATTERNS.BRANCH_FIND_ALL_FREE_SECOND)
+  async findAllBranchFreeS(@Payload() payload: { query: ListQueryDto }) {
+    console.log("Fetching SECOND all free branches and with payload of this ::: " ,payload);
+    
     const branches = await this.usecases.findAllBranchFree(payload.query);
     return IResponse.success(
       'Branches fetched successfullyy',

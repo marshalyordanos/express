@@ -4,13 +4,13 @@ import { FulfillmentModule } from './fulfillment.module';
 import { ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from '../common/auth.guard';
-// import { NestSystemLogger } from '../common/nest-system-logger.util'; // temporary fix
+import { NestSystemLogger } from '../common/nest-system-logger.util'; // temporary fix
 
 async function bootstrap() {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     FulfillmentModule,
     {
-      // logger: new NestSystemLogger('FulfillmentService', 'System'), //temporary fix
+      logger: new NestSystemLogger('FulfillmentService', 'System'), //temporary fix
       transport: Transport.TCP,
       options: {
         host: '0.0.0.0',
@@ -23,7 +23,7 @@ async function bootstrap() {
   const reflector = app.get(Reflector);
   app.useGlobalGuards(new JwtAuthGuard(jwtService, reflector));
 
-  app.useLogger(false); // temporary fix
+  // app.useLogger(false); // temporary fix
 
   app.useGlobalPipes(
     new ValidationPipe({

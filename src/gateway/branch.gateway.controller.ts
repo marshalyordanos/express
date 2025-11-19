@@ -21,6 +21,8 @@ import {
 import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
 import { SanitizePipe } from '../common/sanitize.pipe';
+import { lastValueFrom } from 'rxjs';
+import { tryCatch } from 'bullmq';
 
 @Controller('branch')
 export class BranchGatewayController {
@@ -50,8 +52,6 @@ export class BranchGatewayController {
       ip,
     });
   }
-
- 
 
   @Get()
   async findAllBranches(@Req() req, @Query() query: ListQueryDto) {
@@ -179,28 +179,70 @@ export class BranchGatewayController {
     });
   }
 
-    @Get("all")
-  async findAllBranchFree(@Req() req, @Query() query: ListQueryDto) {
+    @Get("alls")
+  async findAllBranchFrees(@Req() req, @Query() query: ListQueryDto) {
     // const authHeader = req.headers['authorization'] || null;
     // let token = req.headers['authorization']?.replace('Bearer ', '') || null;
-
-    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
-    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
-    let decodedUser = null;
-    // try {
-    //   decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
-    //   // decodedUser = this.jwtService.verify(token);
-    // } catch (err) {
-    //   throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
-    // }
-    return this.branchClient.send(PATTERNS.BRANCH_FIND_ALL_FREE, {
-      // headers: { authorization: authHeader },
-      user: decodedUser, // ✅ send user info
-      ip,
-      query,
-    });
+    try {
+      
+          const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+          const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+          let decodedUser = null;
+          // try {
+          //   decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+          //   // decodedUser = this.jwtService.verify(token);
+          // } catch (err) {
+          //   throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+          // }
+      
+      return this.branchClient.send(PATTERNS.BRANCH_FIND_ALL_FREE, {
+        // headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+        query,
+      });
+    } catch (err) {
+            console.error('Microservice error for original:', err);
+      throw err;
+    }
   }
-   @Get(':id')
+
+    @Get('all')
+  async findAllBranchFree(@Req() req, @Query() query: ListQueryDto) {
+    try {
+      const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+      const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+
+      // If JWT needed:
+      // const token = req.headers['authorization']?.replace('Bearer ', '') || null;
+      // const decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+
+      const payload = {
+        user: null, // or decodedUser if JWT needed
+        ip,
+        query,
+      };
+
+      console.log('--- Gateway sending payload to microservice ---');
+      console.log(JSON.stringify(payload, null, 2));
+
+      const observable = this.branchClient.send(PATTERNS.BRANCH_FIND_ALL_FREE_SECOND , payload);
+
+      // Convert Observable to Promise safely
+      const result = await lastValueFrom(observable);
+
+      console.log('--- Gateway received response from microservice ---');
+      console.log(JSON.stringify(result, null, 2));
+
+      return result;
+    } catch (err) {
+      console.error('--- Gateway ERROR receiving from microservice --- ::: ', err);
+      console.error(err.stack);
+      throw err;
+    }
+  }
+
+  @Get(':id')
   async findBranchById(@Param('id') id: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
@@ -221,5 +263,4 @@ export class BranchGatewayController {
       ip,
     });
   }
-
 }

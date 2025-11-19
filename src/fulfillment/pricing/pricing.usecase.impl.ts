@@ -50,7 +50,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
     private readonly pricingRepo: PricingRepository,
     private readonly logger: AppLogger,
   ) {
-    // this.logger.setContext('FulfillmentService', 'PricingUsecaseImpl');
+    this.logger.setContext('FulfillmentService', 'PricingUsecaseImpl');
   }
 
   //===============================================================================================TARIFF===========================================================================================================

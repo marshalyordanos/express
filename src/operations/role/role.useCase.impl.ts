@@ -13,7 +13,7 @@ export class RoleUseCaseImpl implements RoleUseCases {
     private readonly roleRepo: RoleRepository,
     private readonly logger: AppLogger,
   ) {
-    // this.logger.setContext('OperationsService', 'RoleUseCaseImpl');
+    this.logger.setContext('OperationsService', 'RoleUseCaseImpl');
   }
 
   async createRole(data: RoleCreateDto): Promise<Role> {

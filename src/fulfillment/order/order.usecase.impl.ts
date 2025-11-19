@@ -37,7 +37,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
     // private readonly orderQueue: OrderQueue,
     // private readonly driverQueue: DriverAssignmentQueue,
   ) {
-    // this.logger.setContext('FulfillmentService', 'OrderUsecaseImpl');
+    this.logger.setContext('FulfillmentService', 'OrderUsecaseImpl');
   }
   //Customer order creating API: For customer to create for it self and staff/Admin to create for customer
   async createOrder(data: any, userId: string): Promise<Order> {

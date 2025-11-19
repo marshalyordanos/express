@@ -16,7 +16,7 @@ export class BranchUseCaseImpl implements BranchUseCases {
     private readonly logger: AppLogger,
     private readonly mapService: MapsService,
   ) {
-    // this.logger.setContext('OperationsService', 'BranchUseCaseImpl');
+    this.logger.setContext('OperationsService', 'BranchUseCaseImpl');
   }
   async revokeManager(branchId: string, managerId: string): Promise<string> {
     try {
