@@ -209,6 +209,8 @@ export class BranchRepository {
         id: b.id,
         name: b.name,
         location: b.location,
+        createdAt: b.createdAt,
+        createdBy: b.createdBy,
         manager: b.manager,
         totalOrders: analytics.totalOrders,
         activeOrders: analytics.activeOrders,
@@ -269,6 +271,8 @@ export class BranchRepository {
         id: true,
         name: true,
         location: true,
+        createdAt: true,
+        createdBy: true,
         manager: {
           select: {
             id: true,
