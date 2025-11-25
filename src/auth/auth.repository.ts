@@ -16,6 +16,7 @@ export class AuthRepository {
       where: { email },
       include: { role: true },
     });
+    
   }
   async findByPhone(phone: string): Promise<User | null> {
     return this.prisma.user.findUnique({

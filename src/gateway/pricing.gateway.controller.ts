@@ -15,6 +15,7 @@ import {
 import { ClientProxy } from '@nestjs/microservices';
 import { PATTERNS } from '../contracts';
 import {
+  AddDriverCommissionDto,
   AirportFeeDto,
   CustomerCategoryDto,
   DiscountDto,
@@ -26,6 +27,7 @@ import {
   UpdateAirportFeeDto,
   UpdateCustomerCategoryDto,
   UpdateDiscountDto,
+  updateDriverCommissionDto,
   UpdateMiscellaneousFeeDto,
   UpdateProfitMarginDto,
   UpdateSurchargeDto,
@@ -33,7 +35,6 @@ import {
 } from '../fulfillment/pricing/pricing.entity';
 import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
-import { SanitizePipe } from '../common/sanitize.pipe';
 
 @Controller('pricing')
 export class PricingGatewayController {
@@ -908,6 +909,125 @@ export class PricingGatewayController {
     }
     return this.pricingClient.send(PATTERNS.PRICE_CALCULATE, {
       data,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+
+  ////////////////////////////////////////////////////////////////////////////
+
+    @Post('driver/commission')
+  async createDriverCommission(@Body() data: AddDriverCommissionDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.pricingClient.send(PATTERNS.PRICE_CREATE_DRIVER_COMMISSION, {
+      data,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  
+  @Get('driver/commission')
+  async getDriverCommissions(@Req() req, @Query() query: ListQueryDto) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.pricingClient.send(PATTERNS.PRICE_FIND_ALL_DRIVER_COMMISSION, {
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+      query,
+    });
+  }
+
+  @Patch('driver/commission/:id')
+  async updateDriverCommission(
+    @Param('id') id: string,
+    @Body() data: updateDriverCommissionDto,
+    @Req() req,
+  ) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.pricingClient.send(PATTERNS.PRICE_UPDATE_DRIVER_COMMISSION, {
+      id,
+      data,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  @Get('driver/commission/:id')
+  async getDriverCommissionById(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.pricingClient.send(PATTERNS.PRICE_FIND_DRIVER_COMMISSION_BY_ID, {
+      id,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  @Delete('driver/commission/:id')
+  async deleteDriverCommission(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.pricingClient.send(PATTERNS.PRICE_DELETE_DRIVER_COMMISSION, {
+      id,
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
       ip,

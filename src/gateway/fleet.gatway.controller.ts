@@ -23,6 +23,7 @@ import {
 import * as jwt from 'jsonwebtoken';
 import { SanitizePipe } from '../common/sanitize.pipe';
 
+
 @Controller('fleet')
 export class FleetGatewayController {
   // constructor(
@@ -59,7 +60,8 @@ export class FleetGatewayController {
       data: dto,
     });
   }
-
+  
+  
   // Unassign vehicle from driver
   @Patch('unassign/:id')
   async unassignVehicle(@Req() req, @Param('id') id: string) {

@@ -52,6 +52,7 @@ export class RouteCacheService {
    */
   async saveDriverRoute(driverId: string, route: RouteCache) {
     const key = `driver:${driverId}:currentRoute`;
+    console.log('saving route');
 
     // compute remaining duration (seconds)
     let remainingDurationSec = route.totalDuration ?? 0;
@@ -77,12 +78,36 @@ export class RouteCacheService {
       { EX: 3600 },
     );
 
-    this.logger.debug(
+    this.logger.log(
       `Saved route for driver ${driverId} in Redis (finish: ${routeFinishISO})`,
     );
 
     // Broadcast via WebSocket (route object sent to subscribers)
     this.wsGateway.broadcastDriverRoute(driverId, route); //temporary fix
+  }
+
+  async saveDriverRouteForSegment(driverId: string, route: RouteCache) {
+    const key = `driver:${driverId}:segment`;
+
+    // compute remaining duration (seconds)
+    let remainingDurationSec = route.totalDuration ?? 0;
+    if (!remainingDurationSec || remainingDurationSec <= 0) {
+      // approximate from remainingDistance using default speed if duration missing
+      const remainingKm =
+        route.remainingDistance ??
+        route.stops.reduce((acc, s) => acc + (s.distanceKm ?? 0), 0);
+      const speedKmh = 40; // conservative default
+      remainingDurationSec = Math.round((remainingKm / speedKmh) * 3600);
+    }
+    route.remainingDurationSec = remainingDurationSec;
+
+    // set routeFinish timestamp = now + remainingDurationSec
+    const routeFinishMs = Date.now() + remainingDurationSec * 1000;
+
+    // Persist route object and routeFinish
+    await this.redisClient.set(key, JSON.stringify(route), { EX: 3600 });
+
+    this.logger.log(`Saved route segment for driver ${driverId} in Redis.`);
   }
 
   async deleteDriverRoute(driverId: string): Promise<void> {
@@ -104,6 +129,19 @@ export class RouteCacheService {
     }
   }
 
+  async getDriverRouteSegment(driverId: string): Promise<RouteCache | null> {
+    const key = `driver:${driverId}:segment`;
+    const data = (await this.redisClient.get(key)) as string | null;
+    if (!data) return null;
+    try {
+      return JSON.parse(data) as RouteCache;
+    } catch (err) {
+      this.logger.error(
+        `Failed to parse driver route for ${driverId}: ${(err as Error).message}`,
+      );
+      return null;
+    }
+  }
   async getDriverRouteWithStops(
     driverId: string,
     reportedStops?: { orderId: string }[],
@@ -137,6 +175,12 @@ export class RouteCacheService {
     await this.redisClient.del(`driver:${driverId}:routeFinish`);
     this.logger.debug(`Removed route for driver ${driverId} from Redis`);
   }
+    async removeDriverRouteSegment(driverId: string) {
+    await this.redisClient.del(`driver:${driverId}:segment`);
+    // await this.redisClient.del(`driver:${driverId}:routeFinish`);
+    this.logger.debug(`Removed route segment for driver ${driverId} from Redis`);
+  }
+
 
   private calculateDistanceKm(
     lat1: number,
@@ -387,6 +431,23 @@ export class RouteCacheService {
     }
   }
 
+  async markStopVisitedSegment(driverId: string, orderId: string) {
+    const route = await this.getDriverRouteSegment(driverId);
+    if (!route) return;
+
+    route.stops = route.stops.map((s) =>
+      s.orderId === orderId ? { ...s, visited: true } : s,
+    );
+    route.lastUpdated = Date.now();
+
+    await this.saveDriverRouteForSegment(driverId, route);
+
+    // Check if all stops are visited
+    const allVisited = route.stops.every((s) => s.visited);
+    if (allVisited) {
+      await this.completeRouteSegment(driverId, route);
+    }
+  }
   /** Mark route as completed: persist to DB and remove from Redis */
   private async completeRoute(driverId: string, route: RouteCache) {
     try {
@@ -416,7 +477,7 @@ export class RouteCacheService {
           await this.mapRepo.updateRoute(dbRoute.id, {
             distanceKm: originStop.distanceKm || 0,
             durationMin: originStop.eta || 0,
-            completed: true,
+            // completed: true,
           });
         }
       }
@@ -429,6 +490,57 @@ export class RouteCacheService {
         driverId,
         route.optimizationJobId,
       );
+
+      this.logger.debug(`Route completed for driver ${driverId}`);
+    } catch (err) {
+      this.logger.error(
+        `Failed to complete route for driver ${driverId}: ${err}`,
+      );
+    }
+  }
+
+  //NEEDS HUGE REFACTOR ON HOW TO MAKE IT MORE ACCURATE FOR COMPLETING ROUTE SEGMENT  OR DELETING ROUTE FROM REDIS
+  private async completeRouteSegment(driverId: string, route: RouteCache) {
+    try {
+      for (let i = 0; i < route.stops.length - 1; i++) {
+        const originStop = route.stops[i];
+        const destStop = route.stops[i + 1];
+
+        // 1️⃣ Get Locations from coordinates
+        const originLoc = await this.mapRepo.upsertLocationFromCoords({
+          latitude: originStop.lat,
+          longitude: originStop.lon,
+          mapServiceResult: { name: originStop.orderId },
+        });
+        const destLoc = await this.mapRepo.upsertLocationFromCoords({
+          latitude: destStop.lat,
+          longitude: destStop.lon,
+          mapServiceResult: { name: destStop.orderId },
+        });
+
+        // 2️⃣ Find and update route
+        const dbRoute = await this.mapRepo.findRouteByOriginDest(
+          originLoc.id,
+          destLoc.id,
+        );
+
+        if (dbRoute) {
+          await this.mapRepo.updateRoute(dbRoute.id, {
+            distanceKm: originStop.distanceKm || 0,
+            durationMin: originStop.eta || 0,
+            // completed: true,
+          });
+        }
+      }
+
+      // 3️⃣ Remove from Redis
+      await this.removeDriverRouteSegment(driverId);
+
+      // 4️⃣ Broadcast completion //temporary fix
+      // this.wsGateway.broadcastDriverRouteCompletion(
+      //   driverId,
+      //   route.optimizationJobId,
+      // );
 
       this.logger.debug(`Route completed for driver ${driverId}`);
     } catch (err) {

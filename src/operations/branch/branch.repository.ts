@@ -139,6 +139,8 @@ export class BranchRepository {
           id: true,
           name: true,
           location: true,
+          createdAt: true,
+          createdBy: true,
           manager: { select: { id: true, name: true } },
           _count: { select: { staff: true } },
         },

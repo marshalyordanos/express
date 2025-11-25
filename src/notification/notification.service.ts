@@ -26,7 +26,7 @@ export class NotificationService implements OnModuleInit {
   async onModuleInit() {
     await this.redisService.waitUntilReady();
 
-    const redis = this.redisService.getClient();
+    const redis = this.redisService.getSubscriber();
 
     // Listen for all events dynamically
     await redis.pSubscribe('*', async (message, channel) => {
@@ -37,6 +37,9 @@ export class NotificationService implements OnModuleInit {
       switch (channel) {
         case 'user.registration':
           await this.sendEmailVerification(eventData);
+          break;
+        case 'notify.staff.order.canceled':
+          await this.notifyStaffOrAdmins(eventData, channel);
           break;
 
         // more cases can be added as needed
@@ -102,8 +105,8 @@ export class NotificationService implements OnModuleInit {
         },
       );
 
-      console.log("emmiting to user :: ", userId);
-      
+      console.log('emmiting to user :: ', userId);
+
       // Emit via WebSocket
       this.eventsGateway.sendToUser(userId, {
         id: notification.id,
@@ -120,7 +123,6 @@ export class NotificationService implements OnModuleInit {
       //   createdAt: notification.createdAt,
       // });
     }
-
 
     // -------------------------
     // Send Email Notification
@@ -228,6 +230,65 @@ export class NotificationService implements OnModuleInit {
     }
 
     console.log(`✅ Notification processed for user ${userId}`);
+  }
+
+  async notifyStaffOrAdmins(event: any, channel: string) {
+    console.log(
+      'Event recieved to send to staff or notify the event for event ',
+      event,
+      ' and channel ',
+      channel,
+    );
+
+    const { type, payload } = event;
+    // 1. Fetch staff
+    const staffList = await this.notificationRepository.getStaff();
+
+    if (type === 'order.canceled.by.driver') {
+      const message =
+        'Order :' +
+        payload.trackingCode +
+        ' Need Driver Assignment. Cancelled by driver : ' +
+        payload.driverId +
+        '. Reason : ' +
+        payload.reason;
+      // 2. If branch targeting required → fetch order
+      let order = null;
+      if (payload?.orderId) {
+        order = await this.notificationRepository.findOrderById(
+          payload.orderId,
+        );
+      }
+      // 3. Determine finalBranchId
+      //    - If order has branch → use it
+      //    - Else fallback to driver’s branch (payload.driverBranchId)
+      const finalBranchId = order?.branchId || payload?.driverBranchId || null; // last fallback = send to all if null
+
+      // 3. Loop through staff and send notifications
+      for (const staff of staffList) {
+        // If branch filtering is enabled
+        // Skip if branch does not match (only when branch exists)
+        // if (finalBranchId && staff.branchId !== finalBranchId) continue;
+
+        // Create notification for this staff
+        const notification =
+          await this.notificationRepository.createNotification({
+            userId: staff.id,
+            type,
+            message,
+            payload,
+          });
+
+        // Send WebSocket
+        this.eventsGateway.sendToUser(staff.id, {
+          id: notification.id,
+          type,
+          message,
+          payload,
+          createdAt: notification.createdAt,
+        });
+      }
+    }
   }
 
   /**

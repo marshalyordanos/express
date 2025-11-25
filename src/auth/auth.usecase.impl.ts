@@ -573,6 +573,7 @@ export class AuthUseCaseImpl implements AuthUseCase {
     }
   }
 
+  
   // ----------------- Helper -----------------
   private async generateTokens(user: User): Promise<AuthTokens> {
     try {

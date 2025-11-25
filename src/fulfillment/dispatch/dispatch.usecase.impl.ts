@@ -18,7 +18,13 @@ import {
   CreateDriver,
 } from './dispatch.entity';
 import { RpcException } from '@nestjs/microservices';
-import { ShippingScope, ServiceType } from '@prisma/client';
+import {
+  ShippingScope,
+  ServiceType,
+  LocationType,
+  SegmentType,
+  OrderStatus,
+} from '@prisma/client';
 import { IResponse } from '../../common/types';
 import {
   generateOrderQRCode,
@@ -32,18 +38,33 @@ import { AppLogger } from '../../common/app-logger.service';
 import { podUploader } from '../../common/cloudinary/cloudinary.storage';
 import { v2 as cloudinary } from 'cloudinary';
 import { NotificationPublisher } from '../../common/notification-publisher';
+import { MapsService } from '../maps/maps.service';
+import { RedisService } from '../../redis/redis.service';
+import { parse } from 'node:path';
+import { RouteOptimizerService } from '../maps/route-optimizer.service';
+import { RouteSegmentHelper } from '../utils/route-segment.helper';
 
+interface NextDestination {
+  lat: number;
+  lon: number;
+  type: LocationType;
+  orderId?: string | null;
+  segmentType: SegmentType; // Now accepts ALL SegmentType values including RETURN_TO_BRANCH
+}
 @Injectable()
 export class DispatchUseCasesImpl implements DispatchUseCases {
   constructor(
     private readonly dispatchRepo: DispatchRepository,
     private readonly qrCodeService: PrismaService,
     private readonly logger: AppLogger,
+    private readonly redisService: RedisService,
+    private readonly mapService: MapsService,
+    private readonly optimizer: RouteOptimizerService,
     private readonly notificationPublisher: NotificationPublisher,
+    private readonly segmentHelper: RouteSegmentHelper,
   ) {
     this.logger.setContext('FulfillmentService', 'DispatchUseCaseImpl');
   }
-
   async assignDriverForPickup(
     data: AssignDriverForPickup,
     userId: string,
@@ -52,107 +73,42 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       `Assign driver request received for order ${data.orderId} by user ${userId}`,
     );
 
-    try {
-      // Step 1: Validate driver existence
-      const driver = await this.dispatchRepo.findDriverById(data.driverId);
-      if (!driver) {
-        this.logger.warn(`Driver not found: ${data.driverId}`);
-        throw new RpcException({
-          statusCode: 404,
-          message: `Driver with ID ${data.driverId} not found.`,
-        });
-      }
+    // Fetch driver + order
+    const [driver, order] = await Promise.all([
+      this.dispatchRepo.findDriverById(data.driverId),
+      this.dispatchRepo.findOrderById(data.orderId),
+    ]);
 
-      this.logger.debug(
-        `Driver found: ${driver.user?.name ?? 'N/A'} (ID: ${driver.id})`,
-      );
+    if (!driver)
+      throw new RpcException({ statusCode: 404, message: 'Driver not found' });
+    if (!order)
+      throw new RpcException({ statusCode: 404, message: 'Order not found' });
+    if (order.pickupDriverId)
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Order already assigned',
+      });
+    if (order.status !== 'CREATED')
+      throw new RpcException({
+        statusCode: 400,
+        message: `Order not eligible (Status: ${order.status})`,
+      });
 
-      // Step 2: Validate order existence
-      const order = await this.dispatchRepo.findOrderById(data.orderId);
-      if (!order) {
-        this.logger.warn(`Order not found: ${data.orderId}`);
-        throw new RpcException({
-          statusCode: 404,
-          message: `Order with ID ${data.orderId} not found.`,
-        });
-      }
+    // 1️⃣ Assign driver ONLY (fast)
+    const updatedOrder = await this.dispatchRepo.assignDriverOnly(
+      data.driverId,
+      order.id,
+      userId,
+    );
 
-      this.logger.debug(`Order found: ID ${order.id}, Status ${order.status}`);
+    // 2️⃣ Fire & forget → create segment asynchronously
+    // this.createRouteSegmentAsync(data.driverId, false, order, null);
 
-      // Step 3: Ensure order not already assigned
-      if (order.pickupDriverId) {
-        this.logger.warn(
-          `Order ${order.id} already assigned to driver ID ${order.pickupDriverId}`,
-        );
-        throw new RpcException({
-          statusCode: 400,
-          message: `Order with ID ${data.orderId} is already assigned to another driver.`,
-        });
-      }
-
-      // Step 4: Check order status
-      if (order.status !== 'CREATED') {
-        let message = `Order ${order.id} not eligible for assignment (Status: ${order.status})`;
-
-        if (order.status === 'ASSIGNED') {
-          message = `Order ${order.id} already assigned, driver en route.`;
-        }
-
-        this.logger.warn(message);
-        throw new RpcException({
-          statusCode: 400,
-          message,
-        });
-      }
-
-      // Step 5: Validate pickup date
-      if (!order.pickupDate) {
-        this.logger.warn(`Order ${order.id} missing pickup date`);
-        throw new RpcException({
-          statusCode: 400,
-          message: `Order with ID ${data.orderId} does not have a scheduled pickup date.`,
-        });
-      }
-
-      const now = new Date();
-      const pickupDate = new Date(order.pickupDate);
-
-      if (pickupDate < new Date(now.setHours(0, 0, 0, 0))) {
-        this.logger.warn(
-          `Invalid pickup date for order ${order.id}: ${pickupDate.toISOString()}`,
-        );
-        throw new RpcException({
-          statusCode: 400,
-          message: `Order with ID ${data.orderId} has an invalid pickup date (${pickupDate.toISOString()}). Pickup date cannot be in the past.`,
-        });
-      }
-
-      // Step 6: Assign driver
-      this.logger.log(`Assigning driver ${driver.id} to order ${order.id}`);
-      const updatedOrder = await this.dispatchRepo.assignDriverForPickup(
-        data.driverId,
-        order.id,
-        userId,
-      );
-
-      this.logger.verbose(
-        `Driver ${driver.user?.name ?? driver.id} successfully assigned to order ${order.id}`,
-      );
-
-      return {
-        statusCode: 200,
-        message: `Driver ${driver.user.name} (ID: ${driver.user.id}) successfully assigned to order ${order.id}.`,
-        data: updatedOrder,
-      };
-      // {updatedOrder}
-    } catch (error) {
-      // Step 7: Catch and log errors
-      this.logger.error(
-        `Failed to assign driver for order ${data.orderId}: ${error.message}`,
-        // error.stack,
-      );
-      throw handleCatch(error);
-    }
+    return {
+      statusCode: 200,
+      message: `Driver ${driver.user?.name ?? driver.id} assigned successfully`,
+      data: updatedOrder,
+    };
   }
 
   async getDeliveredAndOnGoingDispatches(userId: any): Promise<any> {
@@ -570,6 +526,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         notes,
       );
 
+      this.segmentHelper.proceedToNextSegment(driverId, 'pending', orderId);
       this.logger.verbose(
         `Driver ${driverId} successfully started last mile delivery for order ${orderId}`,
       );
@@ -588,243 +545,6 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     }
   }
 
-  // async completeDelivery(
-  //   orderId: string,
-  //   driverId: string,
-  //   userId: string,
-  //   notes?: string,
-  //   podImages?: string[],
-  // ) {
-  //   this.logger.log(
-  //     `Delivery completion request received. Order: ${orderId}, Driver: ${driverId}, Requested by: ${userId}`,
-  //   );
-
-  //   try {
-  //     // 0. verify POD image is provided
-
-  //       const savedPodImages = [];
-
-  //     // 1. Authorization
-  //     if (userId !== driverId) {
-  //       this.logger.warn(
-  //         `Unauthorized delivery completion attempt by user ${userId} for driver ${driverId}`,
-  //       );
-  //       throw new RpcException({
-  //         statusCode: 403,
-  //         message: 'You are not authorized to do this action.',
-  //       });
-  //     }
-
-  //     // 2. Fetch order
-  //     const order = await this.dispatchRepo.findOrderById(orderId);
-  //     if (!order) {
-  //       this.logger.warn(`Order not found for delivery completion: ${orderId}`);
-  //       throw new RpcException({
-  //         statusCode: 404,
-  //         message: `Order with ID ${orderId} not found.`,
-  //       });
-  //     }
-
-  //     this.logger.debug(`Order ${order.id} found with status: ${order.status}`);
-
-  //     // 3. Verify assigned driver
-  //     if (order.deliveryDriverId !== driverId) {
-  //       this.logger.warn(
-  //         `Driver mismatch for order ${orderId}. Assigned: ${order.deliveryDriverId}, Attempted: ${driverId}`,
-  //       );
-  //       throw new RpcException({
-  //         statusCode: 403,
-  //         message: `Order with ID ${orderId} is not assigned to this driver.`,
-  //       });
-  //     }
-
-  //     // 4. Verify order status
-  //     if (order.status !== 'OUT_FOR_DELIVERY') {
-  //       this.logger.warn(
-  //         `Order ${orderId} not eligible for completion. Current status: ${order.status}`,
-  //       );
-  //       throw new RpcException({
-  //         statusCode: 400,
-  //         message: `Order with ID ${orderId} is not eligible for delivery and it is not out for delivery. Current status: ${order.status}.`,
-  //       });
-  //     }
-
-  //     // 5. Complete delivery
-  //     this.logger.log(
-  //       `Completing delivery for order ${orderId} by driver ${driverId}`,
-  //     );
-  //     const result = await this.dispatchRepo.deliverOrder(
-  //       orderId,
-  //       driverId,
-  //       notes,
-  //     );
-
-  //     this.logger.verbose(
-  //       `Driver ${driverId} successfully completed delivery for order ${orderId}`,
-  //     );
-
-  //     return {
-  //       success: true,
-  //       message: 'Order delivered to customer.',
-  //       result,
-  //     };
-  //   } catch (error) {
-  //     this.logger.error(
-  //       `Delivery completion failed for order ${orderId} by driver ${driverId}: ${error.message}`,
-  //       error.stack,
-  //     );
-  //     throw handleCatch(error);
-  //   }
-  // }
-
-  /**
-   * Complete delivery for an order
-   * @param dto CompleteDeliveryDto
-   * @param files Optional POD images from frontend (express file array)
-   */
-  // async completeDelivery(
-  //   dto: CompleteDeliveryDto,
-  //   userId: string,
-  //    files?: string[],
-  // ) {
-
-  //     const { orderId, driverId, notes, podImages } = dto;
-  //   this.logger.log(
-  //     `Delivery completion request received. Order: ${dto.orderId}, Driver: ${dto.driverId}, Requested by: ${userId}`,
-  //   );
-
-  //   // 0️⃣ Authorization check
-  //   if (userId !== dto.driverId) {
-  //       this.logger.warn(
-  //         `Unauthorized delivery completion attempt by user ${userId} for driver ${dto.driverId}`,
-  //       );
-  //       throw new RpcException({
-  //         statusCode: 403,
-  //         message: 'You are not authorized to do this action.',
-  //       });
-  //     }
-
-  //   // 1️⃣ Upload images to Cloudinary if any
-  //   let uploadedImages: {
-  //     url: string;
-  //     publicId: string;
-  //     fileName: string;
-  //     fileType: string;
-  //   }[] = [];
-
-  //   try {
-  //     if (files && files.length > 0) {
-  //       for (const file of files) {
-  //         const result = await cloudinary.uploader.upload_stream({
-  //           folder: 'pod_images',
-  //           resource_type: 'image',
-  //           format: 'png', // or leave dynamic
-  //         }, (error, res) => {
-  //           if (error) throw error;
-  //           return res;
-  //         });
-
-  //         // Because upload_stream needs a buffer, we wrap in Promise
-  //         const uploaded = await new Promise<{
-  //           url: string;
-  //           publicId: string;
-  //           fileName: string;
-  //           fileType: string;
-  //         }>((resolve, reject) => {
-  //           const stream = cloudinary.uploader.upload_stream(
-  //             { folder: 'pod_images' },
-  //             (err, res) => {
-  //               if (err) return reject(err);
-  //               resolve({
-  //                 url: res.secure_url,
-  //                 publicId: res.public_id,
-  //                 fileName: file.originalname,
-  //                 fileType: file.mimetype,
-  //               });
-  //             },
-  //           );
-  //           stream.end(file.buffer);
-  //         });
-  //         uploadedImages.push(uploaded);
-  //       }
-  //     }
-
-  //           // 2. Fetch order
-  //     const order = await this.dispatchRepo.findOrderById(dto.orderId);
-  //     if (!order) {
-  //       this.logger.warn(`Order not found for delivery completion: ${dto.orderId}`);
-  //       throw new RpcException({
-  //         statusCode: 404,
-  //         message: `Order with ID ${dto.orderId} not found.`,
-  //       });
-  //     }
-
-  //     this.logger.debug(`Order ${order.id} found with status: ${order.status}`);
-
-  //     // 3. Verify assigned driver
-  //     if (order.deliveryDriverId !== dto.driverId) {
-  //       this.logger.warn(
-  //         `Driver mismatch for order ${dto.orderId}. Assigned: ${order.deliveryDriverId}, Attempted: ${dto.driverId}`,
-  //       );
-  //       throw new RpcException({
-  //         statusCode: 403,
-  //         message: `Order with ID ${dto.orderId} is not assigned to this driver.`,
-  //       });
-  //     }
-
-  //     // 4. Verify order status
-  //     if (order.status !== 'OUT_FOR_DELIVERY') {
-  //       this.logger.warn(
-  //         `Order ${dto.orderId} not eligible for completion. Current status: ${order.status}`,
-  //       );
-  //       throw new RpcException({
-  //         statusCode: 400,
-  //         message: `Order with ID ${dto.orderId} is not eligible for delivery and it is not out for delivery. Current status: ${order.status}.`,
-  //       });
-  //     }
-  //     // 2️⃣ Call repository to mark order as delivered + save POD images
-  //        this.logger.log(
-  //       `Completing delivery for order ${dto.orderId} by driver ${dto.driverId}`,
-  //     );
-  //     const result = await this.dispatchRepo.deliverOrder(
-  //       dto.orderId,
-  //       dto.driverId,
-  //       dto.notes,
-  //       uploadedImages,
-  //     );
-
-  //     this.logger.log(
-  //       `Order ${dto.orderId} delivered successfully by driver ${dto.driverId}`,
-  //     );
-
-  //     return {
-  //       success: true,
-  //       message: 'Order delivered successfully.',
-  //       data: result,
-  //     };
-  //   } catch (err) {
-  //     // 3️⃣ Rollback uploaded images if transaction failed
-  //     if (uploadedImages.length > 0) {
-  //       for (const img of uploadedImages) {
-  //         try {
-  //           await cloudinary.uploader.destroy(img.publicId);
-  //         } catch (e) {
-  //           this.logger.error(`Failed to delete Cloudinary image ${img.publicId}: ${e.message}`);
-  //         }
-  //       }
-  //     }
-
-  //     this.logger.error(
-  //       `Delivery completion failed for order ${dto.orderId}: ${err.message}`,
-  //       err.stack,
-  //     );
-  //     throw err instanceof RpcException ? err : new RpcException({
-  //       statusCode: 500,
-  //       message: 'Failed to complete delivery.',
-  //     });
-  //   }
-  // }
-
   async completeDelivery(dto: CompleteDeliveryDto, userId: string) {
     const { orderId, driverId, notes, podImages } = dto;
     this.logger.log(
@@ -836,16 +556,56 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     }
 
     try {
-      return await this.dispatchRepo.deliverOrderWithPodImages(
+      const result = await this.dispatchRepo.deliverOrderWithPodImages(
         orderId,
         driverId,
         notes,
         podImages,
       );
+      this.segmentHelper.proceedToNextSegment(driverId, 'complete', orderId);
+      return result;
     } catch (err) {
       this.logger.error(`Delivery failed: ${err.message}`);
       throw err;
     }
+  }
+
+  private async getDriverCurrentLocation(driverId: string) {
+    const redisKey = `driver:${driverId}:location`;
+    const hash = await this.redisService.getClient().hGetAll(redisKey);
+    if (hash.lat && hash.lon) {
+      return { lat: parseFloat(hash.lat), lon: parseFloat(hash.lon) };
+    }
+    const log = await this.dispatchRepo.findDriverLocation(driverId);
+    return log ? { lat: log.latitude, lon: log.longitude } : null;
+  }
+
+  async returnToBranch(driverId: string) {
+    const location = await this.getDriverCurrentLocation(driverId);
+    if (!location) throw new RpcException('Location unknown');
+
+    const branch = await this.dispatchRepo.getDefaultBranchForDriver(driverId);
+    if (!branch) throw new RpcException('No branch');
+
+    await this.dispatchRepo.upsertActiveSegment({
+      driverId,
+      orderId: null,
+      fromLat: location.lat,
+      fromLon: location.lon,
+      fromType: LocationType.DRIVER_LOCATION,
+      toLat: branch.lat,
+      toLon: branch.lon,
+      toType: LocationType.BRANCH,
+      segmentType: SegmentType.RETURN_TO_BRANCH,
+      estimatedDistanceKm: 0,
+      estimatedDurationMin: 0,
+      startNow: true,
+    });
+
+    // await this.notificationService.sendToDriver(driverId, {
+    //   title: "Return to Branch",
+    //   body: "Head back to base. Good job today!",
+    // });
   }
 
   async removeDriverFromOrder(orderId: string): Promise<any> {
@@ -1355,16 +1115,6 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
   async scanOrder(officerId: string, scannedToken: string, userId: string) {
     this.logger.log(`Scan request received by officer ${userId}`);
 
-    // if (userId !== officerId) {
-    //   this.logger.warn(
-    //     `Unauthorized scan attempt by user ${userId} for officer ${officerId}`,
-    //   );
-    //   throw new RpcException({
-    //     statusCode: 403,
-    //     message: 'You are not authorized to do this action.',
-    //   });
-    // }
-
     let payload: OrderQRCodeData;
     try {
       const jsonString = Buffer.from(
@@ -1746,7 +1496,8 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         );
         return { assigned: false, reason: 'already_assigned' };
       }
-      const routesegment= await this.dispatchRepo.findRouteSegmentByOrderId(orderId);
+      const routesegment =
+        await this.dispatchRepo.findRouteSegmentByOrderId(orderId);
 
       // if(routesegment.length < 0){
       //   const orderSegment= await this.dispatchRepo.createSegmentRoute()
@@ -1778,7 +1529,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
             await this.retryNotification('assignment.expired', {
               type: 'assignment.expired',
               userId: loserId,
-              payload: {orderId},
+              payload: { orderId },
               message: `You have been expired for order ${orderId}.`,
             });
           }
@@ -1818,4 +1569,358 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       throw error;
     }
   }
+
+  async driverOrderCancellation(
+    orderId: string,
+    reason: string,
+    userId: string,
+  ) {
+    try {
+      const driver = await this.dispatchRepo.findDriverById(userId);
+      if (!driver) {
+        throw new NotFoundException('Driver not found');
+      }
+
+      const order = await this.dispatchRepo.findOrderUnique(orderId);
+
+      if (!order) {
+        throw new NotFoundException('Order not found');
+      }
+
+      let updateData: any = {};
+      let actionTaken = null;
+
+      /* -----------------------------------------------------
+   CASE 1: PICKUP DRIVER ONLY 
+----------------------------------------------------- */
+      if (
+        order.pickupDriverId === userId &&
+        order.deliveryDriverId !== userId
+      ) {
+        if (!order.pickupConfirmed) {
+          updateData.pickupDriverId = null;
+          actionTaken = 'Pickup driver canceled';
+        } else {
+          throw new BadRequestException(
+            'Pickup already confirmed. Cannot cancel.',
+          );
+        }
+      }
+
+      /* -----------------------------------------------------
+   CASE 2: DELIVERY DRIVER ONLY
+----------------------------------------------------- */
+      if (
+        order.deliveryDriverId === userId &&
+        order.pickupDriverId !== userId
+      ) {
+        if (!order.actualDeliveryAt) {
+          updateData.deliveryDriverId = null;
+          actionTaken = 'Delivery driver canceled';
+        } else {
+          throw new BadRequestException(
+            'Delivery already completed. Cannot cancel.',
+          );
+        }
+      }
+
+      /* -----------------------------------------------------
+   CASE 3: DRIVER IS BOTH PICKUP + DELIVERY
+----------------------------------------------------- */
+      if (
+        order.pickupDriverId === userId &&
+        order.deliveryDriverId === userId
+      ) {
+        // Driver wants to cancel before pickup → cancel pickup only
+        if (!order.pickupConfirmed) {
+          updateData.pickupDriverId = null;
+          actionTaken = 'Pickup driver canceled';
+        }
+
+        // Driver wants to cancel delivery but pickup is already done
+        else if (order.pickupConfirmed && !order.actualDeliveryAt) {
+          updateData.deliveryDriverId = null;
+          actionTaken = 'Delivery driver canceled';
+        } else {
+          throw new BadRequestException(
+            'Both pickup and delivery already completed. Cannot cancel.',
+          );
+        }
+      }
+
+      if (!actionTaken) {
+        throw new BadRequestException(
+          'Driver cannot cancel this order based on current state',
+        );
+      }
+
+      /* -----------------------------------------------------
+   CANCEL ORDER IF NO DRIVERS REMAIN
+----------------------------------------------------- */
+
+      // Determine what the final driver values will be
+      // const finalPickupDriverId =
+      //   updateData.pickupDriverId ?? order.pickupDriverId;
+      // const finalDeliveryDriverId =
+      //   updateData.deliveryDriverId ?? order.deliveryDriverId;
+
+      // // If both are null → no driver → cancel whole order
+      // if (!finalPickupDriverId && !finalDeliveryDriverId) {
+      // }
+      updateData.status = OrderStatus.CANCELED;
+
+      const result = await this.dispatchRepo.driverCancelOrder(
+        updateData,
+        orderId,
+        actionTaken,
+        reason,
+        userId,
+      );
+
+      this.retryNotification('order.canceled', {
+        type: 'order.canceled',
+        userId: userId,
+        payload: { orderId },
+        message: `You have cancelled your driver for order : ${order.trackingCode}.`,
+      });
+      this.retryNotification('order.canceled', {
+        type: 'order.canceled',
+        userId: order.customerId,
+        payload: {
+          orderId,
+          trackingCode: order.trackingCode,
+          reason,
+          actionTaken,
+          driverId: userId,
+        },
+        message: `Sorry, You order : ${order.trackingCode} has been cancelled by driver ${userId}. please wait petiently for further driver assignment.`,
+      });
+
+      this.retryNotification('notify.staff.order.canceled', {
+        type: 'order.canceled.by.driver',
+        payload: {
+          orderId,
+          trackingCode: order.trackingCode,
+          reason,
+          actionTaken,
+          driverId: userId,
+          driverBranchId: driver.user.branchId,
+          customerId: order.customerId,
+          cancelledDriver: {
+           isPickupDriver: order.pickupDriverId === userId,
+           isDeliveryDriver: order.deliveryDriverId === userId,
+          }
+        },
+      });
+
+      this.logger.log(
+        `Order ${orderId} cancelled successfully by driver ${userId}`,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to cancel order ${orderId}: ${error.message}`,
+        error.stack,
+      );
+      throw handleCatch(error);
+    }
+  }
+
+  async getOrdersCancelledByDriver(query: ListQueryDto, userId: any) {
+    try {
+      return await this.dispatchRepo.getOrdersCancelledByDriver(query);
+    } catch (error) {
+      throw handleCatch(error);
+    }
+  }
+
+  // private async getDriverCurrentLocation(driverId: string) {
+  //   const redisKey = `driver:${driverId}:location`;
+  //   const hash = await this.redisService.getClient().hGetAll(redisKey);
+  //   if (hash.lat && hash.lon) {
+  //     return { lat: parseFloat(hash.lat), lon: parseFloat(hash.lon) };
+  //   }
+  //   const log = await this.dispatchRepo.findDriverLocation(driverId);
+  //   return log ? { lat: log.latitude, lon: log.longitude } : null;
+  // }
+
+  // async proceedToNextSegment(
+  //   driverId: string,
+  //   trigger: 'PICKED_UP' | 'DELIVERED' | 'DROPPED_OFF',
+  // ) {
+  //   const currentLocation = await this.getDriverCurrentLocation(driverId);
+  //   if (!currentLocation) throw new RpcException('Driver location unknown');
+
+  //   // 1. Complete current segment
+  //   await this.dispatchRepo.completeCurrentSegment(driverId, currentLocation);
+
+  //   // 2. Try full optimization → returns NextDestination | null
+  //   let next: NextDestination | null = await this.tryFullOptimization(
+  //     driverId,
+  //     currentLocation,
+  //   );
+
+  //   // 3. Fallback to smart Level 2
+  //   if (!next) {
+  //     next = await this.getSmartNextDestinationLevel2(
+  //       driverId,
+  //       currentLocation,
+  //     );
+  //   }
+
+  //   // 4. No work at all → return to branch
+  //   if (!next) {
+  //     const branch =
+  //       await this.dispatchRepo.getDefaultBranchForDriver(driverId);
+  //     if (!branch) throw new RpcException('No branch configured for driver');
+
+  //     next = {
+  //       lat: branch.lat,
+  //       lon: branch.lon,
+  //       type: LocationType.BRANCH,
+  //       orderId: null,
+  //       segmentType: SegmentType.RETURN_TO_BRANCH, // Now 100% allowed
+  //     };
+  //   }
+
+  //   // 5. Real route via OSRM (OpenStreetMap)
+  //   const osrm = await this.mapService.getRoute(
+  //     { lat: currentLocation.lat, lon: currentLocation.lon },
+  //     { lat: next.lat, lon: next.lon },
+  //   );
+
+  //   if (!osrm?.distance || !osrm?.duration) {
+  //     throw new RpcException('Failed to calculate route with OpenStreetMap');
+  //   }
+
+  //   // 6. Create the next active segment
+  //   await this.dispatchRepo.upsertActiveSegment({
+  //     driverId,
+  //     orderId: next.orderId ?? null,
+  //     fromLat: currentLocation.lat,
+  //     fromLon: currentLocation.lon,
+  //     fromType: LocationType.DRIVER_LOCATION,
+  //     toLat: next.lat,
+  //     toLon: next.lon,
+  //     toType: next.type,
+  //     segmentType: next.segmentType, // Now fully type-safe
+  //     estimatedDistanceKm: osrm.distance / 1000,
+  //     estimatedDurationMin: Math.round(osrm.duration / 60),
+  //     startNow: true,
+  //   });
+
+  //   // 7. Notify driver
+  //   const title =
+  //     next.segmentType === SegmentType.RETURN_TO_BRANCH
+  //       ? 'Return to Branch'
+  //       : 'Next Stop';
+  //   const body = next.orderId
+  //     ? `${next.segmentType.replace(/_/g, ' ')} → Order #${next.orderId.slice(-6)}`
+  //     : 'Return to Branch';
+
+  //   await this.notificationPublisher.publish(driverId, { title, body });
+  // }
+
+  // // ————————————————————————————————————————
+  // // FULL OPTIMIZATION (uses your existing RouteOptimizerService)
+  // // ————————————————————————————————————————
+  // private async tryFullOptimization(
+  //   driverId: string,
+  //   currentLocation: { lat: number; lon: number },
+  // ): Promise<NextDestination | null> {
+  //   try {
+  //     const pending =
+  //       await this.dispatchRepo.getAllPendingOrdersForDriver(driverId);
+  //     if (pending.length < 3) return null;
+
+  //     const stops = pending.map((o) => ({
+  //       orderId: o.id,
+  //       lat: o.pickupConfirmed
+  //         ? parseFloat(o.deliveryAddress!.lat!)
+  //         : parseFloat(o.pickupAddress!.lat!),
+  //       lon: o.pickupConfirmed
+  //         ? parseFloat(o.deliveryAddress!.long!)
+  //         : parseFloat(o.pickupAddress!.long!),
+  //     }));
+
+  //     const optimized = await this.optimizer.computeOptimizedRoute(
+  //       driverId,
+  //       currentLocation,
+  //       stops,
+  //     );
+
+  //     if (!optimized.stops?.length) return null;
+
+  //     const nextStop = optimized.stops[0];
+  //     const order = pending.find((o) => o.id === nextStop.orderId)!;
+
+  //     return {
+  //       lat: nextStop.lat,
+  //       lon: nextStop.lon,
+  //       type: order.pickupConfirmed
+  //         ? LocationType.DELIVERY_ADDRESS
+  //         : LocationType.PICKUP_ADDRESS,
+  //       orderId: nextStop.orderId,
+  //       segmentType: order.pickupConfirmed
+  //         ? SegmentType.DELIVERY_TO_DELIVERY
+  //         : SegmentType.DELIVERY_TO_PICKUP,
+  //     };
+  //   } catch (err) {
+  //     this.logger.warn('Full optimization failed → using Level 2', err);
+  //     return null;
+  //   }
+  // }
+
+  // // ————————————————————————————————————————
+  // // SMART LEVEL 2 FALLBACK
+  // // ————————————————————————————————————————
+  // private async getSmartNextDestinationLevel2(
+  //   driverId: string,
+  //   currentLocation: { lat: number; lon: number },
+  // ): Promise<any | null> {
+  //   const orders = await this.dispatchRepo.getOrderForSmartNextDestinationLevel2(driverId)
+
+  //   let best: any = null;
+  //   let bestDistance = Infinity;
+
+  //   for (const order of orders) {
+  //     if (!order.pickupConfirmed && order.pickupAddress?.lat) {
+  //       const dist = await this.mapService.getDistance(currentLocation, {
+  //         lat: parseFloat(order.pickupAddress.lat),
+  //         lon: parseFloat(order.pickupAddress.long),
+  //       });
+  //       if (dist < bestDistance) {
+  //         bestDistance = dist;
+  //         best = {
+  //           lat: parseFloat(order.pickupAddress.lat),
+  //           lon: parseFloat(order.pickupAddress.long),
+  //           type: LocationType.PICKUP_ADDRESS,
+  //           orderId: order.id,
+  //           segmentType: SegmentType.DELIVERY_TO_PICKUP,
+  //         };
+  //       }
+  //     } else if (order.pickupConfirmed && order.deliveryAddress?.lat) {
+  //       const dist = await this.mapService.getDistance(currentLocation, {
+  //         lat: parseFloat(order.deliveryAddress.lat),
+  //         lon: parseFloat(order.deliveryAddress.long),
+  //       });
+  //       if (dist < bestDistance * 1.1) {
+  //         // slight bias toward delivery
+  //         bestDistance = dist;
+  //         best = {
+  //           lat: parseFloat(order.deliveryAddress.lat),
+  //           lon: parseFloat(order.deliveryAddress.long),
+  //           type: LocationType.DELIVERY_ADDRESS,
+  //           orderId: order.id,
+  //           segmentType: SegmentType.DELIVERY_TO_DELIVERY,
+  //         };
+  //       }
+  //     }
+  //   }
+
+  //   return best;
+  // }
+  // async getDefaultBranchForDriver(driverId: string) {
+  //   return await this.dispatchRepo.getDefaultBranchForDriver(driverId);
+  // }
 }

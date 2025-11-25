@@ -8,6 +8,13 @@ type LatLon = { id?: string; lat: number; lon: number };
 export class MapsService {
   // constructor(private logger: Logger) {}
   private readonly logger = new Logger(MapsService.name);
+  private OSRM_URL = 'http://router.project-osrm.org/route/v1/driving';
+  private OSRM_PRIMARY = 'https://router.project-osrm.org/route/v1/driving';
+  private OSRM_BACKUP =
+    'https://routing.openstreetmap.de/routed-car/route/v1/driving';
+  private OSRM_MATRIX_URL = 'http://router.project-osrm.org/table/v1/driving';
+  private OSRM_ROUTE_URL = 'http://router.project-osrm.org/route/v1/driving';
+
   async reverseGeocode(
     lat: number,
     lon: number,
@@ -31,10 +38,15 @@ export class MapsService {
       const data = response.data || {};
       const address = data.address || {};
 
-      console.log("Data for address to be created inside mapservice for data:::::", data);
-      console.log("Data for address to be created inside mapservice for address:::::", address);
+      console.log(
+        'Data for address to be created inside mapservice for data:::::',
+        data,
+      );
+      console.log(
+        'Data for address to be created inside mapservice for address:::::',
+        address,
+      );
 
-      
       // Use the best available fields
       return {
         name: data.name || address.road || undefined,
@@ -51,7 +63,7 @@ export class MapsService {
         country: address.country || undefined,
         postalCode: address.postcode || undefined,
         addressLine: address.road || undefined,
-        state: address.state || undefined
+        state: address.state || undefined,
       };
     } catch (err) {
       this.logger.warn(
@@ -328,6 +340,123 @@ export class MapsService {
       }
     }
   }
+
+  /**
+   * Calculate ETA in minutes from origin to destination using OpenStreetMap / OSRM
+   */
+  // async calculateETA(
+  //   origin: { lat: number; lon: number },
+  //   destination: { lat: number; lon: number },
+  // ): Promise<number> {
+  //   try {
+  //     console.log(`ORIGIN LONG${origin.lon} and ORIGIN LAT ${origin.lat}`);
+  //     console.log(
+  //       `DESTINATION LONG ${destination.lon} and DESTINATION LAT ${destination.lat}`,
+  //     );
+
+  //     // OSRM expects lon,lat
+  //     const url = `${this.OSRM_URL}/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?overview=false`;
+  //     console.log('FINAL ETA URL one =>', url);
+
+  //     const res = await axios.get(url, {
+  //       maxRedirects: 0,
+  //       timeout: 5000, // prevent hanging
+  //       validateStatus: () => true, // allow manual status check
+  //     });
+
+  //     if (!res.data || res.data.code !== 'Ok') {
+  //       throw new Error(`OSRM Error: ${res.data?.message ?? 'No route found'}`);
+  //     }
+
+  //     console.log('FINAL ETA URL second =>', url);
+
+  //     console.log(`RESULT INISIDE MAP SERVICE FOR ETA ::: ${res}`);
+
+  //     if (
+  //       !res.data ||
+  //       !res.data.routes ||
+  //       res.data.routes.length === 0 ||
+  //       !res.data.routes[0].duration
+  //     ) {
+  //       throw new Error('OSRM route not found');
+  //     }
+
+  //     // duration returned in seconds → convert to minutes
+  //     const durationSeconds = res.data.routes[0].duration;
+  //     const durationMinutes = Math.ceil(durationSeconds / 60);
+  //     return durationMinutes;
+  //   } catch (err) {
+  //     console.error('Error calculating ETA:', err.stack);
+  //     throw new RpcException('Error calculating ETA');
+  //   }
+  // }
+
+  async calculateETA(
+    origin: { lat: number; lon: number },
+    destination: { lat: number; lon: number },
+  ): Promise<number> {
+    console.log(`ORIGIN: ${origin.lat}, ${origin.lon}`);
+    console.log(`DESTINATION: ${destination.lat}, ${destination.lon}`);
+
+    const coord = `${origin.lon},${origin.lat};${destination.lon},${destination.lat}`;
+    const primaryURL = `${this.OSRM_PRIMARY}/${coord}?overview=false`;
+    const backupURL = `${this.OSRM_BACKUP}/${coord}?overview=false`;
+
+    console.log('ETA PRIMARY URL:', primaryURL);
+
+    // 1️⃣ Try primary OSRM
+    const primary = await this.callOsrm(primaryURL);
+    if (primary) {
+      const minutes = Math.ceil(primary.duration / 60);
+      console.log('PRIMARY ETA:', minutes);
+      return minutes;
+    }
+
+    console.log('Primary OSRM failed. Trying backup...');
+
+    // 2️⃣ Try backup OSRM
+    const backup = await this.callOsrm(backupURL);
+    if (backup) {
+      const minutes = Math.ceil(backup.duration / 60);
+      console.log('BACKUP ETA:', minutes);
+      return minutes;
+    }
+
+    console.log('Both OSRM servers failed. Using fallback ETA...');
+
+    // 3️⃣ Use fallback distance-based ETA
+    const distanceMeters = await this.calculateDistance(origin, destination);
+    const fallbackMinutes = this.fallbackETA(distanceMeters);
+
+    console.log('FALLBACK ETA:', fallbackMinutes);
+
+    return fallbackMinutes;
+  }
+
+  private fallbackETA(distanceMeters: number): number {
+    const distanceKm = distanceMeters;
+    const avgSpeedKmH = 25; // Addis traffic usually 20–30 km/h
+    return Math.ceil((distanceKm / avgSpeedKmH) * 60);
+  }
+
+  private async callOsrm(url: string) {
+    try {
+      const res = await axios.get(url, {
+        maxRedirects: 0,
+        timeout: 5000,
+        validateStatus: () => true,
+      });
+
+      if (!res.data || res.data.code !== 'Ok') {
+        return null;
+      }
+
+      return res.data.routes[0];
+    } catch (err) {
+      return null;
+    }
+  }
+
   /**
    * Pairwise matrix compute fallback using your calculateDistance (returns km).
    * We convert to meters in the result.
@@ -397,5 +526,34 @@ export class MapsService {
       Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+  }
+
+  private client = axios.create({
+    baseURL: 'http://router.project-osrm.org/route/v1/driving/',
+    timeout: 8000,
+  });
+
+  async getRoute(
+    from: { lat: number; lon: number },
+    to: { lat: number; lon: number },
+  ) {
+    try {
+      const res = await this.client.get(
+        `${from.lon},${from.lat};${to.lon},${to.lat}?overview=false&steps=false`,
+      );
+      const route = res.data.routes[0];
+      return {
+        distance: route.distance, // meters
+        duration: route.duration, // seconds
+      };
+    } catch (error) {
+      console.error('OSRM failed', error);
+      return null;
+    }
+  }
+
+  async getDistance(from: any, to: any) {
+    const route = await this.getRoute(from, to);
+    return route?.distance || Infinity;
   }
 }

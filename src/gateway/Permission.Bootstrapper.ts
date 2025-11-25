@@ -25,6 +25,7 @@ export class PermissionBootstrapper {
     { resource: 'PermissionRole', description: 'Used to manage and assign permissions to roles and their relation to each other.' },
     { resource: 'CalculatePrice', description: 'Used to calculate the price of an order.' },
     { resource: 'Preference', description: 'Managing user preference for notification, payment and other settings.' },
+    { resource: 'DriverCommission', description: 'Used to manage drivers commission.' },
 
   ];
 
@@ -44,6 +45,7 @@ export class PermissionBootstrapper {
       });
     }
 
+    
     // 2️⃣ Create new permissions if they don’t exist
     for (const perm of this.defaultPermissions) {
       await this.prisma.permission.upsert({

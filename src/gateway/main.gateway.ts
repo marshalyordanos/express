@@ -57,7 +57,7 @@ async function bootstrap() {
   fs.writeFileSync('./openapi.json', JSON.stringify(document));
   // ----------------------
 
-  const port = Number(process.env.GATEWAY_PORT ?? 24612);
+  const port = Number(process.env.PORT ?? 24612);
   await app.listen(port, '0.0.0.0');
   console.log(`Gateway listening on port ${port}`);
 }

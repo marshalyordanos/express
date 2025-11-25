@@ -203,6 +203,7 @@ export class StaffRepository {
           branch: {
             select: { id: true, name: true },
           },
+          isActive: true,
           createdBy: true,
           createdAt: true,
           updatedAt: true,
@@ -242,6 +243,7 @@ export class StaffRepository {
         email: true,
         phone: true,
         emailVerified: true,
+        isActive: true,
         role: {
           select: { id: true, name: true },
         },
@@ -282,6 +284,7 @@ export class StaffRepository {
           email: true,
           phone: true,
           emailVerified: true,
+          isActive: true,
           role: {
             select: { id: true, name: true },
           },
@@ -354,6 +357,7 @@ export class StaffRepository {
           email: true,
           phone: true,
           emailVerified: true,
+          isActive: true,
           role: {
             select: { id: true, name: true },
           },
@@ -486,6 +490,9 @@ export class StaffRepository {
           type: driverData.type,
           licenseNumber: driverData.licenseNumber,
           licenseExpiry: driverData.licenseExpiry,
+          licenseIssue: driverData.licenseIssue ?? null,
+          frontImageUrl: driverData.frontImageUrl ?? null,
+          backImageUrl: driverData.backImageUrl ?? null,
           currentLat: parseFloat(driverData.currentLat) ?? null,
           currentLon: parseFloat(driverData.currentLong)?? null,
           createdBy: userId || 'system',
@@ -611,7 +618,7 @@ export class StaffRepository {
           where,
           include: {
             user: {
-              select: { id: true, name: true, email: true, phone: true },
+              select: { id: true, name: true, email: true, phone: true, isActive: true },
             },
             vehicles: {
               select: { id: true, plateNumber: true, model: true, status: true },

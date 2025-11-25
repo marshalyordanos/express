@@ -11,6 +11,7 @@ import {
   ConfirmBatchHandoverDto,
   CreateAssignmentRequestsDto,
   CreateDriver,
+  DriverCancelOrder,
   GenerateQrDto,
   LastMileDeliveryDto,
   OrderScanTokenDto,
@@ -261,6 +262,42 @@ export class DispatchMessageController {
     const result = await this.usecases.driverAccept(payload.orderId, userId);
     return IResponse.success(
       'Successfully driver is assigned to order',
+      result,
+    );
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Dispatch', PermissionActions.UPDATE)
+  @MessagePattern(PATTERNS.DISPATCH_DRIVER_CANCEL_ORDER)
+  async driverCancelOrder(
+    @Payload() payload: { data: DriverCancelOrder; user: any },
+  ) {
+    const { reason, orderId } = payload.data;
+    const userId = payload.user?.sub;
+    const result = await this.usecases.driverOrderCancellation(
+      orderId,
+      reason,
+      userId,
+    );
+    return IResponse.success(
+      'You have Successfully cancelled your drive for order',
+      result,
+    );
+  }
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Dispatch', PermissionActions.READ)
+  @MessagePattern(PATTERNS.DISPATCH_FIND_CANCELLED_ORDERS_BY_DRIVER)
+  async getOrdersCancelledByDriver(
+    @Payload() payload: { query: ListQueryDto; user: any },
+  ) {
+    const { query, user } = payload;
+    const userId = user?.sub;
+    const result = await this.usecases.getOrdersCancelledByDriver(
+      query,
+      userId,
+    );
+    return IResponse.success(
+      'Successfully fetched orders cancelled by driver',
       result,
     );
   }

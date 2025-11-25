@@ -6,6 +6,31 @@ import { PrismaQueryFeature } from '../common/query/prisma-query-feature';
 @Injectable()
 export class NotificationRepository {
   constructor(private readonly prisma: PrismaService) {}
+  async findOrderById(orderId: any) {
+    return this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        branch: {
+          select: { id: true },
+        },
+      },
+    });
+  }
+
+  async getStaff() {
+    return this.prisma.user.findMany({
+      where: {
+        role: {
+          name: 'OPERATIONAL_MANAGER',
+        },
+      },
+      select: {
+        id: true,
+        branchId: true,
+      },
+    });
+  }
 
   async createNotification(data: {
     userId: string;

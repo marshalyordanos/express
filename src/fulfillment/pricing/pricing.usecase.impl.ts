@@ -11,6 +11,7 @@ import {
 import { PricingRepository } from './pricing.repository';
 import { PricingUseCases } from './pricing.usecase';
 import {
+  AddDriverCommissionDto,
   AirportFeeDto,
   CustomerCategoryDto,
   DiscountDto,
@@ -21,6 +22,7 @@ import {
   UpdateAirportFeeDto,
   UpdateCustomerCategoryDto,
   UpdateDiscountDto,
+  updateDriverCommissionDto,
   UpdateMiscellaneousFeeDto,
   UpdateProfitMarginDto,
   UpdateSurchargeDto,
@@ -1634,6 +1636,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
       airportFee: { total: airportTotal },
       finalPrice,
       currency: tariff.currency || 'ETB',
+      tariffId: tariff.id,
     });
 
     return {
@@ -1797,5 +1800,107 @@ export class PricingUseCasesImpl implements PricingUseCases {
     }
 
     return [total, list];
+  }
+
+  async addDriverCommission(data: AddDriverCommissionDto, userId: string) {
+    try {
+      const driver = await this.pricingRepo.findDriverAndCommission(
+        data.driverId,
+      );
+      console.log("Driver commission fetched ::: ", driver);
+      
+      if (driver) {
+        throw new RpcException({
+          statusCode: 400,
+          message:
+            'Commission is already exist for this driver please update existing one.',
+        });
+      }
+      const driverCommission = await this.pricingRepo.addDriverCommission(
+        data,
+        userId,
+      );
+      if (!driverCommission) {
+        throw new RpcException({
+          statusCode: 500,
+          message: 'Failed to add driver commission',
+        });
+      } else {
+        return driverCommission;
+      }
+    } catch (error) {
+      throw handleCatch(error);
+    }
+  }
+
+  async updateDriverCommission(
+    data: updateDriverCommissionDto,
+    id: string,
+    userId: string,
+  ) {
+    try {
+      if (data.driverId) {
+        const driver = await this.pricingRepo.findDriverById(data.driverId);
+        if (!driver) {
+          throw new RpcException({
+            statusCode: 404,
+            message: 'Driver not found',
+          });
+        }
+      }
+      const commission = await this.pricingRepo.findDriverCommissionById(id);
+      if (!commission)
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Driver commission not found',
+        });
+      const driverCommission = await this.pricingRepo.updateDriverCommission(
+        data,
+        id,
+        userId,
+      );
+
+      if (!driverCommission) {
+        throw new RpcException({
+          statusCode: 500,
+          message: 'Failed to update driver commission',
+        });
+      } else {
+        return driverCommission;
+      }
+    } catch (error) {
+      throw handleCatch(error);
+    }
+  }
+
+  async findAllDriverCommissions(query: ListQueryDto) {
+    try {
+      return await this.pricingRepo.findAllDriverCommissions(query);
+    } catch (error) {
+      throw handleCatch(error);
+    }
+  }
+
+  async findDriverCommissionById(id: string) {
+    try {
+      return await this.pricingRepo.findDriverCommissionById(id);
+    } catch (error) {
+      throw handleCatch(error);
+    }
+  }
+  async deleteDriverCommission(id: string, userId: string) {
+    try {
+      return await this.pricingRepo.deleteCommission(id, userId);
+    } catch (error) {
+      throw handleCatch(error);
+    }
+  }
+
+  async hardDeleteDriverCommission(id: string) {
+    try {
+      return await this.pricingRepo.hardDeleteDriverCommission(id);
+    } catch (error) {
+      throw handleCatch(error);
+    }
   }
 }

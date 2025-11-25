@@ -19,6 +19,7 @@ import {
 } from '../auth/auth.entity';
 import * as jwt from 'jsonwebtoken';
 
+
 @Controller('auth')
 export class AuthGatewayController {
   constructor(

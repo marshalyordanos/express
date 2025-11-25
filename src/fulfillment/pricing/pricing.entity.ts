@@ -1,4 +1,4 @@
-import { FeeType, ServiceType, ShippingScope } from '@prisma/client';
+import { CommissionType, FeeType, ServiceType, ShippingScope, Vehicle, VehicleType } from '@prisma/client';
 import {
   IsBoolean,
   IsDateString,
@@ -419,3 +419,68 @@ export class PriceCalculationLogDto {
   orderId: string;
 }
 //===================================================================================CUSTOMER CATEGORY==================================================================
+
+
+//===================================================================================DRIVER COMMISSION==================================================================
+
+export class AddDriverCommissionDto {
+  @IsNotEmpty()
+  @IsString()
+  driverId: string;
+
+  @IsNotEmpty()
+  @IsString()
+  commissionType: CommissionType;
+  
+  @IsNotEmpty()
+  @IsNumber()
+  amount: number;
+
+  @IsOptional()
+  @IsDateString()
+  effectiveFrom: string;
+
+  @IsOptional()
+  @IsDateString()
+  effectiveTo?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  currency: string= "ETB";
+
+  @IsNotEmpty()
+  @IsString()
+  vehicleType: VehicleType;
+
+}
+
+export class updateDriverCommissionDto {
+  @IsOptional()
+  @IsString()
+  driverId: string;
+
+  @IsOptional()
+  @IsString()
+  commissionType: CommissionType;
+  
+  @IsOptional()
+  @IsNumber()
+  amount: number;
+
+  @IsOptional()
+  @IsDateString()
+  effectiveFrom: string;
+
+  @IsOptional()
+  @IsDateString()
+  effectiveTo?: string;
+
+  @IsOptional()
+  @IsString()
+  currency: string= "ETB";
+
+  @IsOptional()
+  @IsString()
+  vehicleType: VehicleType;
+
+}

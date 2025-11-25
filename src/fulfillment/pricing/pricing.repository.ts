@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ServiceType, ShippingScope } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  AddDriverCommissionDto,
   AirportFeeDto,
   CustomerCategoryDto,
   MiscellaneousFeeDto,
@@ -11,6 +12,7 @@ import {
   UpdateAirportFeeDto,
   UpdateCustomerCategoryDto,
   UpdateDiscountDto,
+  updateDriverCommissionDto,
   UpdateMiscellaneousFeeDto,
   UpdateProfitMarginDto,
   UpdateTariffDto,
@@ -20,7 +22,186 @@ import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 
 @Injectable()
 export class PricingRepository {
+
   constructor(private prisma: PrismaService) {}
+
+
+
+ async findDriverAndCommission(driverId: string) {
+    return await this.prisma.driverCommission.findFirst({
+      where: {
+        driverId: driverId,
+        isActive: true,
+      },
+
+      select: {
+        driverId: true,
+      },
+    });
+  }
+
+  async findAllDriverCommissions(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: [
+        'driverId',
+        'commissionType',
+        'vehicleType',
+        'currency',
+      ],
+    });
+
+    const query = feature.getQuery();
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
+      this.prisma.driverCommission.findMany({
+        ...query,
+
+        where: {
+          ...query.where,
+          isActive: true,
+        },
+        select: {
+          id: true,
+          driverId: true,
+          amount: true,
+          commissionType: true,
+          effectiveFrom: true,
+          effectiveTo: true,
+          currency: true,
+          vehicleType: true,
+          createdAt: true,
+          updatedAt: true,
+          createdBy: true,
+          updatedBy: true,
+        },
+      }),
+      this.prisma.driverCommission.count({
+        where: {
+          ...query.where,
+          isActive: true,
+        },
+      }),
+    ]);
+
+    const commissions = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      commissions,
+      pagination: feature.getPagination(total),
+    };
+  }
+
+  async findDriverCommissionById(id: string) {
+    return this.prisma.driverCommission.findUnique({ where: { id },
+    select:{
+        id: true,
+        driverId: true,
+        commissionType: true,
+        amount: true,
+        effectiveFrom: true,
+        effectiveTo: true,
+        currency: true,
+        vehicleType: true,
+        createdAt: true,
+      } });
+  }
+  async deleteCommission(id: string, userId: string) {
+    return this.prisma.driverCommission.update({
+      where: { id },
+      data:{
+        isActive: false,
+        deletedAt: new Date(),
+        updatedBy: userId
+      },
+      select:{
+        id: true,
+        driverId: true,
+        commissionType: true,
+        amount: true,
+        effectiveFrom: true,
+        effectiveTo: true,
+        currency: true,
+        vehicleType: true,
+        createdAt: true,
+      }
+    })
+  }
+
+  async hardDeleteDriverCommission(id: string) {
+    return this.prisma.driverCommission.delete({ where: { id } , select:{
+        id: true,
+        driverId: true,
+        commissionType: true,
+        amount: true,
+        effectiveFrom: true,
+        effectiveTo: true,
+        currency: true,
+        vehicleType: true,
+        createdAt: true,
+      }});
+  }
+
+  async addDriverCommission(data: AddDriverCommissionDto, userId: string) {
+    return this.prisma.driverCommission.create({
+      data: {
+        driverId: data.driverId,
+        amount: data.amount,
+        commissionType: data.commissionType,
+        effectiveFrom: data.effectiveFrom ?? new Date(),
+        effectiveTo: data.effectiveTo ?? null,
+        currency: data.currency,
+        vehicleType: data.vehicleType,
+        createdBy: userId,
+      },
+      select:{
+        id: true,
+        driverId: true,
+        commissionType: true,
+        amount: true,
+        effectiveFrom: true,
+        effectiveTo: true,
+        currency: true,
+        vehicleType: true,
+        createdAt: true,
+      }
+    });
+  }
+
+  async updateDriverCommission(
+    data: updateDriverCommissionDto,
+    id: string,
+    userId: any,
+  ) {
+    return this.prisma.driverCommission.update({
+      where: { id },
+      data: {
+        ...data,
+        updatedAt: new Date(),
+        updatedBy: userId,
+      },
+      select:{
+        id: true,
+        driverId: true,
+        commissionType: true,
+        amount: true,
+        effectiveFrom: true,
+        effectiveTo: true,
+        currency: true,
+        vehicleType: true,
+        createdAt: true,
+        updatedBy: true,
+      }
+    });
+  }
+  async findDriverById(driverId: string) {
+    return this.prisma.user.findUnique({ where: { id: driverId } });
+  }
   //===================================TARIFF==========================================================
 
   // DB-only create (assumes validated payload)
@@ -926,6 +1107,7 @@ export class PricingRepository {
     airportFee: { total: number };
     finalPrice: number;
     currency: string;
+    tariffId: string;
   }) {
     return this.prisma.$transaction(async (tx) => {
       // 1️⃣ Create log
@@ -953,6 +1135,7 @@ export class PricingRepository {
           cost: data.finalPrice,
           finalPrice: data.finalPrice,
           currency: data.currency,
+          tariffId: data.tariffId,
         },
       });
 

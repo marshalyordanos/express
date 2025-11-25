@@ -63,6 +63,7 @@ model User {
   corporateInfo CorporateInfo?
   driver        Driver?
   orderSegments OrderRouteSegment[] @relation("DriverSegments")
+  commissions        DriverCommission[]  
 
   createdBy String?
 
@@ -118,8 +119,6 @@ model Address {
 
   originBatches       BatchDispatch[]     @relation("BatchOrigin")
   destinationBatches  BatchDispatch[]     @relation("BatchDestination")
-  originSegments      OrderRouteSegment[] @relation("SegmentOrigin")
-  destinationSegments OrderRouteSegment[] @relation("SegmentDestination")
 
   @@index([lat, long], name: "idx_address_coords")
   @@index([userId])
@@ -905,29 +904,63 @@ model TrafficCondition {
   optimizationJob OptimizationJob? @relation(fields: [optimizationJobId], references: [id], onDelete: Cascade)
 }
 
+
 model OrderRouteSegment {
-  id                   String    @id @default(cuid())
-  orderId              String
-  driverId             String?
-  originId             String // Address ID
-  destinationId        String // Address ID
-  distanceKm           Float?
-  estimatedDurationMin Float?
-  actualDurationMin    Float?
-  startTime            DateTime?
-  endTime              DateTime?
-  sequence             Int // 1 = pickup→branch, 2 = branch→delivery
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  id                    String    @id @default(cuid())
+  orderId               String
+  driverId              String?
+  segmentType           SegmentType
+  fromType              LocationType  // DRIVER_LOCATION, PICKUP, DELIVERY, BRANCH
+  toType                LocationType
+  fromLat               Float?
+  fromLon               Float?
+  toLat                 Float?
+  toLon                 Float?
+  estimatedDistanceKm   Float?
+  estimatedDurationMin  Float?
+  actualDistanceKm      Float?
+  actualDurationMin     Float?
+  startTime             DateTime?
+  endTime               DateTime?
+  status                SegmentStatus @default(PLANNED)
+  sequence              Int?      // optional, only if optimized
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  origin      Address @relation("SegmentOrigin", fields: [originId], references: [id])
-  destination Address @relation("SegmentDestination", fields: [destinationId], references: [id])
-  driver      User?   @relation("DriverSegments", fields: [driverId], references: [id])
+  order                 Order     @relation(fields: [orderId], references: [id])
+  driver                User?     @relation("DriverSegments", fields: [driverId], references: [id])
 
-  @@index([driverId])
-  @@index([orderId])
-  @@index([sequence])
+  @@index([driverId, startTime])
+  @@index([status])
+}
+
+enum SegmentType {
+  TO_PICKUP
+  PICKUP_TO_BRANCH
+  PICKUP_TO_DELIVERY
+  PICKUP_TO_PICKUP
+  BRANCH_TO_DELIVERY
+  BRANCH_TO_PICKUP
+  BRANCH_TO_BRANCH
+  DELIVERY_TO_DELIVERY
+  DELIVERY_TO_PICKUP
+  RETURN_TO_BRANCH
+  IDLE_WAITING
+}
+
+enum LocationType {
+  DRIVER_LOCATION
+  PICKUP_ADDRESS
+  DELIVERY_ADDRESS
+  BRANCH
+}
+
+enum SegmentStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  FAILED
 }
 
 enum DriverStatus {
@@ -1086,6 +1119,24 @@ enum AssignmentStatus {
   EXPIRED
 }
 
+enum CommissionType {
+  FIXED
+  PERCENTAGE
+}
+
+enum VehicleType {
+  MOTORCYCLE        
+  SCOOTER          
+  BAJAJ
+  CAR
+  VAN
+  TRUCK
+  CARGO_CAR
+  AUTOMOBILE        
+  BICYCLE          
+}
+
+
 model DriverAssignmentRequest {
   id         String           @id @default(cuid())
   orderId    String
@@ -1103,4 +1154,35 @@ model DriverAssignmentRequest {
   @@index([orderId])
   @@index([driverId])
   @@index([status])
+}
+
+model DriverCommission {
+  id             String           @id @default(cuid())
+
+  driverId       String
+  commissionType CommissionType
+  amount         Float
+  effectiveFrom  DateTime?
+  effectiveTo    DateTime?
+  currency       String           @default("ETB")
+  vehicleType    VehicleType
+
+  // --- Professional / Operational Fields ---
+  isActive       Boolean          @default(true)
+  notes          String?          // optional admin notes
+  createdBy      String?          // admin or system user who created the record
+  updatedBy      String?          // admin or system user who last updated the record
+  source         String?          // e.g. “SYSTEM”, “ADMIN_PANEL”, “AUTO_RULE”
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?        // for soft delete
+
+  driver         User           @relation(fields: [driverId], references: [id])
+
+  @@index([driverId])
+  @@index([commissionType])
+  @@index([vehicleType])
+  @@index([isActive])
+  @@index([effectiveFrom])
 }

@@ -29,6 +29,12 @@ import { NotificationPublisher } from '../common/notification-publisher';
 // import { OrderWorker } from './order/workers/order.worker';
 // import { DriverAssignmentQueue } from './order/queue/driver-assignment.queue';
 import { RedisModule } from '../redis/redis.module';
+import { OrderWorker } from './order/order.worker';
+import { MapWorker } from './maps/map.worker';
+import { DriverLocationScheduler } from './maps/DriverLocationScheduler';
+import { DispatchWorker } from './dispatch/dispatch.worker';
+import { RouteSegmentHelper } from './utils/route-segment.helper';
+import { RouteSegmentHelperRepository } from './utils/route-segment.helper.repo';
 
 @Module({
   imports: [
@@ -69,7 +75,12 @@ import { RedisModule } from '../redis/redis.module';
     // OrderWorker,
     // DriverAssignmentQueue,
     NotificationPublisher,
-
+    OrderWorker,
+    MapWorker,
+    DispatchWorker,
+    DriverLocationScheduler,
+    RouteSegmentHelper,
+    RouteSegmentHelperRepository,
   ],
   exports: [
     OrderUseCasesImpl,
@@ -78,6 +89,7 @@ import { RedisModule } from '../redis/redis.module';
     DriverLocationService,
     RouteOptimizerService,
     RouteCacheService,
+    RouteSegmentHelper,
     // RedisService,
     DispatchUseCasesImpl,
     PricingUseCasesImpl,

@@ -6,6 +6,8 @@ import { MapsRepository } from './maps.repository';
 import { RouteOptimizerService } from './route-optimizer.service';
 import { MapsService } from './maps.service';
 import { RouteCacheService } from './navigation.service';
+import { RedisPublisher } from '../../redis/redis.publisher';
+import { RouteSegmentHelper } from '../utils/route-segment.helper';
 
 @Injectable()
 export class MapsUseCasesImpl implements MapsUseCases {
@@ -14,7 +16,9 @@ export class MapsUseCasesImpl implements MapsUseCases {
     @Inject(forwardRef(() => RouteOptimizerService))
     private readonly routeOptimizerService: RouteOptimizerService,
     private readonly mapService: MapsService,
+    private readonly publisher: RedisPublisher,
     private readonly routeCacheService: RouteCacheService,
+    private readonly segmentHelper: RouteSegmentHelper,
   ) {}
   async createDriver(body: any): Promise<any> {
     const user = await this.mapRepo.findUserById(body.userId);
@@ -55,6 +59,12 @@ export class MapsUseCasesImpl implements MapsUseCases {
       lon: o.lon,
     }));
 
+    this.publisher.publish('pickup_driver_assigned', {
+      orderIds: stops,
+      driverId,
+      timestamp: Date.now(),
+    });
+
     // 3️⃣ Compute optimized route
     const optimizedRoute =
       await this.routeOptimizerService.computeOptimizedRoute(
@@ -62,6 +72,7 @@ export class MapsUseCasesImpl implements MapsUseCases {
         driverLocation,
         stops,
       );
+
 
     // 4️⃣ Save OptimizationJob in DB
     const optimizationJob = await this.mapRepo.createOptimizationJob({
@@ -103,6 +114,34 @@ export class MapsUseCasesImpl implements MapsUseCases {
       });
     }
 
+    for (let i = 0; i < optimizedRoute.stops.length; i++) {
+      const origin = await this.mapRepo.findDriverCoordsById(driverId);
+
+      // const origin = optimizedRoute.stops[i];
+      const destination = optimizedRoute.stops[i];
+
+      const originLoc = await this.mapRepo.upsertLocationFromCoords({
+        latitude: Number(origin.currentLat),
+        longitude: Number(origin.currentLon),
+        // mapServiceResult: origin.mapServiceResult, // optional
+      });
+
+      const destinationLoc = await this.mapRepo.upsertLocationFromCoords({
+        latitude: Number(destination.lat),
+        longitude: Number(destination.lon),
+        mapServiceResult: destination.mapServiceResult,
+      });
+      route = await this.mapRepo.createRoute({
+        originId: originLoc.id,
+        destinationId: destinationLoc.id,
+        distanceKm: optimizedRoute.segments[i]?.distance / 1000 || 0,
+        durationMin: optimizedRoute.segments[i]?.duration / 60 || 0,
+        routePath: optimizedRoute.segments,
+        optimized: true,
+        trafficAware: false,
+        optimizationJobId: optimizationJob.id,
+      });
+    }
     // 6️⃣ Store the route in Redis and broadcast via WebSocket
     await this.routeCacheService.saveDriverRoute(driverId, {
       optimizationJobId: optimizationJob.id,
@@ -112,6 +151,11 @@ export class MapsUseCasesImpl implements MapsUseCases {
       totalDuration: optimizedRoute.durationSec,
       lastUpdated: Date.now(),
     });
+    this.segmentHelper.proceedToNextSegment(
+      driverId,
+      'pending',
+      null,
+    );
 
     return {
       optimizationJobId: optimizationJob.id,
@@ -154,6 +198,11 @@ export class MapsUseCasesImpl implements MapsUseCases {
       return { message: 'All stops visited. Route completed.' };
     }
 
+      this.segmentHelper.proceedToNextSegment(
+          driverId,
+          'complete',
+          orderId,
+        );
     return { message: `Stop ${orderId} marked as visited.` };
   }
 
@@ -165,5 +214,35 @@ export class MapsUseCasesImpl implements MapsUseCases {
     } catch (err) {
       throw new RpcException(err.message);
     }
+  }
+
+  async updateDriverRouteSegments(
+    orderIds: any[], // accept array of orderIds
+    driverId: string,
+  ) {
+    const updatedSegments = await this.mapRepo.updateRouteSegments(
+      orderIds,
+      driverId,
+    );
+
+    if (!updatedSegments) {
+      const isSuccess = await this.publisher.publish('create_segments', {
+        orderIds: orderIds,
+        driverId,
+        timestamp: Date.now(),
+      });
+
+      if (!isSuccess) {
+        throw new RpcException(
+          'Failed to create segments for orders : ' + orderIds,
+        );
+      }
+    }
+
+    console.log(
+      `Updated ${updatedSegments.length} route segment(s) for driver ${driverId}`,
+    );
+
+    return updatedSegments;
   }
 }

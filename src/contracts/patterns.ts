@@ -169,6 +169,9 @@ export const PATTERNS = {
   DISPATCH_FIND_DELIVERED_AND_ONGOING: 'dispatch.findDeliveredAndOngoing',
   DISPATCH_CREATE_ASSIGNEMENT_REQUEST: 'dispatch.createAssignementRequest',
   DISPATCH_ACCEPT_ASSIGNEMENT_REQUEST: 'dispatch.acceptAssignementRequest',
+  DISPATCH_DRIVER_CANCEL_ORDER: 'dispatch.driverCancelOrder',
+  DISPATCH_FIND_CANCELLED_ORDERS_BY_DRIVER:
+    'dispatch.findCancelledOrdersByDriver',
 
   MAP_GET_ROUTE: 'map.getRoute',
   MAP_MARK_STOP_VISITED: 'map.markStopVisited',
@@ -230,6 +233,13 @@ export const PATTERNS = {
   PRICE_CALCULATE: 'price.calculate',
   PRICE_CALCULATION_LOG_FIND_ALL: 'price.calculationLog.findAll',
   PRICE_CALCULATION_LOG_FIND_BY_ID: 'price.calculationLog.findById',
+
+  // Driver commissions
+  PRICE_CREATE_DRIVER_COMMISSION: 'price.createDriverCommission',
+  PRICE_UPDATE_DRIVER_COMMISSION: 'price.updateDriverCommission',
+  PRICE_FIND_ALL_DRIVER_COMMISSION: 'price.findAllDriverCommission',
+  PRICE_DELETE_DRIVER_COMMISSION: 'price.deleteDriverCommission',
+  PRICE_FIND_DRIVER_COMMISSION_BY_ID: 'price.findDriverCommissionById',
 
   //Reports and analytics
   REPORT_DASHBOARD_OVERVIEW: 'report.dashboardOverview',

@@ -13,8 +13,6 @@ import {
   Req,
   UploadedFiles,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { PATTERNS } from '../contracts';
@@ -27,6 +25,7 @@ import {
   ConfirmBatchHandoverDto,
   CreateAssignmentRequestsDto,
   CreateDriver,
+  DriverCancelOrder,
   GenerateQrDto,
   LastMileDeliveryDto,
   OrderScanTokenDto,
@@ -35,8 +34,7 @@ import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
-import { lastValueFrom } from 'rxjs';
-import { log } from 'console';
+import { handleCatch } from '../common/handleCatch';
 
 @Controller('dispatch')
 export class DispatchGatewayController {
@@ -644,6 +642,51 @@ export class DispatchGatewayController {
     console.log('FInd driver querys: ', query);
 
     return this.dispatchClient.send(PATTERNS.DISPATCH_FIND_DRIVER, {
+      query,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+    @Patch('/driver/cancel')
+  async driverCancelOrder(@Body() data: DriverCancelOrder, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw handleCatch(err);
+    }
+
+    return this.dispatchClient.send(PATTERNS.DISPATCH_DRIVER_CANCEL_ORDER, {
+      data,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  @Get('/driver/cancelled')
+  async findOrderCancelledByDriver(@Query() query: ListQueryDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw handleCatch(err);
+    }
+    return this.dispatchClient.send(PATTERNS.DISPATCH_FIND_CANCELLED_ORDERS_BY_DRIVER, {
       query,
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info

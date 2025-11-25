@@ -70,6 +70,8 @@ export class DriverLocationService {
         `driver:${data.driverId}:online`,
       );
 
+      console.log("IS DRVIER ONLINE ALREADY ::: ", isOnlineAlready);
+      
       // Pipeline for atomic operations (GEO + HSET + TTL)
       const pipeline = client.multi();
 
@@ -110,7 +112,7 @@ export class DriverLocationService {
       if (!isOnlineAlready) {
         await this.prisma.driver.update({
           where: { userId: data.driverId },
-          data: { status: 'ONLINE', updatedAt: new Date() },
+          data: { status: 'ONLINE', updatedAt: new Date(), currentLat: data.lat, currentLon: data.lon },
         });
         this.logger.log(`Driver ${data.driverId} came ONLINE — saved in DB.`);
       }

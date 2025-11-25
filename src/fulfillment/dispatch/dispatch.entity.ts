@@ -307,3 +307,14 @@ export class CreateAssignmentRequestsDto {
   @IsOptional()
   expiresAt?: Date | null;
 }
+
+
+export class DriverCancelOrder{
+  @IsNotEmpty()
+  @IsString()
+  orderId: string;
+
+  @IsNotEmpty()
+  @IsString()
+  reason: string;
+}

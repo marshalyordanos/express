@@ -6,13 +6,65 @@ import {
   BatchDispatchDto,
   CreateDriver,
 } from './dispatch.entity';
-import { DispatchStatus, OrderStatus, Prisma } from '@prisma/client';
+import {
+  DispatchStatus,
+  LocationType,
+  OrderStatus,
+  Prisma,
+  SegmentType,
+} from '@prisma/client';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class DispatchRepository {
+  async findOrderUnique(orderId: string) {
+    return await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        trackingCode: true,
+        pickupDriverId: true,
+        deliveryDriverId: true,
+        pickupConfirmed: true,
+        actualDeliveryAt: true,
+        status: true,
+        customerId: true,
+      },
+    });
+  }
+  async driverCancelOrder(
+    updateData: any,
+    orderId: string,
+    actionTaken: string,
+    reason: string,
+    userId: string,
+  ) {
+    return await this.prisma.$transaction(async (tx) => {
+      // Update order
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          ...updateData,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create Exception Log
+      await tx.orderException.create({
+        data: {
+          orderId,
+          reason,
+          type: actionTaken,
+          createdAt: new Date(),
+          createdBy: userId,
+        },
+      });
+
+      return { message: actionTaken, updatedOrder };
+    });
+  }
 
   constructor(private prisma: PrismaService) {}
 
@@ -34,48 +86,290 @@ export class DispatchRepository {
     // return array of driverIds
     return losers.map((l) => l.driverId);
   }
-   async findRouteSegmentByOrderId(orderId: string) {
+  async findRouteSegmentByOrderId(orderId: string) {
     return this.prisma.orderRouteSegment.findMany({
       where: {
         orderId,
       },
-    })
+    });
   }
-  async assignDriverForPickup(
-    driverId: string,
-    orderId: string,
-    userId: string,
-  ) {
+
+  async findDriverLocation(driverUserId: string) {
+    console.log('Looking for driver with userId:', driverUserId);
+
+    return this.prisma.driverLocationLog.findFirst({
+      where: {
+        driver: {
+          userId: driverUserId, // relation filter
+        },
+      },
+      orderBy: { timestamp: 'desc' }, // newest first
+      // select: {
+      //   lat: true,
+      //   lon: true,
+      //   speed: true,
+      //   heading: true,
+      //   status: true,
+      //   timestamp: true,
+      //   driverId: true,
+      // },
+    });
+  }
+
+  // async assignDriverForPickup(
+  //   driverId: string,
+  //   orderId: string,
+  //   userId: string,
+  // ) {
+  //   return this.prisma.order.update({
+  //     where: { id: orderId },
+  //     data: {
+  //       pickupDriverId: driverId,
+  //       status: 'ASSIGNED', // or maybe 'PICKUP_ASSIGNED' if you want to differentiate stages
+  //       pickupAssignedBy: userId,
+  //       pickupAssignedAt: new Date(),
+  //     },
+  //     select: {
+  //       id: true,
+  //       trackingCode: true,
+  //       // status: true,
+  //       // serviceType: true,
+  //       // fulfillmentType: true,
+  //       pickupAddress: {
+  //         select: { addressLine: true, city: true },
+  //       },
+  //       // deliveryAddress: {
+  //       //   select: { addressLine: true, city: true },
+  //       // },
+  //       pickupDate: true,
+  //       // deliveryDate: true,
+  //       pickupDriver: {
+  //         select: {
+  //           id: true,
+  //           name: true,
+  //           phone: true,
+  //           email: true,
+  //         },
+  //       },
+  //     },
+  //   });
+  // }
+
+  // async assignDriverWithRouteSegment(
+  //   driverId: string,
+  //   orderId: string,
+  //   origin: { id?: string; lat?: number; lon?: number },
+  //   destination: { id?: string; lat?: number; lon?: number },
+  //   distanceMeters: number,
+  //   etaMinutes: number,
+  //   userId: string,
+  // ) {
+  //   return this.prisma.$transaction(async (tx) => {
+  //     // 1️⃣ Assign driver in order table
+  //     const updatedOrder = await tx.order.update({
+  //       where: { id: orderId },
+  //       data: {
+  //         pickupDriverId: driverId,
+  //         status: 'ASSIGNED',
+  //         pickupAssignedBy: userId,
+  //         pickupAssignedAt: new Date(),
+  //       },
+  //       select: {
+  //         id: true,
+  //         trackingCode: true,
+  //         pickupAddress: { select: { lat: true, long: true, addressLine: true } },
+  //         pickupDate: true,
+  //         pickupDriverId: true,
+  //       },
+  //     });
+
+  //     // 2️⃣ Create route segment (driver → pickup)
+  //     const routeSegment = await tx.orderRouteSegment.create({
+  //       data: {
+  //         orderId,
+  //         driverId,
+  //         originId: origin.id || null,
+  //         originLat: origin.lat || null,
+  //         originLon: origin.lon || null,
+  //         destinationId: destination.id || null,
+  //         destinationLat: destination.lat || null,
+  //         destinationLon: destination.lon || null,
+  //         distanceKm: distanceMeters,
+  //         estimatedDurationMin: etaMinutes,
+  //         sequence: 1,
+  //         createdAt: new Date(),
+  //       },
+  //     });
+
+  //     return { updatedOrder, routeSegment };
+  //   });
+  // }
+
+  async assignDriverOnly(driverId: string, orderId: string, userId: string) {
     return this.prisma.order.update({
       where: { id: orderId },
       data: {
         pickupDriverId: driverId,
-        status: 'ASSIGNED', // or maybe 'PICKUP_ASSIGNED' if you want to differentiate stages
+        status: 'ASSIGNED',
         pickupAssignedBy: userId,
         pickupAssignedAt: new Date(),
       },
       select: {
         id: true,
         trackingCode: true,
-        // status: true,
-        // serviceType: true,
-        // fulfillmentType: true,
-        pickupAddress: {
-          select: { addressLine: true, city: true },
-        },
-        // deliveryAddress: {
-        //   select: { addressLine: true, city: true },
-        // },
+        pickupDriverId: true,
         pickupDate: true,
-        // deliveryDate: true,
-        pickupDriver: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true,
-          },
+        pickupAddress: { select: { lat: true, long: true, addressLine: true } },
+      },
+    });
+  }
+
+  //   async upsertRouteSegment(
+  //   driverId: string,
+  //   orderId: string,
+  //   origin: { lat: number; lon: number },
+  //   destination: { id: string; lat?: number; lon?: number },
+  //   distanceMeters: number,
+  //   etaMinutes: number,
+  //   isStart: boolean = false
+  // ) {
+  //   // Check if segment exists
+  //   const existingSegment = await this.prisma.orderRouteSegment.findFirst({
+  //     where: { driverId, orderId },
+  //   });
+
+  //   if (existingSegment) {
+  //     // Update existing segment, but do NOT overwrite startTime if already set
+  //     return this.prisma.orderRouteSegment.update({
+  //       where: { id: existingSegment.id },
+  //       data: {
+  //         originLat: origin.lat,
+  //         originLon: origin.lon,
+  //         destinationId: destination.id,
+  //         destinationLat: destination.lat || null,
+  //         destinationLon: destination.lon || null,
+  //         distanceKm: distanceMeters,
+  //         estimatedDurationMin: etaMinutes + 10,
+  //         sequence: 1,
+  //         updatedAt: new Date(),
+  //         startTime: existingSegment.startTime || (isStart ? new Date() : null),
+  //       },
+  //     });
+  //   } else {
+  //     // Create new segment
+  //     return this.prisma.orderRouteSegment.create({
+  //       data: {
+  //         orderId,
+  //         driverId,
+  //         originLat: origin.lat,
+  //         originLon: origin.lon,
+  //         destinationId: destination.id,
+  //         destinationLat: destination.lat || null,
+  //         destinationLon: destination.lon || null,
+  //         distanceKm: distanceMeters,
+  //         estimatedDurationMin: etaMinutes + 10,
+  //         sequence: 1,
+  //         createdAt: new Date(),
+  //         startTime: isStart ? new Date() : null,
+  //       },
+  //     });
+  //   }
+  // }
+
+  // 1. Create or Update Active Segment
+  async upsertActiveSegment(data: {
+    driverId: string;
+    orderId?: string; // optional — can be null for inter-order segments
+    fromLat: number;
+    fromLon: number;
+    fromType: LocationType;
+    toLat: number;
+    toLon: number;
+    toType: LocationType;
+    segmentType: SegmentType;
+    estimatedDistanceKm: number;
+    estimatedDurationMin: number;
+    startNow?: boolean;
+  }) {
+    const { driverId, orderId, startNow = false } = data;
+
+    // Find current active segment for this driver
+    const active = await this.prisma.orderRouteSegment.findFirst({
+      where: {
+        driverId,
+        status: { in: ['PLANNED', 'IN_PROGRESS'] },
+        endTime: null,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (active) {
+      // Just update destination if changed (e.g. rerouting)
+      return this.prisma.orderRouteSegment.update({
+        where: { id: active.id },
+        data: {
+          toLat: data.toLat,
+          toLon: data.toLon,
+          toType: data.toType,
+          segmentType: data.segmentType,
+          estimatedDistanceKm: data.estimatedDistanceKm,
+          estimatedDurationMin: data.estimatedDurationMin,
+          status: startNow ? 'IN_PROGRESS' : active.status,
+          startTime: startNow ? new Date() : active.startTime,
         },
+      });
+    }
+
+    // Create brand new segment
+    return this.prisma.orderRouteSegment.create({
+      data: {
+        orderId: orderId || null,
+        driverId,
+        segmentType: data.segmentType,
+        fromType: data.fromType,
+        toType: data.toType,
+        fromLat: data.fromLat,
+        fromLon: data.fromLon,
+        toLat: data.toLat,
+        toLon: data.toLon,
+        estimatedDistanceKm: data.estimatedDistanceKm,
+        estimatedDurationMin: data.estimatedDurationMin,
+        status: startNow ? 'IN_PROGRESS' : 'PLANNED',
+        startTime: startNow ? new Date() : null,
+        sequence: null, // will be filled by optimizer if used
+      },
+    });
+  }
+
+  // 2. Complete Current Active Segment
+  async completeCurrentSegment(
+    driverId: string,
+    actualEndLocation: { lat: number; lon: number },
+    actualDistanceKm?: number,
+  ) {
+    const segment = await this.prisma.orderRouteSegment.findFirst({
+      where: {
+        driverId,
+        status: 'IN_PROGRESS',
+        endTime: null,
+      },
+    });
+
+    if (!segment || !segment.startTime) return null;
+
+    const actualDurationMin = Math.round(
+      (new Date().getTime() - segment.startTime.getTime()) / 60000,
+    );
+
+    return this.prisma.orderRouteSegment.update({
+      where: { id: segment.id },
+      data: {
+        status: 'COMPLETED',
+        endTime: new Date(),
+        toLat: actualEndLocation.lat,
+        toLon: actualEndLocation.lon,
+        actualDistanceKm: actualDistanceKm || segment.estimatedDistanceKm,
+        actualDurationMin,
       },
     });
   }
@@ -103,6 +397,7 @@ export class DispatchRepository {
           select: {
             id: true,
             name: true,
+            branchId: true,
           },
         },
         // assignedOrders: {
@@ -532,6 +827,7 @@ export class DispatchRepository {
   async findOrderById(orderId: string) {
     return this.prisma.order.findUnique({
       where: { id: orderId },
+      include: { pickupAddress: true },
     });
   }
   async findUserById(id: string) {
@@ -566,7 +862,7 @@ export class DispatchRepository {
   async findOrdersByIds(orderIds: string[]) {
     return await this.prisma.order.findMany({
       where: { id: { in: orderIds } },
-      include: { deliveryAddress: true },
+      include: { deliveryAddress: true, pickupAddress: true },
     });
   }
 
@@ -822,6 +1118,63 @@ export class DispatchRepository {
     const total = results[1] || 0;
     return {
       batches,
+      pagination: feature.getPagination(total),
+    };
+  }
+
+  async getOrdersCancelledByDriver(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['reason', 'type', 'orderId'],
+    });
+
+    const query = feature.getQuery();
+
+    const where: any = {
+      AND: [
+        query.where || {},
+        {
+          type: { In: ['Delivery driver canceled', 'Pickup driver canceled'] }, // If you want only driver-cancel type
+        },
+      ],
+    };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.orderException.findMany({
+        ...query,
+        where,
+        select: {
+          id: true,
+          type: true,
+          reason: true,
+          createdBy: true,
+          createdAt: true,
+          order: {
+            select: {
+              id: true,
+              trackingCode: true,
+              serviceType: true,
+              weight: true,
+              length: true,
+              width: true,
+              height: true,
+              shippingScope: true,
+              shipmentType: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+
+      this.prisma.orderException.count({ where }),
+    ]);
+
+    return {
+      orders: rows,
       pagination: feature.getPagination(total),
     };
   }
@@ -1272,6 +1625,195 @@ export class DispatchRepository {
       },
       data: {
         status: 'EXPIRED',
+      },
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // Find the next pending task for this driver (pickup or delivery)
+  // ──────────────────────────────────────────────────────────────
+  // DispatchRepository.ts
+  // async findNextPendingOrderForDriver(driverId: string) {
+  //   return this.prisma.order.findFirst({
+  //     where: {
+  //       OR: [{ pickupDriverId: driverId }, { deliveryDriverId: driverId }],
+  //       status: {
+  //         in: [
+  //           'ASSIGNED',
+  //           'READY_FOR_PICKUP',
+  //           'PICKUP_ATTEMPTED',
+  //           'PICKED_UP',
+  //           'IN_TRANSIT',
+  //           'OUT_FOR_DELIVERY',
+  //           'DROPOFF_ATTEMPTED',
+  //         ],
+  //       },
+  //       // Not yet fully delivered
+  //       AND: [
+  //         { status: { not: 'DELIVERED' } },
+  //         { status: { not: 'CANCELED' } },
+  //         { status: { not: 'FAILED' } },
+  //       ],
+  //     },
+  //     orderBy: [
+  //       { pickupAssignedAt: 'asc' }, // oldest pickup first
+  //       { deliveryAssignedAt: 'asc' }, // then oldest delivery
+  //       { createdAt: 'asc' },
+  //     ],
+  //     select: {
+  //       id: true,
+  //       fulfillmentType: true,
+  //       status: true,
+  //       pickupAddress: {
+  //         select: { lat: true, long: true },
+  //       },
+  //       deliveryAddress: {
+  //         select: { lat: true, long: true },
+  //       },
+  //       pickupAddressId: true,
+  //       deliveryAddressId: true,
+  //     },
+  //   });
+  // }
+
+  // // ──────────────────────────────────────────────────────────────
+  // // Get the default/home branch for a driver (you probably already have this logic somewhere)
+  // // ──────────────────────────────────────────────────────────────
+  // async getDefaultBranchForDriver(driverId: string) {
+  //   const driverUser = await this.prisma.user.findUnique({
+  //     where: { id: driverId },
+  //     select: {
+  //       branchId: true,
+  //       branch: {
+  //         select: {
+  //           address: {
+  //             select: { lat: true, long: true, id: true },
+  //           },
+  //         },
+  //       },
+  //     },
+  //   });
+
+  //   if (driverUser?.branch?.address) {
+  //     const addr = driverUser.branch.address;
+  //     return {
+  //       id: addr.id,
+  //       lat: parseFloat(addr.lat!),
+  //       lon: parseFloat(addr.long!),
+  //     };
+  //   }
+
+  //   // Fallback: main branch
+  //   const mainBranchAddr = await this.prisma.address.findFirst({
+  //     where: { purpose: 'BRANCH_LOCATION', branch: { isNot: null } },
+  //     orderBy: { createdAt: 'asc' },
+  //     select: { id: true, lat: true, long: true },
+  //   });
+
+  //   if (!mainBranchAddr || !mainBranchAddr.lat || !mainBranchAddr.long) {
+  //     throw new Error('No branch location configured');
+  //   }
+
+  //   return {
+  //     id: mainBranchAddr.id,
+  //     lat: parseFloat(mainBranchAddr.lat),
+  //     lon: parseFloat(mainBranchAddr.long),
+  //   };
+  // }
+
+  async findNextPendingOrderForDriver(driverId: string) {
+    return this.prisma.order.findFirst({
+      where: {
+        OR: [{ pickupDriverId: driverId }, { deliveryDriverId: driverId }],
+        status: {
+          in: [
+            'ASSIGNED',
+            'READY_FOR_PICKUP',
+            'PICKUP_ATTEMPTED',
+            'PICKED_UP',
+            'IN_TRANSIT',
+            'OUT_FOR_DELIVERY',
+            'DROPOFF_ATTEMPTED',
+          ],
+        },
+        AND: [
+          { status: { not: 'DELIVERED' } },
+          { status: { not: 'CANCELED' } },
+          { status: { not: 'FAILED' } },
+        ],
+      },
+      orderBy: [
+        { pickupAssignedAt: 'asc' },
+        { deliveryAssignedAt: 'asc' },
+        { createdAt: 'asc' },
+      ],
+      select: {
+        id: true,
+        fulfillmentType: true,
+        status: true,
+        pickupAddress: { select: { lat: true, long: true } },
+        deliveryAddress: { select: { lat: true, long: true } },
+        pickupAddressId: true,
+        deliveryAddressId: true,
+        pickupConfirmed: true,
+      },
+    });
+  }
+
+  async getDefaultBranchForDriver(driverId: string) {
+    const driverUser = await this.prisma.user.findUnique({
+      where: { id: driverId },
+      select: {
+        branch: {
+          select: {
+            address: { select: { lat: true, long: true, id: true } },
+          },
+        },
+      },
+    });
+
+    if (driverUser?.branch?.address) {
+      const a = driverUser.branch.address;
+      return { id: a.id, lat: parseFloat(a.lat!), lon: parseFloat(a.long!) };
+    }
+
+    const main = await this.prisma.address.findFirst({
+      where: { purpose: 'BRANCH_LOCATION' },
+      select: { id: true, lat: true, long: true },
+    });
+
+    if (!main) return null;
+    return {
+      id: main.id,
+      lat: parseFloat(main.lat!),
+      lon: parseFloat(main.long!),
+    };
+  }
+
+  async getAllPendingOrdersForDriver(driverId: string) {
+    return this.prisma.order.findMany({
+      where: {
+        OR: [{ pickupDriverId: driverId }, { deliveryDriverId: driverId }],
+        status: { in: ['READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY'] },
+        NOT: { status: 'DELIVERED' },
+      },
+      include: {
+        pickupAddress: { select: { lat: true, long: true } },
+        deliveryAddress: { select: { lat: true, long: true } },
+      },
+    });
+  }
+
+  async getOrderForSmartNextDestinationLevel2(driverId: string) {
+    return await this.prisma.order.findMany({
+      where: {
+        OR: [{ pickupDriverId: driverId }, { deliveryDriverId: driverId }],
+        status: { in: ['READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY'] },
+        NOT: { status: 'DELIVERED' },
+      },
+      include: {
+        pickupAddress: true,
+        deliveryAddress: true,
       },
     });
   }

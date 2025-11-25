@@ -88,8 +88,6 @@ export class BranchMessageController {
     );
   }
 
-  BRANCH_FIND_ALL_FREE_SECOND
-
   @Public()
   @MessagePattern(PATTERNS.BRANCH_FIND_ALL_FREE)
   async findAllBranchFree(@Payload() payload: { query: ListQueryDto }) {

@@ -5,6 +5,12 @@ import { DriverStatus, DriverType, OptimizationStatus, OptimizationType } from '
 
 @Injectable()
 export class MapsRepository {
+  async findDriverCoordsById(driverId: string) {
+    return this.prisma.driver.findUnique({
+      where: { userId: driverId },
+      select: { currentLat: true, currentLon: true },
+    })
+  }
   constructor(private prisma: PrismaService) {}
   async createDriverLocation(body: any): Promise<any> {
     return this.prisma.$transaction(async (tx) => {
@@ -39,6 +45,47 @@ export class MapsRepository {
     });
   }
 
+async updateRouteSegments(
+  orders: { orderId: string; lat: string; lon: string }[],
+  driverId: string,
+) {
+  // Extract order IDs
+  const orderIds = orders.map(o => o.orderId);
+
+  console.log("INSIDE REPOSITORYIIIII  :::: ", orderIds);
+
+  // Find all segments for these orders and driver
+  const segments = await this.prisma.orderRouteSegment.findMany({
+    where: {
+      orderId: { in: orderIds },
+      driverId,
+    },
+  });
+
+  if (!segments || segments.length === 0) {
+    return null; // handle in service
+  }
+
+  // Update only segments where startTime is null
+  const updatedSegments = await Promise.all(
+    segments
+      .filter(segment => !segment.startTime) // only segments without startTime
+      .map(segment =>
+        this.prisma.orderRouteSegment.update({
+          where: { id: segment.id },
+          data: {
+            startTime: new Date(),
+            updatedAt: new Date(),
+          },
+        })
+      )
+  );
+
+  return updatedSegments;
+}
+
+
+
   async updateOptimizationJobStatus(jobId: string, status: OptimizationStatus) {
   return this.prisma.optimizationJob.update({
     where: { id: jobId },
@@ -71,8 +118,8 @@ export class MapsRepository {
 
     /** ================== LOCATION ================== */
   async upsertLocationFromCoords(data: {
-  latitude: number;
-  longitude: number;
+  latitude: any;
+  longitude: any;
   mapServiceResult?: {
     name?: string;
     address?: string;
@@ -88,7 +135,7 @@ export class MapsRepository {
 
   // Try to find existing location by coordinates
   const existing = await this.prisma.location.findFirst({
-    where: { latitude, longitude },
+    where: { latitude: parseFloat(latitude), longitude: parseFloat(longitude) },
   });
 
   if (existing) {
@@ -101,7 +148,7 @@ export class MapsRepository {
 
   // Create new if not found
   return this.prisma.location.create({
-    data: { latitude, longitude, name, address, city, country },
+    data: { latitude: parseFloat(latitude), longitude: parseFloat(longitude), name, address, city, country },
   });
 }
 
@@ -120,7 +167,7 @@ async findRouteByOriginDest(originId: string, destinationId: string) {
   });
 }
 
-async updateRoute(routeId: string, data: { distanceKm?: number; durationMin?: number; completed?: boolean }) {
+async updateRoute(routeId: string, data: { distanceKm?: number; durationMin?: number; }) {
   return this.prisma.route.update({
     where: { id: routeId },
     data,

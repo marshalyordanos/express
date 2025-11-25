@@ -576,12 +576,11 @@ export class StaffUseCasesImpl implements StaffUsecase {
     }
     console.log('Uploaded back image ::: ', uploadedBack);
 
-    data.licenseFrontUrl = uploadedFront?.secure_url || null;
-    data.licenseBackUrl = uploadedBack?.secure_url || null;
+    data.licenseFrontUrl = uploadedFront?.url || null;
+    data.licenseBackUrl = uploadedBack?.url || null;
 
-    console.log(
-      `Data request body for front ${data.licenseFront} and for back ${data.licenseBack}`,
-    );
+    console.log("Driver image after saved to cloudinary ::: Data:", data);
+    
 
     // -------------------------------------------------------------------
     // 2. 🔥 OCR Extraction
@@ -638,6 +637,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
     };
 
     const result = await this.staffRepo.createDriver(userData, data, userId);
+
 
     this.logger.log(`Driver created successfully: ${customId}`);
     return {

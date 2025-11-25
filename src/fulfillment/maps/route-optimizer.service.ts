@@ -51,10 +51,11 @@ export class RouteOptimizerService {
     driverLocation: LatLon,
     stops: Stop[],
   ): Promise<Route> {
+    
     if (!stops || stops.length === 0) {
       return this.emptyRoute(driverId, driverLocation);
     }
-
+    
     // Build points list: driver first, then stops
     const points = [
       { id: '__driver', lat: driverLocation.lat, lon: driverLocation.lon },
@@ -65,6 +66,7 @@ export class RouteOptimizerService {
     const matrixObj = await this.mapsService.computeMatrix(
       points.map((p) => ({ lat: p.lat, lon: p.lon })),
     );
+    
     const distances = matrixObj.distances;
     if (!distances || distances.length === 0) {
       throw new Error('Failed to compute distance matrix');
@@ -103,10 +105,11 @@ export class RouteOptimizerService {
       directionsResult = await this.mapsService.getDirectionsOrdered(
         orderedPointsForDirections,
       );
+      
     } catch (err) {
       // If ORS fails, return best-effort route using matrix distances
       const approxDistance = this.sumTourDistanceMeters(distances, tour);
-      this.logger.warn('ORS directions failed — returning approximation', err);
+      this.logger.log('ORS directions failed — returning approximation', err);
       return {
         routeId: `route:${driverId}:${Date.now()}`,
         driverId,
@@ -137,6 +140,98 @@ export class RouteOptimizerService {
       strategy: 'matrix+nearest-2opt',
     };
   }
+
+  //   async computeOptimizedRoute(
+  //   driverId: string,
+  //   driverLocation: LatLon,
+  //   stops: Stop[],
+  // ): Promise<Route> {
+  //   if (!stops || stops.length === 0) {
+  //     return this.emptyRoute(driverId, driverLocation);
+  //   }
+
+  //   // Build points list: driver first, then stops
+  //   const points = [
+  //     { id: '__driver', lat: driverLocation.lat, lon: driverLocation.lon },
+  //     ...stops.map((s) => ({ id: s.orderId, lat: s.lat, lon: s.lon })),
+  //   ];
+
+  //   // 1) compute distance matrix (meters) via your MapsService
+  //   const matrixObj = await this.mapsService.computeMatrix(
+  //     points.map((p) => ({ lat: p.lat, lon: p.lon })),
+  //   );
+  //   const distances = matrixObj.distances;
+  //   if (!distances || distances.length === 0) {
+  //     throw new Error('Failed to compute distance matrix');
+  //   }
+
+  //   // 2) Solve local TSP: nearest neighbor + 2-opt refinement
+  //   const tour = this.solveTspNearest2Opt(distances, 0); // indices into points
+
+  //   // 3) Build ordered stops excluding driver (index 0)
+  //   const orderedPointIndices = tour.slice(1); // removes driver index
+  //   const orderedStops = orderedPointIndices.map((idx, seq) => {
+  //     const p = points[idx];
+  //     const originalStop = stops.find((s) => s.orderId === p.id) ?? null;
+  //     return {
+  //       orderId: p.id,
+  //       lat: p.lat,
+  //       lon: p.lon,
+  //       seq: seq + 1,
+  //       visited: false,
+  //       meta: originalStop ? { ...originalStop } : undefined,
+  //     };
+  //   });
+
+  //   // Keep the optimized order for deterministic behavior during recalculation
+  //   const originalOptimizedOrder = orderedStops.map((s) => s.orderId);
+
+  //   // 4) Build final directions (single ORS call only) - driver -> stop1 -> stop2 -> ...
+  //   const orderedPointsForDirections = [
+  //     { lat: points[tour[0]].lat, lon: points[tour[0]].lon }, // driver
+  //     ...orderedStops.map((s) => ({ lat: s.lat, lon: s.lon })),
+  //   ];
+
+  //   let directionsResult: any;
+  //   try {
+  //     // Single ORS directions call (fast enough for the optimized route)
+  //     directionsResult = await this.mapsService.getDirectionsOrdered(
+  //       orderedPointsForDirections,
+  //     );
+  //   } catch (err) {
+  //     // If ORS fails, return best-effort route using matrix distances
+  //     const approxDistance = this.sumTourDistanceMeters(distances, tour);
+  //     this.logger.warn('ORS directions failed — returning approximation', err);
+  //     return {
+  //       routeId: `route:${driverId}:${Date.now()}`,
+  //       driverId,
+  //       stops: orderedStops,
+  //       orderedStopIds: orderedStops.map((s) => s.orderId),
+  //       originalOptimizedOrder,
+  //       geometry: null,
+  //       distanceMeters: approxDistance,
+  //       durationSec: null,
+  //       segments: [],
+  //       generatedAt: Date.now(),
+  //       strategy: 'matrix+nearest-2opt',
+  //     };
+  //   }
+
+  //   // 5) Return canonical Route object
+  //   return {
+  //     routeId: `route:${driverId}:${Date.now()}`,
+  //     driverId,
+  //     stops: orderedStops,
+  //     orderedStopIds: orderedStops.map((s) => s.orderId),
+  //     originalOptimizedOrder,
+  //     geometry: directionsResult.geometry,
+  //     distanceMeters: directionsResult.distance,
+  //     durationSec: directionsResult.duration,
+  //     segments: directionsResult.segments,
+  //     generatedAt: Date.now(),
+  //     strategy: 'matrix+nearest-2opt',
+  //   };
+  // }
 
   /**
    * Recalculate route only when driver deviates significantly.

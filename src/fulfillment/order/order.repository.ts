@@ -10,6 +10,7 @@ import { RpcException } from '@nestjs/microservices';
 @Injectable()
 export class OrderRepository {
 
+
   //       //       lat: data.pickupAddress.lat,
   //       //       long: data.pickupAddress.long,
   //       //       purpose: 'ORDER_PICKUP',
@@ -214,6 +215,39 @@ export class OrderRepository {
       },
     })
   }
+
+async updateRouteSegment(orderId: string, driverId: string) {
+  // 1️⃣ Fetch all segments that match
+  const segments = await this.prisma.orderRouteSegment.findMany({
+    where: { orderId, driverId, endTime: null },
+  });
+
+  if (!segments || segments.length === 0) return null;
+
+  // 2️⃣ Update each segment with endTime and actualDuration
+  const updatedSegments = await Promise.all(
+    segments.map(segment => {
+      const endTime = new Date();
+      let actualDurationMin: number | null = null;
+
+      if (segment.startTime) {
+        const diffMs = endTime.getTime() - segment.startTime.getTime();
+        actualDurationMin = Math.ceil(diffMs / 60000); // convert ms → minutes
+      }
+
+      return this.prisma.orderRouteSegment.update({
+        where: { id: segment.id },
+        data: {
+          endTime,
+          actualDurationMin,
+        },
+      });
+    }),
+  );
+
+  return updatedSegments;
+}
+
   async createCustomer(customerData: {
     name: string;
     email: string;
@@ -701,67 +735,67 @@ export class OrderRepository {
   }
 
 
-//   async createOrderWithAddresses(data: any, customerId: string, receiverId: string, trackingCode: string, userId: string) {
-//   return this.prisma.$transaction(async (tx) => {
-//     const pickup = await upsertAddress(
-//       tx,
-//       customerId,
-//       userId,
-//       data.pickupAddress,
-//       'ORDER_PICKUP',
-//     );
+  async createOrderWithAddressess(data: any, customerId: string, receiverId: string, trackingCode: string, userId: string) {
+  return this.prisma.$transaction(async (tx) => {
+    const pickup = await upsertAddress(
+      tx,
+      customerId,
+      userId,
+      data.pickupAddress,
+      'ORDER_PICKUP',
+    );
 
-//     const delivery = await upsertAddress(
-//       tx,
-//       customerId,
-//       userId,
-//       data.deliveryAddress,
-//       'ORDER_DELIVERY',
-//     );
+    const delivery = await upsertAddress(
+      tx,
+      customerId,
+      userId,
+      data.deliveryAddress,
+      'ORDER_DELIVERY',
+    );
 
-//     const order = await tx.order.create({
-//       data: {
-//         trackingCode,
-//         status: 'CREATED',
-//         serviceType: data.serviceType,
-//         fulfillmentType: data.fulfillmentType,
-//         weight: data.weight,
-//         height: data.height,
-//         width: data.width,
-//         length: data.length,
-//         category: data.category,
-//         isFragile: data.isFragile,
-//         shipmentType: data.shipmentType,
-//         shippingScope: data.shippingScope,
-//         pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
-//         deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
-//         createdBy: userId ?? customerId,
-//         customerId,
-//         receiverId,
-//         quantity: data.quantity,
-//         branchId: data.branchId ?? null,
-//         pickupAddressId: pickup?.id ?? null,
-//         deliveryAddressId: delivery.id,
-//       },
-//       include: {
-//         pickupAddress: true,
-//         deliveryAddress: true
-//       }
-//     });
+    const order = await tx.order.create({
+      data: {
+        trackingCode,
+        status: 'CREATED',
+        serviceType: data.serviceType,
+        fulfillmentType: data.fulfillmentType,
+        weight: data.weight,
+        height: data.height,
+        width: data.width,
+        length: data.length,
+        category: data.category,
+        isFragile: data.isFragile,
+        shipmentType: data.shipmentType,
+        shippingScope: data.shippingScope,
+        pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
+        deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
+        createdBy: userId ?? customerId,
+        customerId,
+        receiverId,
+        quantity: data.quantity,
+        branchId: data.branchId ?? null,
+        pickupAddressId: pickup?.id ?? null,
+        deliveryAddressId: delivery.id,
+      },
+      include: {
+        pickupAddress: true,
+        deliveryAddress: true
+      }
+    });
 
-//     await tx.orderTracking.create({
-//       data: {
-//         orderId: order.id,
-//         status: 'CREATED',
-//         location: pickup?.addressLine ?? 'Customer Home',
-//         updatedBy: userId ?? customerId,
-//         notes: 'Order Created.',
-//       },
-//     });
+    await tx.orderTracking.create({
+      data: {
+        orderId: order.id,
+        status: 'CREATED',
+        location: pickup?.addressLine ?? 'Customer Home',
+        updatedBy: userId ?? customerId,
+        notes: 'Order Created.',
+      },
+    });
 
-//     return order;
-//   });
-// }
+    return order;
+  });
+}
 
   async updateOrderDistance(orderId: string, distance: number) {
     try {
