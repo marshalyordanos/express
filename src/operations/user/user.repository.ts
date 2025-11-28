@@ -108,6 +108,7 @@ export class UserRepository {
 
         where: query.where || {},
         select: {
+          id: true,
           name: true,
           email: true,
           phone: true,
