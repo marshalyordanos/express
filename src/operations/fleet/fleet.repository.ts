@@ -8,6 +8,8 @@ import {
   VehicleMaintenanceDto,
   VehicleMaintenanceQueryDto,
 } from './fleet.entity';
+import { ListQueryDto } from '../../common/query/query.dto';
+import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 
 @Injectable()
 export class VehicleRepository {
@@ -59,7 +61,11 @@ export class VehicleRepository {
         where,
         skip,
         take: pageSize,
-        include: { driver: true },
+        include: {
+          driver: {
+            include: { user: { select: { name: true, phone: true } } },
+          },
+        },
       }),
       this.prisma.vehicle.count({ where }),
     ]);
@@ -134,6 +140,40 @@ export class VehicleRepository {
     if (query?.toDate) where.date = { ...where.date, lte: query.toDate };
 
     return this.prisma.fleetLog.findMany({ where, orderBy: { date: 'desc' } });
+  }
+  async getAllMaintenanceHistory(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['maintenance'],
+      hasNotDate: true,
+    });
+
+    const query = feature.getQuery();
+    if (!query.orderBy || query.orderBy.length === 0) {
+      query.orderBy = [{ date: 'desc' }];
+    }
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
+      this.prisma.fleetLog.findMany({
+        ...query,
+
+        where: query.where || {},
+        include: { vehicle: true },
+      }),
+      this.prisma.fleetLog.count({ where: query.where || {} }),
+    ]);
+
+    const models = results[0] || [];
+    const total = results[1] || 0;
+    return {
+      models,
+      pagination: feature.getPagination(total),
+    };
   }
 
   // ---------------- Fleet Analytics & Reporting ----------------

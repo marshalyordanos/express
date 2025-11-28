@@ -8,6 +8,7 @@ interface QueryOptions {
   pageSize?: number;
   searchableFields?: string[];
   dateFields?: string[]; // list of DateTime fields
+  hasNotDate?: boolean;
 }
 
 export class PrismaQueryFeature<
@@ -18,12 +19,16 @@ export class PrismaQueryFeature<
   private orderBy: TOrderBy[] = [];
   private skip: number;
   private take: number;
+  private hasNotDate: boolean;
 
   constructor(private options: QueryOptions) {
+    console.log('options: ', options);
     this.options.page = options.page || 1;
     this.options.pageSize = options.pageSize || 10;
     this.skip = (this.options.page - 1) * this.options.pageSize;
     this.take = this.options.pageSize;
+    this.hasNotDate = options.hasNotDate ?? false;
+
     this.buildWhere();
     this.buildOrderBy();
   }
@@ -151,7 +156,20 @@ export class PrismaQueryFeature<
   }
 
   private buildOrderBy() {
-    const { sort } = this.options;
+    const { sort, hasNotDate } = this.options;
+    console.log(
+      this.options,
+      '!sort && hasNotDate',
+      !sort && hasNotDate,
+      sort,
+      hasNotDate,
+      !sort,
+    );
+    if (!sort && hasNotDate) {
+      this.orderBy = [];
+      return;
+    }
+
     if (!sort) {
       // Default sort by createdAt
       this.orderBy = [{ createdAt: 'desc' } as unknown as TOrderBy];

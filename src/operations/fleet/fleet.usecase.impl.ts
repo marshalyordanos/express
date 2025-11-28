@@ -13,6 +13,7 @@ import { Vehicle, FleetLog } from '@prisma/client';
 import { IPagination } from '../../common/types';
 import { AppLogger } from '../../common/app-logger.service';
 import { json } from 'stream/consumers';
+import { ListQueryDto } from 'src/common/query/query.dto';
 
 @Injectable()
 export class FleetUseCasesImp implements FleetUsecase {
@@ -280,6 +281,24 @@ export class FleetUseCasesImp implements FleetUsecase {
     } catch (error) {
       this.logger.error(
         `Error fetching maintenance history for vehicle ${vehicleId} and error : ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(
+        error.message || 'Failed to fetch vehicle maintenance history',
+      );
+    }
+  }
+  async getVehicleAllMaintenanceHistory(query?: ListQueryDto) {
+    try {
+      const history = await this.vehicleRepo.getAllMaintenanceHistory(query);
+      this.logger.log(
+        `✅ Retrieved ${history?.pagination.total || 0} customers`,
+      );
+
+      return history;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching maintenance history for vehicle and error : ${error.message}`,
         error.stack,
       );
       throw new RpcException(

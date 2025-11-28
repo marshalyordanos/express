@@ -15,6 +15,7 @@ import { CheckPermission } from '../../common/decorator/check-permission.decorat
 import { PermissionGuard } from '../../common/permission.guard';
 import { PermissionActions } from '../../contracts/permission-actions.enum';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
+import { ListQueryDto } from 'src/common/query/query.dto';
 
 @Controller()
 export class FleetMessageController {
@@ -131,6 +132,19 @@ export class FleetMessageController {
       payload.query,
     );
     return IResponse.success('fleetLog fetched successfully', fleetLogs, null);
+  }
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Fleet', PermissionActions.READ)
+  @MessagePattern(PATTERNS.FLEET_GET_All_MAINTENANCE_HISTORY)
+  async getAllMaintenanceHistory(@Payload() payload: { query: ListQueryDto }) {
+    const fleetLogs = await this.usecases.getVehicleAllMaintenanceHistory(
+      payload.query,
+    );
+    return IResponse.success(
+      'fleetLog fetched successfully',
+      fleetLogs.models,
+      fleetLogs.pagination,
+    );
   }
 
   // Get fleet summary / analytics

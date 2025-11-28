@@ -88,6 +88,7 @@ export const PATTERNS = {
   FLEET_GET_DRIVER_VEHICLES: 'fleet.getVehiclesByDriver',
   FLEET_LOG_MAINTENANCE: 'fleet.logMaintenance',
   FLEET_GET_MAINTENANCE_HISTORY: 'fleet.getMaintenanceHistory',
+  FLEET_GET_All_MAINTENANCE_HISTORY: 'fleet.getAllMaintenaceHistory',
   FLEET_GET_LATEST_MAINTENANCE: 'fleet.getLatestMaintenance',
   FLEET_GET_SUMMARY: 'fleet.getFleetSummary',
   FLEET_GET_STATUS_SUMMARY: 'fleet.getVehicleStatusSummary',
