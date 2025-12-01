@@ -1065,7 +1065,7 @@ export class OrderRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['trackingCode', 'notes', 'category'],
+      searchableFields: ['trackingCode', 'notes'],
     });
 
     const query = feature.getQuery();
@@ -1117,6 +1117,8 @@ export class OrderRepository {
           payment: {
             select: { id: true, amount: true, status: true },
           },
+          pickupAddress: true,
+          deliveryAddress: true,
         },
       }),
       this.prisma.order.count({ where: query.where || {} }),
