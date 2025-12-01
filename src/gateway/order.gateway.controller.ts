@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
@@ -10,6 +11,8 @@ import {
   Post,
   Query,
   Req,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
 
 import { ClientProxy } from '@nestjs/microservices';
@@ -17,22 +20,27 @@ import { PATTERNS } from '../contracts';
 import {
   AcceptDropOffDto,
   AddException,
+  AddOrderOnHold,
   ApproveOrderDto,
   CancelOrderDto,
   ConfirmPickUpOrderDto,
   CreateOrderDto,
   MarkUnusualOrderDto,
+  RemoveOrderFromOnHold,
   UpdateOrderDto,
   ValidateOrderDto,
 } from '../fulfillment/order/order.entity';
 import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
 import { SanitizePipe } from '../common/sanitize.pipe';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
 
 @Controller('order')
 export class OrderGatewayController {
   constructor(
     @Inject('FULFILLMENT_SERVICE') private readonly orderClient: ClientProxy,
+    private readonly cloudinaryUploader: CloudinaryUploaderService,
   ) {}
 
   //Create order for customer
@@ -68,7 +76,6 @@ export class OrderGatewayController {
     });
   }
 
-
   @Post('/accept')
   async acceptDropOffOrder(@Body() data: AcceptDropOffDto, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
@@ -92,7 +99,12 @@ export class OrderGatewayController {
   }
 
   @Post('/confirm')
-  async confirmPickup(@Body() data: ConfirmPickUpOrderDto, @Req() req) {
+  @UseInterceptors(FilesInterceptor('podImages', 5))
+  async confirmPickup(
+    @UploadedFiles() files: any[],
+    @Body() data: ConfirmPickUpOrderDto,
+    @Req() req,
+  ) {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
 
@@ -105,6 +117,34 @@ export class OrderGatewayController {
     } catch (err) {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
+    let uploadedImages = [];
+
+    // ✅ Upload only if files exist and are valid
+    if (files && files.length > 0) {
+      console.log('Uploading proof of delivery images...');
+      try {
+        const fileStreamsOrBuffers = files.map(
+          (file) => file.stream || file.buffer,
+        );
+        uploadedImages = await this.cloudinaryUploader.uploadFiles(
+          fileStreamsOrBuffers,
+          `pod_images/pickup/${data.driverId}/${data.orderId}`,
+        );
+
+        data.podImages = uploadedImages;
+        console.log('Proof of delivery images uploaded successfully.');
+      } catch (error) {
+        console.error('Cloudinary upload failed:', error);
+        throw new HttpException(
+          'Failed to upload proof of delivery images',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    } else {
+      console.log('No files provided — skipping upload.');
+      data.podImages = []; // keep consistent structure
+    }
+
     return this.orderClient.send(PATTERNS.ORDER_CONFIRM_PICKUP, {
       data,
       headers: { authorization: authHeader },
@@ -171,7 +211,6 @@ export class OrderGatewayController {
     });
   }
 
-
   @Post('/approve')
   async approveOrder(@Body() data: ApproveOrderDto, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
@@ -187,6 +226,92 @@ export class OrderGatewayController {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
     return this.orderClient.send(PATTERNS.ORDER_APPROVE, {
+      data,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  @Get('/branch/sort-order')
+  async getOrdersForSorting(@Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.orderClient.send(PATTERNS.ORDER_FIND_SORTING, {
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  @Get('/onhold')
+  async getOnHoldOrders(@Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.orderClient.send(PATTERNS.ORDER_FIND_ON_HOLD, {
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  @Delete('/onhold')
+  async removeOnHold(@Body() data: RemoveOrderFromOnHold, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.orderClient.send(PATTERNS.ORDER_FIND_ON_HOLD, {
+      data,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  @Post('/onhold')
+  async addOrderOnHold(@Body() data: AddOrderOnHold, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.orderClient.send(PATTERNS.ORDER_ADD_ON_HOLD, {
       data,
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
@@ -215,7 +340,7 @@ export class OrderGatewayController {
       ip,
     });
   }
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
   @Post('/exception')
   async exceptionOrder(@Body() data: AddException, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
@@ -237,7 +362,6 @@ export class OrderGatewayController {
       ip,
     });
   }
-
 
   @Get('/exception')
   async getException(@Req() req, @Query() query: ListQueryDto) {
@@ -289,7 +413,6 @@ export class OrderGatewayController {
     });
   }
 
-
   // ✅ NEW unified GET endpoint with filters
   @Get()
   async getAllOrders(@Req() req, @Query() query: ListQueryDto) {
@@ -314,7 +437,6 @@ export class OrderGatewayController {
     });
   }
 
-
   @Get('/approval/pending')
   async getPendingApprovalOrders(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
@@ -336,7 +458,6 @@ export class OrderGatewayController {
       query,
     });
   }
-
 
   @Get('/status/log')
   async getOrderStatusLog(
@@ -368,7 +489,6 @@ export class OrderGatewayController {
     });
   }
 
-
   @Get('/categorical')
   async getCategoricalOrders(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
@@ -396,7 +516,6 @@ export class OrderGatewayController {
 
   @Get('/track/:code')
   async trackOrder(@Param('code') code: string, @Req() req) {
-
     const forwarded = (req.headers['x-forwarded-for'] as string) || '';
     const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
 
@@ -406,7 +525,7 @@ export class OrderGatewayController {
     });
   }
 
-    @Get('/user/track/:code')
+  @Get('/user/track/:code')
   async trackUserOrder(@Param('code') code: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
@@ -453,7 +572,6 @@ export class OrderGatewayController {
       ip,
     });
   }
-
 
   @Get('/my-orders')
   async getMyOrders(@Req() req, @Query() query: ListQueryDto) {

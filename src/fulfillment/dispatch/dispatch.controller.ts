@@ -6,6 +6,7 @@ import {
   AssignDriverForPickup,
   AssignOfficerForBatch,
   BatchDispatchDto,
+  BatchesScanTokenDto,
   BatchHandoverDto,
   CompleteDeliveryDto,
   ConfirmBatchHandoverDto,
@@ -119,7 +120,19 @@ export class DispatchMessageController {
   ): Promise<any> {
     const userId = payload.user?.sub;
     return this.usecases.scanOrder(
-      payload.data.scannedBy,
+      payload.data.token,
+      userId,
+    );
+  }
+
+   @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Dispatch', PermissionActions.UPDATE)
+  @MessagePattern(PATTERNS.DISPATCH_COLLECT_FROM_AIRPORT)
+  async collectBachesForPickup(
+    @Payload() payload: { data: BatchesScanTokenDto; user: any },
+  ): Promise<any> {
+    const userId = payload.user?.sub;
+    return this.usecases.scanOrder(
       payload.data.token,
       userId,
     );
@@ -139,7 +152,7 @@ export class DispatchMessageController {
   @CheckPermission('Dispatch', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.DISPATCH_CONFIRM_ARRIVAL_AND_HANDOVER)
   async arriveAndInbound(
-    @Payload() payload: { data: ConfirmBatchHandoverDto },
+    @Payload() payload: { data: ConfirmBatchHandoverDto, user: any },
   ): Promise<any> {
     return this.usecases.confirmHandover(payload.data);
   }
@@ -178,6 +191,8 @@ export class DispatchMessageController {
       payload.data.notes,
     );
   }
+
+  
 
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Dispatch', PermissionActions.CREATE, ScopeAction.DELIVERY)

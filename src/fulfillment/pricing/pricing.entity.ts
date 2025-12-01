@@ -1,5 +1,14 @@
-import { CommissionType, FeeType, ServiceType, ShippingScope, Vehicle, VehicleType } from '@prisma/client';
 import {
+  CommissionType,
+  FeeType,
+  ServiceType,
+  ShippingScope,
+  Vehicle,
+  VehicleType,
+} from '@prisma/client';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
   IsBoolean,
   IsDateString,
   IsEnum,
@@ -9,50 +18,178 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateNested,
 } from 'class-validator';
 //=============================================================================================TARIFF==============================================================================================
-export class TariffDto {
+// export class TariffDto {
+//   @IsNotEmpty()
+//   @IsString()
+//   name: string;
+
+//   // serviceType is required for business rules
+//   @IsNotEmpty()
+//   @IsEnum(ServiceType)
+//   serviceType: ServiceType;
+
+//   @IsNotEmpty()
+//   @IsEnum(ShippingScope)
+//   shippingScope: ShippingScope;
+
+//   @IsNotEmpty()
+//   @IsNumber()
+//   baseFee: number;
+
+//   @IsOptional()
+//   @IsString()
+//   customerCategoryId: string;
+
+//   @IsOptional()
+//   @IsNumber()
+//   perKgRate?: number;
+
+//   @IsOptional()
+//   @IsNumber()
+//   perKmRate?: number;
+
+//   @IsNotEmpty()
+//   @IsString()
+//   currency: string;
+
+//   @IsNotEmpty()
+//   @IsISO8601()
+//   effectiveFrom: string;
+
+//   @IsOptional()
+//   @IsISO8601()
+//   effectiveTo?: string;
+// }
+
+export class ServiceTypeValueDto {
   @IsNotEmpty()
+  @IsEnum(ServiceType)
+  type: ServiceType;
+
+  @IsNotEmpty()
+  @IsNumber()
+  value: number;
+}
+
+/* -------------------- WEIGHT BRACKET DTO -------------------- */
+
+export class WeightBracketDto {
+  @IsNotEmpty()
+  @IsNumber()
+  minKg: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  maxKg: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  rate: number; // birr for this weight range
+}
+
+/* -------------------- DRIVER COMMISSION DTO -------------------- */
+
+export class DriverCommissionDto {
+  @IsNotEmpty()
+  @IsString()
+  vehicleTypeId: string; // sedan, bajaj, minibus, motor, truck...
+
+  @IsOptional()
+  @IsNumber()
+  fixed?: number; // fixed birr/ride
+
+  @IsOptional()
+  @IsNumber()
+  perKm?: number; // birr per km
+
+  @IsOptional()
+  @IsNumber()
+  percentage?: number; // commission percentage
+}
+
+/* -------------------- ADDITIONAL CHARGES DTO -------------------- */
+
+export class AdditionalChargesDto {
+  @IsOptional()
+  @IsNumber()
+  costPerKm?: number;
+
+  @IsOptional()
+  @IsNumber()
+  profitMargin?: number; // %
+}
+
+/* -------------------- MAIN TARIFF DTO -------------------- */
+
+export class AirportFeesDto {
+  @IsNotEmpty()
+  @IsNumber()
+  kg: number; // kg threshold
+
+  @IsNotEmpty()
+  @IsNumber()
+  price: number; // price per kg
+}
+
+/* -------------------- MAIN TARIFF DTO -------------------- */
+export class TariffDto {
+  @IsOptional()
   @IsString()
   name: string;
 
-  // serviceType is required for business rules
   @IsNotEmpty()
-  @IsEnum(ServiceType)
-  serviceType: ServiceType;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ServiceTypeValueDto)
+  serviceTypes: ServiceTypeValueDto[];
 
   @IsNotEmpty()
   @IsEnum(ShippingScope)
   shippingScope: ShippingScope;
 
-  @IsNotEmpty()
-  @IsNumber()
-  baseFee: number;
+  @IsOptional()
+  @IsString()
+  customerCategoryId?: string;
 
   @IsOptional()
   @IsString()
-  customerCategoryId: string;
+  currency: string = 'ETB';
 
   @IsOptional()
-  @IsNumber()
-  perKgRate?: number;
-
-  @IsOptional()
-  @IsNumber()
-  perKmRate?: number;
-
-  @IsNotEmpty()
-  @IsString()
-  currency: string;
-
-  @IsNotEmpty()
   @IsISO8601()
-  effectiveFrom: string;
+  effectiveFrom: string = new Date().toISOString();
 
   @IsOptional()
   @IsISO8601()
   effectiveTo?: string;
+
+  @IsNotEmpty()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WeightBracketDto)
+  weightBrackets?: WeightBracketDto[];
+
+  @IsNotEmpty()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DriverCommissionDto)
+  driverCommissions?: DriverCommissionDto[];
+
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => AdditionalChargesDto)
+  additionalCharges?: AdditionalChargesDto;
+
+  // --- NEW ---
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AirportFeesDto)
+  airportFee?: AirportFeesDto;
 }
+
 
 export class UpdateTariffDto {
   @IsOptional()
@@ -420,21 +557,20 @@ export class PriceCalculationLogDto {
 }
 //===================================================================================CUSTOMER CATEGORY==================================================================
 
-
 //===================================================================================DRIVER COMMISSION==================================================================
 
-export class AddDriverCommissionDto {
+export class AddCommissionDto {
   @IsNotEmpty()
   @IsString()
-  driverId: string;
+  vehicleTypeId: string;
 
   @IsNotEmpty()
   @IsString()
   commissionType: CommissionType;
-  
+
   @IsNotEmpty()
   @IsNumber()
-  amount: number;
+  value: number;
 
   @IsOptional()
   @IsDateString()
@@ -444,28 +580,23 @@ export class AddDriverCommissionDto {
   @IsDateString()
   effectiveTo?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  currency: string= "ETB";
-
-  @IsNotEmpty()
-  @IsString()
-  vehicleType: VehicleType;
-
+  currency: string = 'ETB';
 }
 
-export class updateDriverCommissionDto {
+export class updateCommissionDto {
   @IsOptional()
   @IsString()
-  driverId: string;
+  vehicleTypeId: string;
 
   @IsOptional()
   @IsString()
   commissionType: CommissionType;
-  
+
   @IsOptional()
   @IsNumber()
-  amount: number;
+  value: number;
 
   @IsOptional()
   @IsDateString()
@@ -477,10 +608,5 @@ export class updateDriverCommissionDto {
 
   @IsOptional()
   @IsString()
-  currency: string= "ETB";
-
-  @IsOptional()
-  @IsString()
-  vehicleType: VehicleType;
-
+  currency: string = 'ETB';
 }

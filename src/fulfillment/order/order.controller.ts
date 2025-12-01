@@ -4,11 +4,13 @@ import { PATTERNS } from '../../contracts';
 import {
   AcceptDropOffDto,
   AddException,
+  AddOrderOnHold,
   ApproveOrderDto,
   CancelOrderDto,
   ConfirmPickUpOrderDto,
   CreateOrderDto,
   MarkUnusualOrderDto,
+  RemoveOrderFromOnHold,
   UpdateOrderDto,
   ValidateOrderDto,
 } from './order.entity';
@@ -17,7 +19,10 @@ import { IResponse } from '../../common/types';
 import { ListQueryDto } from '../../common/query/query.dto';
 import { CheckPermission } from '../../common/decorator/check-permission.decorator';
 import { PermissionGuard } from '../../common/permission.guard';
-import { PermissionActions, ScopeAction } from '../../contracts/permission-actions.enum';
+import {
+  PermissionActions,
+  ScopeAction,
+} from '../../contracts/permission-actions.enum';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
 import { Public } from '../../common/decorator/public.decorator';
 
@@ -35,20 +40,29 @@ export class OrderMessageController {
     return IResponse.success('Order created successfully', result);
   }
 
+
   @Public()
   @MessagePattern(PATTERNS.ORDER_CREATE_NOT_LOGGED_IN_CUSTOMER)
   async createUserOrder(@Payload() payload: { data: CreateOrderDto }) {
     const result = await this.orderUseCases.createUserOrder(payload.data);
-    return IResponse.success(
-      'Order created successfully.',
-      result,
-    );
+    return IResponse.success('Order created successfully.', result);
   }
+
+
+  // @Public()
+  // @MessagePattern(PATTERNS.ORDER_CREATE_NOT_LOGGED_IN_CUSTOMER)
+  // async getOrderSummary(@Payload() payload: { data: CreateOrderDto }) {
+  //   const result = await this.orderUseCases.createOrderSummary(payload.data);
+  //   return IResponse.success('Order Summary created successfully.', result);
+  // }
+
   //COMPLETED
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Order', PermissionActions.UPDATE, ScopeAction.FULL)
   @MessagePattern(PATTERNS.ORDER_ACCEPT_DROP_OFF)
-  async acceptDropOffOrder(@Payload() payload: { data: AcceptDropOffDto; user: any }) {
+  async acceptDropOffOrder(
+    @Payload() payload: { data: AcceptDropOffDto; user: any },
+  ) {
     console.log('data: ', payload.data);
     const trackingCode = payload.data?.trackingCode;
     console.log('trackingCode: ', trackingCode);
@@ -62,12 +76,12 @@ export class OrderMessageController {
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Order', PermissionActions.UPDATE, ScopeAction.DELIVERY)
   @MessagePattern(PATTERNS.ORDER_CONFIRM_PICKUP)
-  async confirmPickup(@Payload() payload: { data: ConfirmPickUpOrderDto; user: any }) {
-    const { orderId, driverId } = payload.data;
+  async confirmPickup(
+    @Payload() payload: { data: ConfirmPickUpOrderDto; user: any },
+  ) {
     const userId = payload.user?.sub;
     const result = await this.orderUseCases.confirmPickupOrder(
-      orderId,
-      driverId,
+      payload.data,
       userId,
     );
     return IResponse.success('Pick Up Order Confirmed successfully', result);
@@ -91,7 +105,9 @@ export class OrderMessageController {
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Order', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.ORDER_MARK_UNUSUAL)
-  async markUnusualOrder(@Payload() payload: { orderId: string; data: MarkUnusualOrderDto }) {
+  async markUnusualOrder(
+    @Payload() payload: { orderId: string; data: MarkUnusualOrderDto },
+  ) {
     const { orderId, data } = payload;
     const result = await this.orderUseCases.markUnusualOrder(
       payload.orderId,
@@ -135,6 +151,17 @@ export class OrderMessageController {
     );
   }
 
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Order', PermissionActions.READ)
+  @MessagePattern(PATTERNS.ORDER_FIND_SORTING)
+  async getOrderForSorting(@Payload() payload: { user: any }) {
+    const userId = payload.user?.sub;
+
+    const result = await this.orderUseCases.getOrderForSorting(userId);
+    return IResponse.success(`Order fetched for sorting.`, result);
+  }
+
+  
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Order', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.ORDER_CANCEL)
@@ -260,7 +287,10 @@ export class OrderMessageController {
   @MessagePattern(PATTERNS.ORDER_FIND_BY_USER_AND_TRACK_CODE)
   async trackUserOrder(@Payload() payload: { code: string; user: any }) {
     const userId = payload.user?.sub;
-    const result = await this.orderUseCases.trackUserOrder(payload.code, userId);
+    const result = await this.orderUseCases.trackUserOrder(
+      payload.code,
+      userId,
+    );
     return IResponse.success('Order Tracking fetched successfully', result);
   }
 
@@ -275,6 +305,53 @@ export class OrderMessageController {
       'Orders fetched successfully',
       result.orders,
       result.pagination,
+    );
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Order', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.ORDER_ADD_ON_HOLD)
+  async addOrderOnHold(
+    @Payload() payload: { data: AddOrderOnHold; user: any },
+  ) {
+    const user = payload.user;
+    const userId = user.sub;
+    const result = await this.orderUseCases.addOnHold(
+      payload.data.orderIds,
+      payload.data.reason,
+      userId,
+    );
+    return IResponse.success('Orders added on hold successfully', result);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Order', PermissionActions.UPDATE)
+  @MessagePattern(PATTERNS.ORDER_REMOVE_ON_HOLD)
+  async RemoveOrderFromOnHold(
+    @Payload() payload: { data: RemoveOrderFromOnHold; user: any },
+  ) {
+    const user = payload.user;
+    const userId = user.sub;
+    const result = await this.orderUseCases.removeOnHold(
+      payload.data.orderIds,
+      userId,
+    );
+    return IResponse.success(
+      'Orders removed from on hold successfully',
+      result,
+    );
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Order', PermissionActions.READ)
+  @MessagePattern(PATTERNS.ORDER_FIND_ON_HOLD)
+  async getOnHoldOrders(@Payload() payload: { user: any }) {
+    const user = payload.user;
+    const userId = user.sub;
+    const result = await this.orderUseCases.getOnHoldOrders(userId);
+    return IResponse.success(
+      'Orders removed from on hold successfully',
+      result,
     );
   }
 }

@@ -155,6 +155,18 @@ export class UserMessageController {
     );
   }
 
+    @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('User', PermissionActions.READ, ScopeAction.FULL)
+  @MessagePattern(PATTERNS.USER_CUSTOMER_DETAIL)
+  async getCustomerDetail(@Payload() payload: { query: ListQueryDto, customerId: string }) {
+    const result = await this.usecases.getCustomerDetail(payload.query, payload.customerId);
+    return IResponse.success(
+      'Customer Details fetched successfully',
+      result.models,
+      result.pagination,
+    );
+  }
+
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('User', PermissionActions.READ)
   @MessagePattern(PATTERNS.CUSTOMER_ORDERS)

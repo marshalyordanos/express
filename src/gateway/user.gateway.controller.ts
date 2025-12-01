@@ -363,6 +363,30 @@ export class UserGatewayController {
       query,
     });
   }
+   
+  @Get('customer/detail/:customerId')
+  async findCustomerDetails(@Req() req, @Query() query: ListQueryDto, @Param('customerId') customerId: string) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.usersClient.send(PATTERNS.USER_CUSTOMER_DETAIL, {
+      customerId,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+      query,
+    });
+  }
+  
 
  
   @Get()

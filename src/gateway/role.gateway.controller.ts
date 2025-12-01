@@ -20,6 +20,7 @@ import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
 import { SanitizePipe } from '../common/sanitize.pipe';
 
+
 @Controller('roles')
 export class RoleGatewayController {
   constructor(

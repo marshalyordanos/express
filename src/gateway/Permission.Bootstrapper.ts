@@ -9,25 +9,105 @@ export class PermissionBootstrapper {
 
   private readonly defaultPermissions = [
     { resource: 'User', description: 'User management and account operations' },
-    { resource: 'Staff', description: 'Staff management and account operations' },
-    { resource: 'Role', description: 'Role creation, assignment, and modification' },
-    { resource: 'Permission', description: 'Permission management for access control' },
-    { resource: 'Dispatch', description: 'Driver assignment, Order dispatch and pickup assignment operations' },
-    { resource: 'Order', description: 'Customer order processing and tracking' },
-    { resource: 'Branch', description: 'Branch registration and logistics coordination' },
-    { resource: 'Price', description: 'Pricing, discount, and tariff structure management' },
-    { resource: 'Fleet', description: 'Fleet management, vehicle operations, and analytics' },
-    { resource: 'Dashboard-Report', description: 'Branch registration and logistics coordination' },
-    { resource: 'Price', description: 'Pricing, discount, and tariff structure management' },
-    { resource: 'Fleet', description: 'Fleet management, vehicle operations, and analytics' },
-    { resource: 'Auth', description: 'User authentication, authorization, and session management' },
-    { resource: 'CustomerCategory', description: 'Used for managing and assigning customers to categories' },
-    { resource: 'PermissionRole', description: 'Used to manage and assign permissions to roles and their relation to each other.' },
-    { resource: 'CalculatePrice', description: 'Used to calculate the price of an order.' },
-    { resource: 'Preference', description: 'Managing user preference for notification, payment and other settings.' },
-    { resource: 'DriverCommission', description: 'Used to manage drivers commission.' },
-
+    {
+      resource: 'Staff',
+      description: 'Staff management and account operations',
+    },
+    {
+      resource: 'Role',
+      description: 'Role creation, assignment, and modification',
+    },
+    {
+      resource: 'Permission',
+      description: 'Permission management for access control',
+    },
+    {
+      resource: 'Dispatch',
+      description:
+        'Driver assignment, Order dispatch and pickup assignment operations',
+    },
+    {
+      resource: 'Order',
+      description: 'Customer order processing and tracking',
+    },
+    {
+      resource: 'Branch',
+      description: 'Branch registration and logistics coordination',
+    },
+    {
+      resource: 'Price',
+      description: 'Pricing, discount, and tariff structure management',
+    },
+    {
+      resource: 'Fleet',
+      description: 'Fleet management, vehicle operations, and analytics',
+    },
+    {
+      resource: 'Dashboard-Report',
+      description: 'Branch registration and logistics coordination',
+    },
+    {
+      resource: 'Price',
+      description: 'Pricing, discount, and tariff structure management',
+    },
+    {
+      resource: 'Fleet',
+      description: 'Fleet management, vehicle operations, and analytics',
+    },
+    {
+      resource: 'Auth',
+      description: 'User authentication, authorization, and session management',
+    },
+    {
+      resource: 'CustomerCategory',
+      description: 'Used for managing and assigning customers to categories',
+    },
+    {
+      resource: 'PermissionRole',
+      description:
+        'Used to manage and assign permissions to roles and their relation to each other.',
+    },
+    {
+      resource: 'CalculatePrice',
+      description: 'Used to calculate the price of an order.',
+    },
+    {
+      resource: 'Preference',
+      description:
+        'Managing user preference for notification, payment and other settings.',
+    },
+    {
+      resource: 'VehicleCommission',
+      description: 'Used to manage Vehicle commission.',
+    },
   ];
+
+  // private readonly vehicleTypes = [
+  //   {
+  //     name: 'Bicycle',
+  //     description: 'Two-wheel pedal-driven bicycle used for delivery tasks.',
+  //   },
+  //   {
+  //     name: 'Motorcycle',
+  //     description:
+  //       'Two-wheel motorcycle suitable for fast and flexible delivery.',
+  //   },
+  //   {
+  //     name: 'Bajaj',
+  //     description:
+  //       'Three-wheel motorized bajaj (tuk-tuk) used for cargo and passenger transport.',
+  //   },
+  //   {
+  //     name: 'Scooter',
+  //     description:
+  //       'Electric or fuel-powered scooter used for light deliveries.',
+  //   },
+  //   {
+  //     name: 'Automobile',
+  //     description:
+  //       'Standard 4-wheel vehicle for larger deliveries and passenger services.',
+  //   },
+  // ];
 
   async run() {
     // 1️⃣ Ensure SuperAdmin role exists (idempotent)
@@ -45,7 +125,6 @@ export class PermissionBootstrapper {
       });
     }
 
-    
     // 2️⃣ Create new permissions if they don’t exist
     for (const perm of this.defaultPermissions) {
       await this.prisma.permission.upsert({
@@ -68,6 +147,7 @@ export class PermissionBootstrapper {
     const newPermissions = allPermissions.filter(
       (perm) => !assignedIds.includes(perm.id),
     );
+    
 
     if (newPermissions.length > 0) {
       await this.prisma.rolePermission.createMany({
@@ -82,6 +162,9 @@ export class PermissionBootstrapper {
         skipDuplicates: true, // safety for concurrency
       });
 
+      // await this.prisma.vehicleType.createMany({
+      //   data: this.vehicleTypes,
+      // })
       this.logger.log(
         `✅ Added ${newPermissions.length} new permissions to SuperAdmin.`,
       );

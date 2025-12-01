@@ -51,6 +51,16 @@ export class AuthMessageController {
     return new IResponse(true, 'User is logged in Succuessfuly', data);
   }
 
+    @Public()
+  @UseGuards(RateLimitGuard)
+  @MessagePattern(PATTERNS.AUTH_LOGIN_MOBILE_DRIVEVR)
+  async loginMobileDriver(@Payload() payload: { dto: AuthLoginMobileDto }) {
+    const { dto } = payload;
+    const data = await this.usecases.loginMobileDriver(dto);
+    return new IResponse(true, 'User is logged in Succuessfuly', data);
+  }
+
+
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Auth', PermissionActions.READ)
   @MessagePattern(PATTERNS.AUTH_REFRESH_TOKEN)

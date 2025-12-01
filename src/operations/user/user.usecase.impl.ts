@@ -16,6 +16,7 @@ import { UserUsecase } from './user.usecase';
 import { RpcException } from '@nestjs/microservices';
 import { ListQueryDto } from 'src/common/query/query.dto';
 import { AppLogger } from '../../common/app-logger.service';
+import { handleCatch } from '../../common/handleCatch';
 
 @Injectable()
 export class UserUseCasesImp implements UserUsecase {
@@ -25,6 +26,14 @@ export class UserUseCasesImp implements UserUsecase {
   ) {
     this.logger.setContext('OperationsService', 'UserUseCasesImp');
   }
+  async getCustomerDetail(query: ListQueryDto, customerId: string) {
+     try {
+       const customerRole= await this.userRepo.findRoleByName("CUSTOMER");
+       return await this.userRepo.getCustomerDetail(query, customerId, customerRole.id);
+     } catch (error) {
+       handleCatch(error)
+     }
+   }
 
   // ✅ FIND USER BY EMAIL (with logger + error handling)
   async findUserByEmail(email: string): Promise<User | null> {

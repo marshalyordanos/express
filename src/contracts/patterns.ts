@@ -2,6 +2,7 @@ export const PATTERNS = {
   AUTH_REGISTER: 'auth.register',
   AUTH_LOGIN: 'auth.login',
   AUTH_LOGIN_MOBILE: 'auth.login_mobile',
+  AUTH_LOGIN_MOBILE_DRIVEVR: 'auth.login_mobile_driver',
   AUTH_REFRESH_TOKEN: 'auth.refresh_token',
   AUTH_CHANGE_PASSWORD: 'auth.change_password',
   AUTH_FIND_AUTHENTICATED_USER: 'auth.find_authenticated_user',
@@ -20,6 +21,7 @@ export const PATTERNS = {
   CUSTOMER_ORDERS: 'customer.orders',
   USER_FIND_DRIVER: 'user.findDrivers',
   USER_CREATE_DRIVER: 'user.createDriver',
+  USER_CUSTOMER_DETAIL: 'user.customerDetail',
 
   ADDRESS_CREATE: 'address.create',
   ADDRESS_LIST: 'address.list',
@@ -134,6 +136,10 @@ export const PATTERNS = {
   ORDER_FIND_MY_ORDERS: 'order.findMyOrders',
   ORDER_CREATE_NOT_LOGGED_IN_CUSTOMER: 'order.createNotLoggedInCustomer',
   ORDER_FIND_BY_USER_AND_TRACK_CODE: 'order.findByUserAndTrackCode',
+  ORDER_FIND_SORTING: 'order.findSorting',
+  ORDER_ADD_ON_HOLD: 'order.addOnHold',
+  ORDER_REMOVE_ON_HOLD: 'order.removeOnHold',
+  ORDER_FIND_ON_HOLD: 'order.findOnHold',
 
   //Dispatch Management System
   DISPATCH_CREATE: 'dispatch.create',
@@ -233,13 +239,15 @@ export const PATTERNS = {
   PRICE_CALCULATE: 'price.calculate',
   PRICE_CALCULATION_LOG_FIND_ALL: 'price.calculationLog.findAll',
   PRICE_CALCULATION_LOG_FIND_BY_ID: 'price.calculationLog.findById',
+  PRICE_GET_ORDER_PRICE_SUMMARY: 'price.getOrderPriceSummary',
 
   // Driver commissions
-  PRICE_CREATE_DRIVER_COMMISSION: 'price.createDriverCommission',
-  PRICE_UPDATE_DRIVER_COMMISSION: 'price.updateDriverCommission',
-  PRICE_FIND_ALL_DRIVER_COMMISSION: 'price.findAllDriverCommission',
-  PRICE_DELETE_DRIVER_COMMISSION: 'price.deleteDriverCommission',
-  PRICE_FIND_DRIVER_COMMISSION_BY_ID: 'price.findDriverCommissionById',
+  PRICE_CREATE_VEHICLE_COMMISSION: 'price.createVehicleCommission',
+  PRICE_UPDATE_VEHICLE_COMMISSION: 'price.updateVehicleCommission',
+  PRICE_FIND_ALL_VEHICLE_COMMISSION: 'price.findAllVehicleCommission',
+  PRICE_DELETE_VEHICLE_COMMISSION: 'price.deleteVehicleCommission',
+  PRICE_FIND_VEHICLE_COMMISSION_BY_ID: 'price.findVehicleCommissionById',
+  PRICE_GET_DRIVER_EARNINGS: 'price.getDriverEarnings',
 
   //Reports and analytics
   REPORT_DASHBOARD_OVERVIEW: 'report.dashboardOverview',
@@ -254,6 +262,10 @@ export const PATTERNS = {
   REPORT_DASHBOARD_REVENUE_SUMMARY: 'report.dashboardRevenueSummary',
   REPORT_DASHBOARD_FLEET_SUMMARY: 'report.dashboardFleetSummary',
   REPORT_DASHBOARD_DISPATCH_SUMMARY: 'report.dashboardDispatchSummary',
+  REPORT_DASHBOARD_DRIVER: 'report.dashboardDriver',
+  REPORT_DASHBOARD_DRIVER_DELIVERY: 'report.dashboardDriverDelivery',
+  REPORT_DASHBOARD_CARGO_OFFICER: 'report.dashboardCargoOfficer',
+  REPORT_DASHBOARD_FIND_SORTED_ORDER: 'report.dashboardFindSortedOrder',
 
   REPORT_SHIPMENT_SUMMARY: 'report.shipmentSummary',
   REPORT_SHIPMENT_STATUS_BREAKDOWN: 'report.shipmentStatusBreakdown',

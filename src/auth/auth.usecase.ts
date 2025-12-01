@@ -7,12 +7,14 @@ import {
   AuthForgotPasswordDto,
   AuthResetPasswordDto,
   AuthVerifyEmailDto,
+  AuthLoginMobileDto,
 } from './auth.entity';
 
 export interface AuthUseCase {
   // Core authentication
   register(data: AuthRegisterDto): Promise<User>;
   login(data: AuthLoginDto): Promise<{ user: User; tokens: AuthTokens }>;
+  loginMobileDriver(dto: AuthLoginMobileDto): Promise<any>;
   logout(userId: string, sessionId?: string): Promise<void>;
   refreshToken(userId: string, refreshToken: string): Promise<AuthTokens>;
 

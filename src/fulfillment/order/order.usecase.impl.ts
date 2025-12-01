@@ -3,6 +3,8 @@ import { OrderUseCases } from './order.usecase';
 import {
   AddException,
   CancelOrderDto,
+  ConfirmPickUpOrderDto,
+  CreateOrderDto,
   UpdateOrderDto,
   ValidateOrderDto,
 } from './order.entity';
@@ -46,6 +48,8 @@ export class OrderUseCasesImpl implements OrderUseCases {
   ) {
     this.logger.setContext('FulfillmentService', 'OrderUsecaseImpl');
   }
+
+  // async createOrderSummary(data: CreateOrderDto) {}
   //Customer order creating API: For customer to create for it self and staff/Admin to create for customer
   async createOrder(data: any, userId: string): Promise<Order> {
     this.logger.log(`Order creation requested by userId: ${userId}`);
@@ -135,7 +139,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
 
     // 5️⃣ Calculate price
     const price = await this.pricingUseCases.calculatePrice(orderId);
-
+    // const finalPrice = [];
     console.log(
       ';;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;',
     );
@@ -233,7 +237,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
     console.log('calculated data for distance ::: ', distance);
 
     await this.updateOrderDistance(orderId, distance);
-
+    // const priceData = [];
     const priceData = await this.pricingUseCases.calculatePrice(orderId);
     console.log('Calculated data for price ::: ', priceData);
 
@@ -327,16 +331,16 @@ export class OrderUseCasesImpl implements OrderUseCases {
       );
 
       // 🔹 Create order with addresses
-      // const order = await this.orderRepo.createOrderWithAddresses(
-      //   data,
-      //   customer.id,
-      //   receiver.id,
-      //   trackingCode,
-      //   pickupAddress,
-      //   deliveryAddress,
-      // );
+      const order = await this.orderRepo.createOrderWithAddresses(
+        data,
+        customer.id,
+        receiver.id,
+        trackingCode,
+        pickupAddress,
+        deliveryAddress,
+      );
 
-      const order: any = [];
+      // const order: any = [];
       let origin: { lat: number; lon: number };
       if (order.pickupAddress) {
         origin = {
@@ -357,7 +361,15 @@ export class OrderUseCasesImpl implements OrderUseCases {
       console.log('before calculating : ', origin, destination);
 
       // Emit WebSocket or background job for async processing
-      this.calculateDistanceAndPrice(order.id, origin, destination);
+      // this.calculateDistanceAndPrice(order.id, origin, destination);
+      await this.publisher.publish('order_created', {
+        orderId: order.id,
+        payload: {
+          origin: order.pickupAddress,
+          destination: order.deliveryAddress,
+        },
+        timestamp: Date.now(),
+      });
 
       this.logger.log(
         `Order created successfully with id: ${order.id}, trackingCode: ${trackingCode}`,
@@ -483,13 +495,13 @@ export class OrderUseCasesImpl implements OrderUseCases {
     }
   }
 
-  async confirmPickupOrder(orderId: string, driverId: string, userId: string) {
+  async confirmPickupOrder(data: ConfirmPickUpOrderDto, userId: string) {
     this.logger.log(
-      `Confirm pickup requested for orderId=${orderId} by userId=${userId}`,
+      `Confirm pickup requested for orderId=${data.orderId} by userId=${userId}`,
     );
 
     try {
-      if (userId !== driverId) {
+      if (userId !== data.driverId) {
         this.logger.warn(`Unauthorized pickup attempt by userId=${userId}`);
         throw new RpcException({
           statusCode: 403,
@@ -497,26 +509,28 @@ export class OrderUseCasesImpl implements OrderUseCases {
         });
       }
 
-      const order = await this.orderRepo.getOrderById(orderId);
+      const order = await this.orderRepo.getOrderById(data.orderId);
       if (!order) {
-        this.logger.warn(`Order not found: ${orderId}`);
+        this.logger.warn(`Order not found: ${data.orderId}`);
         throw new RpcException({
           statusCode: 404,
-          message: `Order with ID ${orderId} not found`,
+          message: `Order with ID ${data.orderId} not found`,
         });
       }
 
       if (order.pickupDriverId !== userId) {
-        this.logger.warn(`Order ${orderId} not assigned to driver ${userId}`);
+        this.logger.warn(
+          `Order ${data.orderId} not assigned to driver ${userId}`,
+        );
         throw new RpcException({
           statusCode: 403,
-          message: `Order with ID ${orderId} is not assigned to this driver`,
+          message: `Order with ID ${data.orderId} is not assigned to this driver`,
         });
       }
 
       if (order.status !== 'ASSIGNED') {
         this.logger.warn(
-          `Order ${orderId} status invalid for pickup: ${order.status}`,
+          `Order ${data.orderId} status invalid for pickup: ${order.status}`,
         );
         throw new RpcException({
           statusCode: 400,
@@ -526,19 +540,23 @@ export class OrderUseCasesImpl implements OrderUseCases {
 
       const location = order.pickupAddress.addressLine;
       const result = await this.orderRepo.confirmPickupOrder(
-        orderId,
+        data,
         location,
         userId,
       );
-      this.segmentHelper.proceedToNextSegment(driverId, 'complete', orderId);
+      this.segmentHelper.proceedToNextSegment(
+        data.driverId,
+        'complete',
+        data.orderId,
+      );
 
       this.logger.log(
-        `Pickup confirmed for orderId=${orderId} at location=${location}`,
+        `Pickup confirmed for orderId=${data.orderId} at location=${location}`,
       );
       return result;
     } catch (error) {
       this.logger.error(
-        `Failed to confirm pickup for orderId=${orderId}: ${error.message}`,
+        `Failed to confirm pickup for orderId=${data.orderId}: ${error.message}`,
       );
       throw handleCatch(error);
     }
@@ -1003,6 +1021,99 @@ export class OrderUseCasesImpl implements OrderUseCases {
         `Fetching orders failed for user ${userId}: ${error.message}`,
       );
       throw handleCatch(error);
+    }
+  }
+
+  async getOrderForSorting(userId: string) {
+    try {
+      const user = await this.orderRepo.findUserWithBranch(userId);
+      if (!user) {
+        throw new RpcException({
+          statusCode: 404,
+          message: `User with ID ${userId} not found.`,
+        });
+      }
+
+      const branchId = user.branch.id;
+
+      // 1️⃣ Unbatched orders
+      const unbatchedOrders =
+        await this.orderRepo.getOrdersForSorting(branchId);
+
+      // 2️⃣ Inbound batches (with their orders)
+      const batchList = await this.orderRepo.getBatchOrdersForSorting(branchId);
+
+      // 3️⃣ Convert batch → orders and attach batch info
+      const inboundBatchOrders = batchList.flatMap((batch) =>
+        batch.orders.map((order) => ({
+          ...order,
+
+          // add batch context
+          batchId: batch.id,
+          batchCode: batch.batchCode,
+          batchScope: batch.scope,
+          batchServiceType: batch.serviceType,
+          batchCategory: batch.category,
+          batchIsFragile: batch.isFragile,
+          originBranchId: batch.originBranchId,
+          destinationBranchId: batch.destinationBranchId,
+        })),
+      );
+
+      // 4️⃣ All orders merged
+      const allOrders = [...unbatchedOrders, ...inboundBatchOrders];
+
+      // 5️⃣ Categorize by shippingScope → serviceType
+      const categorized: Record<string, Record<string, any[]>> = {};
+
+      for (const order of allOrders) {
+        const scope = order.shippingScope;
+        const service = order.serviceType;
+
+        if (!categorized[scope]) categorized[scope] = {};
+        if (!categorized[scope][service]) categorized[scope][service] = [];
+
+        categorized[scope][service].push(order);
+      }
+
+      // 6️⃣ Final Response
+      return {
+        unbatchedOrders,
+        inboundBatchOrders,
+        totalOrders: allOrders.length,
+        categorized,
+      };
+    } catch (error) {
+      throw new RpcException({
+        statusCode: 500,
+        message: error?.message || 'Internal Server Error',
+      });
+    }
+  }
+
+  async addOnHold(orderIds: string[], reason: string, userId: string) {
+    try {
+      const result = await this.orderRepo.addOnHold(orderIds, reason, userId);
+      return result;
+    } catch (error) {
+      throw handleCatch(error);
+    }
+  }
+
+  async removeOnHold(orderIds: string[], userId: string) {
+    try {
+      return await this.orderRepo.removeOnHold(orderIds, userId);
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  async getOnHoldOrders(userId: any) {
+    try {
+      const user = await this.orderRepo.findUserWithBranch(userId);
+      return await this.orderRepo.getOnHoldOrders(user.branch.id);
+    } catch (error) {
+      handleCatch(error);
     }
   }
 }

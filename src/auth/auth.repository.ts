@@ -16,12 +16,28 @@ export class AuthRepository {
       where: { email },
       include: { role: true },
     });
-    
   }
   async findByPhone(phone: string): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { phone },
       include: { role: true },
+    });
+  }
+  async findByPhoneDriver(phone: string) {
+    return this.prisma.user.findUnique({
+      where: { phone },
+      include: { role: {
+        select:{
+          id: true,
+          name: true
+        }
+      }, driver: {
+        select:{
+          id: true,
+          type: true,
+          status: true
+        }
+      } },
     });
   }
 
@@ -36,7 +52,18 @@ export class AuthRepository {
     });
   }
   async findById(id: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { id } });
+    return this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        driver: {
+          select: {
+            id: true,
+            status: true,
+            type: true,
+          },
+        },
+      },
+    });
   }
 
   async findRoleById(id: string) {

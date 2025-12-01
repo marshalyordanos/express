@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { DispatchStatus, OrderStatus, PaymentStatus, ServiceType, ShippingScope, VehicleStatus } from '@prisma/client';
+import {
+  DispatchStatus,
+  OrderStatus,
+  PaymentStatus,
+  ServiceType,
+  ShippingScope,
+  VehicleStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 type OptimizedOrderPayload = {
@@ -289,7 +296,7 @@ export class DashboardReportRepository {
     return { data: result };
   }
 
-   async getVehicles(filter?: {
+  async getVehicles(filter?: {
     status?: VehicleStatus;
     type?: string;
     driverId?: string;
@@ -308,61 +315,60 @@ export class DashboardReportRepository {
   }
 
   // ✅ Drivers that are active today
-async getActiveDrivers() {
-  return this.prisma.driver.count({
-    where: {
-      status: { in: ["ONLINE", "AVAILABLE", "ENROUTE"] }
-    }
-  });
-}
+  async getActiveDrivers() {
+    return this.prisma.driver.count({
+      where: {
+        status: { in: ['ONLINE', 'AVAILABLE', 'ENROUTE'] },
+      },
+    });
+  }
 
-// ✅ Active drivers yesterday
-async getActiveDriversYesterday() {
-  const start = new Date();
-  start.setDate(start.getDate() - 1);
-  start.setHours(0, 0, 0, 0);
+  // ✅ Active drivers yesterday
+  async getActiveDriversYesterday() {
+    const start = new Date();
+    start.setDate(start.getDate() - 1);
+    start.setHours(0, 0, 0, 0);
 
-  const end = new Date(start);
-  end.setHours(23, 59, 59, 999);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
 
-  return this.prisma.driver.count({
-    where: {
-      updatedAt: { gte: start, lte: end },
-      status: { in: ["ONLINE", "AVAILABLE", "ENROUTE"] }
-    }
-  });
-}
+    return this.prisma.driver.count({
+      where: {
+        updatedAt: { gte: start, lte: end },
+        status: { in: ['ONLINE', 'AVAILABLE', 'ENROUTE'] },
+      },
+    });
+  }
 
-// ✅ Deliveries today
-async getDeliveriesToday() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
+  // ✅ Deliveries today
+  async getDeliveriesToday() {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
 
-  return this.prisma.order.count({
-    where: {
-      status: "DELIVERED",
-      actualDeliveryAt: { gte: start }
-    }
-  });
-}
+    return this.prisma.order.count({
+      where: {
+        status: 'DELIVERED',
+        actualDeliveryAt: { gte: start },
+      },
+    });
+  }
 
-// ✅ Deliveries yesterday
-async getDeliveriesYesterday() {
-  const start = new Date();
-  start.setDate(start.getDate() - 1);
-  start.setHours(0, 0, 0, 0);
+  // ✅ Deliveries yesterday
+  async getDeliveriesYesterday() {
+    const start = new Date();
+    start.setDate(start.getDate() - 1);
+    start.setHours(0, 0, 0, 0);
 
-  const end = new Date(start);
-  end.setHours(23, 59, 59, 999);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
 
-  return this.prisma.order.count({
-    where: {
-      status: "DELIVERED",
-      actualDeliveryAt: { gte: start, lte: end }
-    }
-  });
-}
-
+    return this.prisma.order.count({
+      where: {
+        status: 'DELIVERED',
+        actualDeliveryAt: { gte: start, lte: end },
+      },
+    });
+  }
 
   // ✅ Fetch all dispatches (with optional filters)
   async getDispatches(filters?: {
@@ -429,53 +435,59 @@ async getDeliveriesYesterday() {
     });
   }
 
-// ✅ On-time orders
-async getOnTimeOrders() {
-  return this.prisma.order.count({
-    where: {
-      status: "DELIVERED",
-      actualDeliveryAt: { lte: new Date() },
-      NOT: { estimatedDeliveryAt: null },
-      AND: { actualDeliveryAt: { lte: this.prisma.order.fields.estimatedDeliveryAt } }
+  // ✅ On-time orders
+  async getOnTimeOrders() {
+    return this.prisma.order.count({
+      where: {
+        status: 'DELIVERED',
+        actualDeliveryAt: { lte: new Date() },
+        NOT: { estimatedDeliveryAt: null },
+        AND: {
+          actualDeliveryAt: {
+            lte: this.prisma.order.fields.estimatedDeliveryAt,
+          },
+        },
+      },
+    });
+  }
+
+  // ✅ Total delivered orders
+  async getTotalDelivered() {
+    return this.prisma.order.count({
+      where: {
+        status: 'DELIVERED',
+      },
+    });
+  }
+
+  // ✅ Route efficiency: optimized vs actual
+  async getRouteEfficiency() {
+    const jobs = await this.prisma.optimizationJob.findMany({
+      where: { status: 'COMPLETED' },
+      select: {
+        totalDistance: true,
+        optimizedOrder: true,
+      },
+    });
+
+    let optimized = 0;
+    let actual = 0;
+
+    for (const job of jobs) {
+      const data = (job.optimizedOrder ?? {}) as Record<string, any>;
+
+      const optDist =
+        typeof data.optimizedDistance === 'number' ? data.optimizedDistance : 0;
+      const actualDist =
+        typeof job.totalDistance === 'number' ? job.totalDistance : 0;
+
+      optimized += optDist;
+      actual += actualDist;
     }
-  });
-}
 
-// ✅ Total delivered orders
-async getTotalDelivered() {
-  return this.prisma.order.count({
-    where: {
-      status: "DELIVERED"
-    }
-  });
-}
-
-// ✅ Route efficiency: optimized vs actual
-async getRouteEfficiency() {
-  const jobs = await this.prisma.optimizationJob.findMany({
-    where: { status: "COMPLETED" },
-    select: {
-      totalDistance: true,
-      optimizedOrder: true
-    }
-  });
-
-let optimized = 0;
-let actual = 0;
-
-for (const job of jobs) {
-  const data = (job.optimizedOrder ?? {}) as Record<string, any>;
-
-  const optDist = typeof data.optimizedDistance === 'number' ? data.optimizedDistance : 0;
-  const actualDist = typeof job.totalDistance === 'number' ? job.totalDistance : 0;
-
-  optimized += optDist;
-  actual += actualDist;
-}
-
-  if (actual === 0) return 0;
-  return +(optimized / actual * 100).toFixed(2);
-}
+    if (actual === 0) return 0;
+    return +((optimized / actual) * 100).toFixed(2);
+  }
 
   // Fetch last month utilization (example query — modify if needed)
   async getUtilizationStats() {
@@ -974,6 +986,386 @@ for (const job of jobs) {
         order: true, // include the related order
       },
     });
+  }
+
+  ///////////////////
+
+  async getDriverDashboardData(driverId: string, date: Date) {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // 1️⃣ Today's assigned deliveries (pickup, delivery, or both)
+    const todayAssigned = await this.prisma.order.count({
+      where: {
+        OR: [
+          {
+            pickupDriverId: driverId,
+            pickupAssignedAt: { gte: startOfDay, lte: endOfDay },
+          },
+          {
+            deliveryDriverId: driverId,
+            deliveryAssignedAt: { gte: startOfDay, lte: endOfDay },
+          },
+        ],
+      },
+    });
+
+    // 2️⃣ Completed deliveries
+    const completedDeliveries = await this.prisma.order.count({
+      where: {
+        OR: [
+          // Only pickup driver (delivery driver exists or not, but not this driver)
+          {
+            pickupDriverId: driverId,
+            NOT: {
+              deliveryDriverId: driverId,
+            },
+            pickupConfirmed: true,
+            dropoffConfirmed: true,
+          },
+          // Only delivery driver
+          {
+            deliveryDriverId: driverId,
+            status: 'DELIVERED',
+          },
+          // Both pickup & delivery driver
+          {
+            pickupDriverId: driverId,
+            deliveryDriverId: driverId,
+            status: 'DELIVERED',
+          },
+        ],
+        updatedAt: { gte: startOfDay, lte: endOfDay }, // completed today
+      },
+    });
+
+    // 3️⃣ Ongoing deliveries
+    const ongoingDeliveries = await this.prisma.order.count({
+      where: {
+        OR: [
+          // Pickup driver, pickup not confirmed or pickup done but dropoff not done
+          {
+            pickupDriverId: driverId,
+            NOT: {
+              deliveryDriverId: driverId,
+            },
+            OR: [
+              { pickupConfirmed: false, dropoffConfirmed: false },
+              { pickupConfirmed: true, dropoffConfirmed: false },
+            ],
+          },
+          // Delivery driver, not delivered
+          {
+            deliveryDriverId: driverId,
+            status: { not: 'DELIVERED' },
+          },
+          // Both pickup & delivery driver, delivery not delivered
+          {
+            pickupDriverId: driverId,
+            deliveryDriverId: driverId,
+            status: { not: 'DELIVERED' },
+          },
+        ],
+      },
+    });
+
+    // 4️⃣ Aggregates from completed segments (earnings, distance, average delivery time)
+    const completedSegments = await this.prisma.orderRouteSegment.aggregate({
+      where: {
+        driverId,
+        status: 'COMPLETED',
+        endTime: { gte: startOfDay, lte: endOfDay },
+      },
+      _sum: {
+        actualDistanceKm: true,
+        actualDurationMin: true,
+      },
+      _count: {
+        _all: true,
+      },
+    });
+
+    const earningsResult = await this.prisma.driverPayment.aggregate({
+      where: {
+        driverId,
+        createdAt: { gte: startOfDay, lte: endOfDay },
+        status: 'COMPLETED',
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    return {
+      todaysDeliveries: todayAssigned,
+      completedDeliveries,
+      ongoingDeliveries,
+      distanceCovered: completedSegments._sum.actualDistanceKm || 0,
+      averageDeliveryTime:
+        completedSegments._count._all > 0
+          ? (completedSegments._sum.actualDurationMin || 0) /
+            completedSegments._count._all
+          : 0,
+      earnings: earningsResult._sum.amount || 0,
+    };
+  }
+
+  async getDriverAllTimeDeliveries(driverId: string) {
+    // 1️⃣ All assigned deliveries (pickup, delivery, or both)
+    const allAssigned = await this.prisma.order.count({
+      where: {
+        OR: [{ pickupDriverId: driverId }, { deliveryDriverId: driverId }],
+      },
+    });
+    console.log('All assigned ordrs ::: ', allAssigned);
+
+    // 2️⃣ Completed deliveries
+    const completedDeliveries = await this.prisma.order.count({
+      where: {
+        OR: [
+          // Pickup-only for this driver (delivery driver not this driver)
+          {
+            pickupDriverId: driverId,
+            // NOT: { deliveryDriverId: driverId },
+            pickupConfirmed: true,
+            dropoffConfirmed: true,
+          },
+          // Only delivery driver
+          {
+            deliveryDriverId: driverId,
+            status: 'DELIVERED',
+          },
+          // Both pickup & delivery driver
+          {
+            pickupDriverId: driverId,
+            deliveryDriverId: driverId,
+            status: 'DELIVERED',
+          },
+        ],
+      },
+    });
+
+    console.log('Completed deliveries ::: ', completedDeliveries);
+
+    // 3️⃣ Ongoing deliveries
+    const ongoingDeliveries = await this.prisma.order.count({
+      where: {
+        OR: [
+          // Pickup driver, pickup not confirmed or dropoff not done
+          {
+            pickupDriverId: driverId,
+            pickupConfirmed: false,
+            dropoffConfirmed: false,
+          },
+          {
+            pickupDriverId: driverId,
+            pickupConfirmed: true,
+            dropoffConfirmed: false,
+          },
+          // Delivery driver, not delivered
+          {
+            deliveryDriverId: driverId,
+            status: { notIn: ['DELIVERED'] },
+          },
+          // Both pickup & delivery driver, delivery not delivered yet
+          {
+            pickupDriverId: driverId,
+            deliveryDriverId: driverId,
+            status: { notIn: ['DELIVERED'] },
+          },
+        ],
+      },
+    });
+
+    console.log('Ongoing deliveries :: ', ongoingDeliveries);
+
+    // 4️⃣ Aggregates from completed segments (earnings, distance, average delivery time)
+    const completedSegments = await this.prisma.orderRouteSegment.aggregate({
+      where: {
+        driverId,
+        status: 'COMPLETED',
+      },
+      _sum: {
+        actualDistanceKm: true,
+        actualDurationMin: true,
+      },
+      _count: {
+        _all: true,
+      },
+    });
+
+    console.log('COmpleted segments :: ', completedSegments);
+
+    const earningsResult = await this.prisma.driverPayment.aggregate({
+      where: {
+        driverId,
+        status: 'PAID',
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    console.log('Earning Result ::: ', earningsResult);
+
+    return {
+      totalAssigned: allAssigned,
+      completedDeliveries,
+      ongoingDeliveries,
+      distanceCovered: completedSegments._sum.actualDistanceKm || 0,
+      averageDeliveryTime:
+        completedSegments._count._all > 0
+          ? (completedSegments._sum.actualDurationMin || 0) /
+            completedSegments._count._all
+          : 0,
+      earnings: earningsResult._sum.amount || 0,
+    };
+  }
+
+  async getCargoOfficerDashboard(branchId: string, officerId: string) {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // 1️⃣ Batches arrived today (handed over today)
+    const batchesArrivedToday = await this.prisma.batchDispatch.count({
+      where: {
+        destinationBranchId: branchId,
+        status: 'ARRIVED_AT_DESTINATION',
+        handovers: {
+          some: {
+            handedById: officerId,
+            handedAt: { gte: startOfDay, lte: endOfDay },
+          },
+        },
+      },
+    });
+
+    const incomingBatches = await this.prisma.batchDispatch.count({
+      where: {
+        destinationBranchId: branchId,
+        status: 'IN_TRANSIT',
+      },
+    });
+
+    // 2️⃣ Batches ready for dispatch
+    const batchesReadyForDispatch = await this.prisma.batchDispatch.count({
+      where: {
+        originBranchId: branchId,
+        officerId,
+        status: 'READY',
+      },
+    });
+
+    // 3️⃣ Batches awaiting sorting (assuming PENDING or specific sorting status)
+    const batchesAwaitingSorting = await this.prisma.batchDispatch.count({
+      where: {
+        officerId,
+        status: 'ARRIVED_AT_DESTINATION', // adjust if you have a specific sorting status
+      },
+    });
+
+    // 4️⃣ Batches with exceptions
+    const batchesWithExceptions = await this.prisma.batchDispatch.count({
+      where: {
+        officerId,
+        OR: [{ originBranchId: branchId }, { destinationBranchId: branchId }],
+        orders: {
+          some: {
+            status: {
+              in: ['EXCEPTION', 'CANCELED', 'FAILED', 'REJECTED', 'ON_HOLD'],
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      batchesArrivedToday,
+      incomingBatches,
+      batchesReadyForDispatch,
+      batchesAwaitingSorting,
+      batchesWithExceptions,
+    };
+  }
+
+  async getUserWithBranch(officerId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: officerId },
+      select: {
+        id: true,
+        branch: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getSortedOrdersSummary(branchId: string) {
+    const [
+      unbatchedOrders,
+      ordersInArrivedBatches,
+      sortedUnbatched,
+      sortedIncomingOrders,
+    ] = await Promise.all([
+      // 1️⃣ Orders not assigned to any batch
+      this.prisma.order.count({
+        where: {
+          branchId,
+          batchId: null,
+          status: 'APPROVED',
+        },
+      }),
+
+      // 2️⃣ Orders inside arrived batches
+      this.prisma.order.count({
+        where: {
+          status: 'VALIDATED',
+          batch: {
+            destinationBranchId: branchId,
+            status: 'ARRIVED_AT_DESTINATION',
+          },
+        },
+      }),
+
+      // 3️⃣ Sorted unbatched orders (assigned or on hold)
+      this.prisma.order.count({
+        where: {
+          branchId,
+          batchId: { not: null },
+          status: {
+            in: ['COLLECTED', 'ASSIGNED', 'ON_HOLD'],
+          },
+        },
+      }),
+
+      // 4️⃣ Sorted incoming batch orders
+      this.prisma.order.count({
+        where: {
+          batch: {
+            destinationBranchId: branchId,
+            status: 'ARRIVED_AT_DESTINATION',
+          },
+          status: {
+            in: ['COLLECTED', 'ASSIGNED', 'ON_HOLD'],
+          },
+        },
+      }),
+    ]);
+
+    const totalItemsToSort = unbatchedOrders + ordersInArrivedBatches;
+    const totalSorted = sortedUnbatched + sortedIncomingOrders;
+
+    return {
+      totalItemsToSort,
+      totalSorted,
+      summaryText: `${totalSorted} of ${totalItemsToSort} items sorted`,
+    };
   }
 }
 

@@ -24,6 +24,16 @@ export interface OrderQRCodeData {
   shipmentType: ShipmentType; // ShipmentType enum string
 }
 
+export interface BatchQRCodeData {
+  batchId: string;
+  orderIds: string[];
+  branchId?: string;
+  serviceType?: ServiceType; // ServiceType enum string
+  weight?: number;
+  destination: DeliveryAddressDto;
+  shippingScope: ShippingScope; // ShippingScope enum string
+}
+
 export interface ScanResult {
   valid: boolean;
   orderId?: string;
@@ -31,6 +41,14 @@ export interface ScanResult {
   notes?: string;
   payload?: OrderQRCodeData;
 }
+
+export interface BatchScanResult {
+  valid: boolean;
+  batchId?: string;
+  notes?: string;
+  payload?: BatchQRCodeData;
+}
+
 
 export async function generateOrderQRCode(
   data: OrderQRCodeData,

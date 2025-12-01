@@ -521,6 +521,12 @@ export class DispatchRepository {
       notes?: string;
       location: string;
     },
+    podImages?: {
+      url: string;
+      publicId?: string;
+      fileName?: string;
+      fileType?: string;
+    }[],
   ) {
     return this.prisma.$transaction(
       async (tx) => {
@@ -542,6 +548,21 @@ export class DispatchRepository {
             },
           },
         });
+
+        if (podImages && podImages.length > 0) {
+          for (const img of podImages) {
+            await tx.podImage.create({
+              data: {
+                driverId: handedById,
+                orderId: null,
+                url: img.url,
+                publicId: img.publicId,
+                fileName: img.fileName,
+                fileType: img.fileType,
+              },
+            });
+          }
+        }
 
         await this.logBatchOrdersStatus(
           tx,
