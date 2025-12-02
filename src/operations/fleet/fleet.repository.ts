@@ -37,49 +37,34 @@ export class VehicleRepository {
     });
   }
 
-  async getAllVehicles(
-    page = 1,
-    pageSize = 10,
-    status?: string,
-    search?: string,
-  ): Promise<{
-    vehicles: Partial<Vehicle>[];
-    pagination: {
-      total: number;
-      page: number;
-      pageSize: number;
-      totalPages: number;
-    };
-  }> {
-    const skip = (page - 1) * pageSize;
-    const where: any = {};
-    if (status) where.status = status;
-    if (search) where.plateNumber = { contains: search, mode: 'insensitive' };
+  async getAllVehicles(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['plateNumber'],
+      hasNotDate: true,
+    });
 
-    const [vehicles, total] = await Promise.all([
+    const query = feature.getQuery();
+
+    const results = await Promise.all([
       this.prisma.vehicle.findMany({
-        where,
-        skip,
-        take: pageSize,
-        include: {
-          driver: {
-            include: { user: { select: { name: true, phone: true } } },
-          },
-        },
+        ...query,
+
+        where: query.where || {},
+        include: { batchDispatches: true, driver: true, fleetLogs: true },
       }),
-      this.prisma.vehicle.count({ where }),
+      this.prisma.vehicle.count({ where: query.where || {} }),
     ]);
 
-    const totalPages = Math.ceil(total / pageSize);
-
+    const models = results[0] || [];
+    const total = results[1] || 0;
     return {
-      vehicles,
-      pagination: {
-        total,
-        page,
-        pageSize,
-        totalPages,
-      },
+      models,
+      pagination: feature.getPagination(total),
     };
   }
 
@@ -148,7 +133,7 @@ export class VehicleRepository {
       sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: ['maintenance'],
+      searchableFields: ['maintenance', 'vehicle.plateNumber'],
       hasNotDate: true,
     });
 

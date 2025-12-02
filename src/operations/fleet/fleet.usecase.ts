@@ -7,16 +7,12 @@ import {
   VehicleMaintenanceDto,
   VehicleMaintenanceQueryDto,
 } from './fleet.entity';
+import { ListQueryDto } from 'src/common/query/query.dto';
 
 export interface FleetUsecase {
   // Vehicle Management
   createVehicle(data: CreateVehicleDto): Promise<Vehicle>;
-  getAllVehicles(
-    page?: number,
-    pageSize?: number,
-    status?: string,
-    search?: string,
-  ): Promise<{ vehicles: Partial<Vehicle>[]; pagination: IPagination }>;
+  getAllVehicles(query?: ListQueryDto);
   getVehicleById(id: string): Promise<Vehicle | null>;
   updateVehicle(id: string, data: Partial<UpdateVehicleDto>): Promise<Vehicle>;
   deleteVehicle(id: string): Promise<Vehicle>;

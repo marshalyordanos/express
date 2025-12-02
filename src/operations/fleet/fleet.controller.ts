@@ -34,17 +34,11 @@ export class FleetMessageController {
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Fleet', PermissionActions.READ)
   @MessagePattern(PATTERNS.FLEET_GET_ALL_VEHICLES)
-  async getAllVehicles(@Payload() payload: any) {
-    const { page = 1, pageSize = 10, search, status } = payload;
-    const result = await this.usecases.getAllVehicles(
-      page,
-      pageSize,
-      status,
-      search,
-    );
+  async getAllVehicles(@Payload() payload: { query: ListQueryDto }) {
+    const result = await this.usecases.getAllVehicles(payload.query);
     return IResponse.success(
       'Vehicles fetched successfully',
-      result.vehicles,
+      result.models,
       result.pagination,
     );
   }

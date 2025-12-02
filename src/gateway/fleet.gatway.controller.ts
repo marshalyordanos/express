@@ -326,13 +326,7 @@ export class FleetGatewayController {
   //needs Sanitize
   // Get all vehicles (with pagination)
   @Get()
-  async getAllVehicles(
-    @Req() req,
-    @Query('page') page = 1,
-    @Query('pageSize') pageSize = 10,
-    @Query('search') search?: string,
-    @Query('status') status?: string,
-  ) {
+  async getAllVehicles(@Req() req, @Query() query: ListQueryDto) {
     console.log('=============================: fleet');
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
@@ -351,10 +345,7 @@ export class FleetGatewayController {
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
       ip,
-      page: Number(page),
-      pageSize: Number(pageSize),
-      search: search || null,
-      status: status || null,
+      query,
     });
   }
 

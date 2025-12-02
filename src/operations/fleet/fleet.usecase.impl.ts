@@ -49,24 +49,14 @@ export class FleetUseCasesImp implements FleetUsecase {
     }
   }
 
-  async getAllVehicles(
-    page = 1,
-    pageSize = 10,
-    status?: string,
-    search?: string,
-  ): Promise<{ vehicles: Partial<Vehicle>[]; pagination: IPagination }> {
+  async getAllVehicles(query?: ListQueryDto) {
     try {
       this.logger.log(
-        `Fetching vehicles with page: ${page}, pageSize: ${pageSize}, status: ${status}, search: ${search}`,
+        `Fetching vehicles with page: ${query?.page}, pageSize: ${query?.pageSize}`,
       );
 
-      const result = await this.vehicleRepo.getAllVehicles(
-        page,
-        pageSize,
-        status,
-        search,
-      );
-      this.logger.log(`Fetched ${result.vehicles.length} vehicles`);
+      const result = await this.vehicleRepo.getAllVehicles(query);
+      this.logger.log(`Fetched ${result.models.length} vehicles`);
       return result;
     } catch (error) {
       this.logger.error(
