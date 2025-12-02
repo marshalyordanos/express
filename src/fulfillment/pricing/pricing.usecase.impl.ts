@@ -408,26 +408,62 @@ export class PricingUseCasesImpl implements PricingUseCases {
       }
 
       // Validate weight brackets if provided
-      if (data.weightBrackets) {
-        const sorted = [...data.weightBrackets].sort(
-          (a, b) => a.minKg - b.minKg,
+      // Validate weight brackets with detailed logging
+      const sorted = [...data.weightBrackets].sort((a, b) => a.minKg - b.minKg);
+
+      this.logger.log(
+        `🔹 Weight brackets sorted for validation: ${JSON.stringify(sorted)}`,
+      );
+
+      for (let i = 0; i < sorted.length; i++) {
+        const w = sorted[i];
+
+        this.logger.log(
+          `🔹 Checking bracket #${i + 1}: minKg=${w.minKg}, maxKg=${w.maxKg}, rate=${w.rate}`,
         );
-        for (let i = 0; i < sorted.length; i++) {
-          const w = sorted[i];
-          if (w.minKg < 0 || w.maxKg <= 0 || w.maxKg < w.minKg) {
-            throw new RpcException({
-              statusCode: 400,
-              message: `Invalid weight bracket: ${JSON.stringify(w)}`,
-            });
-          }
-          if (i > 0 && w.minKg <= sorted[i - 1].maxKg) {
+
+        // Basic validation
+        if (w.minKg < 0 || w.maxKg <= 0 || w.maxKg < w.minKg) {
+          this.logger.error(
+            `❌ Invalid weight bracket detected: ${JSON.stringify(w)}`,
+          );
+          throw new RpcException({
+            statusCode: 400,
+            message: `Invalid weight bracket: ${JSON.stringify(w)}`,
+          });
+        } else {
+          this.logger.log(`✅ Bracket #${i + 1} basic validation passed`);
+        }
+
+
+        // Allow touching (minKg == previous maxKg), forbid overlap
+        if (i > 0) {
+          const prev = sorted[i - 1];
+          this.logger.log(
+            `🔹 Comparing with previous bracket: minKg=${prev.minKg}, maxKg=${prev.maxKg}`,
+          );
+
+          if (w.minKg < prev.maxKg) {
+            this.logger.error(
+              `❌ Overlapping weight bracket detected: current=${JSON.stringify(
+                w,
+              )}, previous=${JSON.stringify(prev)}`,
+            );
             throw new RpcException({
               statusCode: 400,
               message: `Overlapping weight bracket: ${JSON.stringify(w)}`,
             });
+          } else if (w.minKg === prev.maxKg) {
+            this.logger.log(
+              `⚡ Bracket touches previous bracket at boundary (minKg=${w.minKg} == prev.maxKg=${prev.maxKg})`,
+            );
+          } else {
+            this.logger.log(`✅ No overlap with previous bracket`);
           }
         }
       }
+
+      this.logger.log(`🔹 All weight brackets validated successfully`);
 
       // Validate commissions
       if (data.driverCommissions) {
@@ -456,7 +492,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
       if (data.effectiveFrom)
         payload.effectiveFrom = new Date(data.effectiveFrom);
       if (data.effectiveTo) payload.effectiveTo = new Date(data.effectiveTo);
-      payload.updatedBy = userId;
+      // payload.updatedBy = userId;
       payload.updatedAt = new Date();
 
       // Children — replace logic

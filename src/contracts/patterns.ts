@@ -22,6 +22,7 @@ export const PATTERNS = {
   USER_FIND_DRIVER: 'user.findDrivers',
   USER_CREATE_DRIVER: 'user.createDriver',
   USER_CUSTOMER_DETAIL: 'user.customerDetail',
+  USER_CUSTOMER_CREATE: 'user.customerCreate',
 
   ADDRESS_CREATE: 'address.create',
   ADDRESS_LIST: 'address.list',

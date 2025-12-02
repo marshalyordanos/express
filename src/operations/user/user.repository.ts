@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AddressDto,
+  CreateCustomerDto,
   CreateDriver,
   CustomerCategoryDto,
   NotificationPreferencesDto,
@@ -19,6 +20,31 @@ import { connect } from 'http2';
 @Injectable()
 export class UserRepository {
   constructor(private prisma: PrismaService) {}
+
+  async createUser(data: any) {
+    return this.prisma.user.create({
+      data,
+      include: {
+        corporateInfo: true,
+        addresses: true,
+        customerCategory: true,
+      },
+    });
+  }
+
+  async findBranchById(branchId: string) {
+    return this.prisma.branch.findUnique({ where: { id: branchId } });
+  }
+
+  async findCustomerCategoryById(categoryId: string) {
+    return this.prisma.customerCategory.findUnique({
+      where: { id: categoryId },
+    });
+  }
+
+  async findUserByPhone(phone: string) {
+    return this.prisma.user.findUnique({ where: { phone } });
+  }
 
   async findRoleById(roleId: string) {
     return this.prisma.role.findUnique({ where: { id: roleId } });
@@ -78,115 +104,115 @@ export class UserRepository {
     };
   }
 
- async getCustomerDetail(
-  payload: ListQueryDto,
-  customerId: string,
-  roleId: string,
-) {
-  if (/roleId:[^,]*/.test(payload.filter)) {
-    payload.filter = payload.filter.replace(
-      /roleId:[^,]*/,
-      `roleId:${roleId}`,
-    );
-  } else {
-    payload.filter = payload.filter
-      ? payload.filter + `,roleId:${roleId}`
-      : `roleId:${roleId}`;
-  }
+  async getCustomerDetail(
+    payload: ListQueryDto,
+    customerId: string,
+    roleId: string,
+  ) {
+    if (/roleId:[^,]*/.test(payload.filter)) {
+      payload.filter = payload.filter.replace(
+        /roleId:[^,]*/,
+        `roleId:${roleId}`,
+      );
+    } else {
+      payload.filter = payload.filter
+        ? payload.filter + `,roleId:${roleId}`
+        : `roleId:${roleId}`;
+    }
 
-  const feature = new PrismaQueryFeature({
-    search: payload.search,
-    filter: payload.filter,
-    sort: payload.sort,
-    page: payload.page,
-    pageSize: payload.pageSize,
-    searchableFields: ['name', 'email', 'phone'],
-  });
-
-  const query = feature.getQuery();
-
-  // ✅ ADD CUSTOMER ID FILTER HERE
-  query.where = {
-    ...(query.where || {}),
-    id: customerId,     // filtering by single customer
-  };
-
-  const [users, total] = await Promise.all([
-    this.prisma.user.findMany({
-      ...query,
-      where: query.where || {},
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        customId: true,
-        isStaff: true,
-        isSuperAdmin: true,
-        isActive: true,
-        createdAt: true,
-        createdBy: true,
-        addresses: {
-          select: {
-            label: true,
-            addressLine: true,
-            city: true,
-            state: true,
-            country: true
-          }
-        },
-        customerType: true,
-        corporateInfo: true,
-        preferences: true,
-        notificationPreference: true,
-        orders: {
-          select: {
-            id: true,
-            trackingCode: true,
-            serviceType: true,
-            shippingScope: true,
-            category: true,
-            createdAt: true,
-            actualDeliveryAt: true,
-            finalPrice: true
-          }
-        }
-      },
-    }),
-    this.prisma.user.count({
-      where: query.where || {},
-    }),
-  ]);
-
-  // User IDs
-  const userIds = users.map((u) => u.id);
-
-  const orderStats = await this.prisma.order.groupBy({
-    by: ['customerId'],
-    where: { customerId: { in: userIds } },
-    _count: { id: true },
-    _sum: { finalPrice: true },
-  });
-
-  const statsMap = new Map();
-  for (const s of orderStats) {
-    statsMap.set(s.customerId, {
-      ordersCount: s._count.id,
-      ordersTotalPrice: s._sum.finalPrice ?? 0,
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['name', 'email', 'phone'],
     });
+
+    const query = feature.getQuery();
+
+    // ✅ ADD CUSTOMER ID FILTER HERE
+    query.where = {
+      ...(query.where || {}),
+      id: customerId, // filtering by single customer
+    };
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        ...query,
+        where: query.where || {},
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          customId: true,
+          isStaff: true,
+          isSuperAdmin: true,
+          isActive: true,
+          createdAt: true,
+          createdBy: true,
+          addresses: {
+            select: {
+              label: true,
+              addressLine: true,
+              city: true,
+              state: true,
+              country: true,
+            },
+          },
+          customerType: true,
+          corporateInfo: true,
+          preferences: true,
+          notificationPreference: true,
+          orders: {
+            select: {
+              id: true,
+              trackingCode: true,
+              serviceType: true,
+              shippingScope: true,
+              category: true,
+              createdAt: true,
+              actualDeliveryAt: true,
+              finalPrice: true,
+            },
+          },
+        },
+      }),
+      this.prisma.user.count({
+        where: query.where || {},
+      }),
+    ]);
+
+    // User IDs
+    const userIds = users.map((u) => u.id);
+
+    const orderStats = await this.prisma.order.groupBy({
+      by: ['customerId'],
+      where: { customerId: { in: userIds } },
+      _count: { id: true },
+      _sum: { finalPrice: true },
+    });
+
+    const statsMap = new Map();
+    for (const s of orderStats) {
+      statsMap.set(s.customerId, {
+        ordersCount: s._count.id,
+        ordersTotalPrice: s._sum.finalPrice ?? 0,
+      });
+    }
+
+    const models = users.map((u) => ({
+      ...u,
+      ordersCount: statsMap.get(u.id)?.ordersCount || 0,
+      ordersTotalPrice: statsMap.get(u.id)?.ordersTotalPrice || 0,
+    }));
+
+    return {
+      models,
+      pagination: feature.getPagination(total),
+    };
   }
-
-  const models = users.map((u) => ({
-    ...u,
-    ordersCount: statsMap.get(u.id)?.ordersCount || 0,
-    ordersTotalPrice: statsMap.get(u.id)?.ordersTotalPrice || 0,
-  }));
-
-  return {
-    models,
-    pagination: feature.getPagination(total),
-  };
-}
 
   async getAllCustomer(payload: ListQueryDto, roleId: string) {
     // --- Apply roleId filter ---
@@ -683,5 +709,14 @@ export class UserRepository {
       drivers,
       pagination: feature.getPagination(total),
     };
+  }
+
+  async getLastCustomId(prefix: string, roleAbbr: string) {
+    const lastUser = await this.prisma.user.findFirst({
+      where: { customId: { startsWith: `${prefix}-${roleAbbr}-` } },
+      orderBy: { createdAt: 'desc' },
+      select: { customId: true },
+    });
+    return lastUser?.customId || null;
   }
 }
