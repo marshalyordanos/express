@@ -19,7 +19,7 @@ export interface PricingUseCases {
   createTariff(data: TariffDto, userId: string): Promise<any>;
   findAllTariff(query: ListQueryDto): Promise<any>;
   findTariffById(id: string): Promise<any>;
-  updateTariff(id: string, data: Partial<UpdateTariffDto>): Promise<any>;
+  updateTariff(id: string, data: UpdateTariffDto, userId: string): Promise<any>;
   deleteTariff(id: string): Promise<any>;
   //======================================================================PROFIT MARGIN================================================================
   // createProfitMargin(data: ProfitMarginDto): Promise<any>;

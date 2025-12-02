@@ -241,15 +241,20 @@ export class PricingUseCasesImpl implements PricingUseCases {
 
       // Validate weight brackets
       const sorted = [...data.weightBrackets].sort((a, b) => a.minKg - b.minKg);
+
       for (let i = 0; i < sorted.length; i++) {
         const w = sorted[i];
+
+        // Basic validation
         if (w.minKg < 0 || w.maxKg <= 0 || w.maxKg < w.minKg) {
           throw new RpcException({
             statusCode: 400,
             message: `Invalid weight bracket: ${JSON.stringify(w)}`,
           });
         }
-        if (i > 0 && w.minKg <= sorted[i - 1].maxKg) {
+
+        // Allow touching (minKg == previous maxKg), forbid overlap
+        if (i > 0 && w.minKg < sorted[i - 1].maxKg) {
           throw new RpcException({
             statusCode: 400,
             message: `Overlapping weight bracket: ${JSON.stringify(w)}`,
@@ -390,54 +395,145 @@ export class PricingUseCasesImpl implements PricingUseCases {
     }
   }
 
-  async updateTariff(id: string, data: Partial<UpdateTariffDto>): Promise<any> {
-    this.logger.log(`Updating tariff: ${id}`);
+  async updateTariff(id: string, data: UpdateTariffDto, userId: string) {
+    this.logger.log(`Updating tariff ${id}`);
+
     try {
-      if (!id)
+      // Validate serviceTypes if provided
+      if (data.serviceTypes && data.serviceTypes.length === 0) {
         throw new RpcException({
           statusCode: 400,
-          message: 'Tariff ID is required',
+          message: 'serviceTypes cannot be empty',
         });
-
-      if (data.baseFee !== undefined && data.baseFee < 0)
-        throw new RpcException({
-          statusCode: 400,
-          message: 'baseFee must be >= 0',
-        });
-      if (data.perKgRate !== undefined && data.perKgRate < 0)
-        throw new RpcException({
-          statusCode: 400,
-          message: 'perKgRate must be >= 0',
-        });
-      if (data.perKmRate !== undefined && data.perKmRate < 0)
-        throw new RpcException({
-          statusCode: 400,
-          message: 'perKmRate must be >= 0',
-        });
-
-      if (data.effectiveFrom && data.effectiveTo) {
-        if (new Date(data.effectiveFrom) >= new Date(data.effectiveTo))
-          throw new RpcException({
-            statusCode: 400,
-            message: 'effectiveFrom must be before effectiveTo',
-          });
       }
 
-      if (
-        data.serviceType &&
-        !Object.values(ServiceType).includes(data.serviceType)
-      )
-        throw new RpcException({
-          statusCode: 400,
-          message: 'Invalid serviceType',
-        });
+      // Validate weight brackets if provided
+      if (data.weightBrackets) {
+        const sorted = [...data.weightBrackets].sort(
+          (a, b) => a.minKg - b.minKg,
+        );
+        for (let i = 0; i < sorted.length; i++) {
+          const w = sorted[i];
+          if (w.minKg < 0 || w.maxKg <= 0 || w.maxKg < w.minKg) {
+            throw new RpcException({
+              statusCode: 400,
+              message: `Invalid weight bracket: ${JSON.stringify(w)}`,
+            });
+          }
+          if (i > 0 && w.minKg <= sorted[i - 1].maxKg) {
+            throw new RpcException({
+              statusCode: 400,
+              message: `Overlapping weight bracket: ${JSON.stringify(w)}`,
+            });
+          }
+        }
+      }
 
-      const updated = await this.pricingRepo.updateTariff(id, data);
-      this.logger.log(`Tariff updated successfully: ${id}`);
+      // Validate commissions
+      if (data.driverCommissions) {
+        data.driverCommissions.forEach((dc) => {
+          if (
+            !dc.vehicleTypeId ||
+            (dc.fixed == null && dc.perKm == null && dc.percentage == null)
+          ) {
+            throw new RpcException({
+              statusCode: 400,
+              message: `Invalid driver commission: ${JSON.stringify(dc)}`,
+            });
+          }
+        });
+      }
+
+      // Build partial update payload
+      const payload: any = {
+        updatedAt: new Date(),
+      };
+
+      if (data.name) payload.name = data.name.trim();
+
+      if (data.shippingScope) payload.shippingScope = data.shippingScope;
+      if (data.currency) payload.currency = data.currency.trim().toUpperCase();
+      if (data.effectiveFrom)
+        payload.effectiveFrom = new Date(data.effectiveFrom);
+      if (data.effectiveTo) payload.effectiveTo = new Date(data.effectiveTo);
+      payload.updatedBy = userId;
+      payload.updatedAt = new Date();
+
+      // Children — replace logic
+      if (data.serviceTypes) {
+        payload.serviceTypes = {
+          deleteMany: {},
+          create: data.serviceTypes.map((s) => ({
+            serviceType: s.type,
+            baseFee: s.value,
+          })),
+        };
+      }
+
+      if (data.weightBrackets) {
+        payload.weightBuckets = {
+          deleteMany: {},
+          create: data.weightBrackets.map((w) => ({
+            startKg: w.minKg,
+            endKg: w.maxKg,
+            price: w.rate,
+          })),
+        };
+      }
+
+      if (data.driverCommissions) {
+        payload.driverCommissions = {
+          deleteMany: {},
+          create: data.driverCommissions.map((dc) => ({
+            vehicleTypeId: dc.vehicleTypeId,
+            fixed: dc.fixed ?? null,
+            perKm: dc.perKm ?? null,
+            percentage: dc.percentage ?? null,
+          })),
+        };
+      }
+
+      if (data.additionalCharges) {
+        payload.miscCharges = {
+          deleteMany: {},
+          create: data.additionalCharges.costPerKm
+            ? [
+                {
+                  name: 'cost_per_km',
+                  flatFee: data.additionalCharges.costPerKm,
+                },
+              ]
+            : [],
+        };
+
+        payload.profitMargin = data.additionalCharges.profitMargin
+          ? {
+              delete: {},
+              create: { percentage: data.additionalCharges.profitMargin },
+            }
+          : undefined;
+      }
+
+      if (data.airportFee) {
+        payload.airportFee = {
+          delete: {},
+          create: { amount: data.airportFee.price },
+        };
+      }
+
+      // Remove undefined fields
+      Object.keys(payload).forEach(
+        (k) => payload[k] === undefined && delete payload[k],
+      );
+
+      const updated = await this.pricingRepo.updateTariff(id, payload);
+
+      this.logger.log(`Tariff updated: ${id}`);
+
       return updated;
-    } catch (error) {
-      this.logger.error(`Failed to update tariff ${id}: ${error.message}`);
-      throw handleCatch(error);
+    } catch (err) {
+      this.logger.error(`Failed to update tariff: ${err.message}`);
+      throw err;
     }
   }
 
@@ -1838,259 +1934,174 @@ export class PricingUseCasesImpl implements PricingUseCases {
   //   };
   // }
 
-  // async calculatePriceFromDto(dto: CreateOrderDto) {
-  //   this.logger.log(
-  //     `🔹 Calculating price from DTO for customer ${dto.customerId || 'N/A'}`,
-  //   );
+  async calculatePriceFromDtoV2(dto: CreateOrderDto) {
+    this.logger.log(
+      `🔹 Calculating price from DTO for customer ${dto.customerId || 'N/A'}`,
+    );
 
-  //   // Extract values we need from dto
-  //   const {
-  //     customerId,
-  //     weight: dtoWeight,
-  //     quantity = 1,
-  //     serviceType,
-  //     shippingScope,
-  //     pickupAddress,
-  //     deliveryAddress,
-  //     branchId,
-  //   } = dto as any;
+    // Extract needed fields
+    const {
+      customerId,
+      weight: dtoWeight,
+      serviceType,
+      shippingScope,
+      branchId,
+      pickupAddress,
+      deliveryAddress,
+    } = dto as any;
 
-  //   // 1️⃣ Fetch customer & customer category in parallel (same as original)
-  //   const [customer] = await Promise.all([
-  //     customerId
-  //       ? this.pricingRepo.findCustomerById(customerId)
-  //       : Promise.resolve(null),
-  //   ]);
+    const weight = dtoWeight || 0;
 
-  //   const category = customer?.customerCategoryId
-  //     ? await this.pricingRepo.findCustomerCategoryById(
-  //         customer.customerCategoryId,
-  //       )
-  //     : null;
+    // 1️⃣ Load customer + category (same as your current DTO method)
+    const [customer] = await Promise.all([
+      customerId
+        ? this.pricingRepo.findCustomerById(customerId)
+        : Promise.resolve(null),
+    ]);
 
-  //   if (category)
-  //     this.logger.log(
-  //       `🔹 Customer Category: ${category.name} (${category.id})`,
-  //     );
-  //   if (category)
-  //     this.logger.log(
-  //       `🔹 Customer Category: ${category.name} (${category.id})`,
-  //     );
+    const category = customer?.customerCategoryId
+      ? await this.pricingRepo.findCustomerCategoryById(
+          customer.customerCategoryId,
+        )
+      : null;
 
-  //   // 2️⃣ Fetch applicable tariff (same lookup as before)
-  //   const tariff =
-  //     await this.pricingRepo.findTariffByScopeAndServiceTypeAndCustomerCategory(
-  //       shippingScope,
-  //       serviceType,
-  //       category?.id,
-  //     );
+    // 2️⃣ Fetch active tariff group (MUST MATCH calculatePrice(orderId))
+    const tariff = await this.pricingRepo.findTariffByScopeAndServiceType(
+      shippingScope,
+      serviceType,
+    );
 
-  //     console.log("TARIFF ::: ", tariff);
+    if (!tariff) {
+      return {
+        result: null,
+        error: `No active tariff group found for ${shippingScope}/${serviceType}`,
+      };
+    }
 
-  //   if (!tariff) {
-  //     return {
-  //       result: null,
-  //       error: `Tariff not found for ${shippingScope}/${serviceType}/${category?.name || 'None'}`,
-  //     };
-  //   }
+    // --------------------------------------------------------------------
+    // 3️⃣ Calculate Distance (DTO logic stays same)
+    // --------------------------------------------------------------------
 
-  //   // 3️⃣ Distance calculation (dto has no distance field)
-  //   // Resolve pickup coords: prefer dto.pickupAddress, fallback to branch coordinates if branchId present
-  //   let pickupCoord: { lat: number; lon: number } | null = null;
-  //   let deliveryCoord: { lat: number; lon: number } | null = null;
+    let pickupCoord: { lat: number; lon: number } | null = null;
+    let deliveryCoord: { lat: number; lon: number } | null = null;
 
-  //   console.log("PICKUP ADDRESS:::", pickupAddress);
+    if (pickupAddress?.lat != null && pickupAddress?.long != null) {
+      pickupCoord = {
+        lat: Number(pickupAddress.lat),
+        lon: Number(pickupAddress.long),
+      };
+    } else if (branchId) {
+      const branch = await this.pricingRepo.findBranchById(branchId);
+      if (branch?.address?.lat != null && branch?.address?.long != null) {
+        pickupCoord = {
+          lat: Number(branch.address.lat),
+          lon: Number(branch.address.long),
+        };
+      }
+    }
 
-  //   if (
-  //     pickupAddress &&
-  //     pickupAddress.lat != null &&
-  //     pickupAddress.long != null
-  //   ) {
-  //     pickupCoord = {
-  //       lat: Number(pickupAddress.lat),
-  //       lon: Number(pickupAddress.long),
-  //     };
-  //     console.log("PICKUP coords one :: ", pickupCoord);
+    if (deliveryAddress?.lat != null && deliveryAddress?.long != null) {
+      deliveryCoord = {
+        lat: Number(deliveryAddress.lat),
+        lon: Number(deliveryAddress.long),
+      };
+    }
 
-  //   } else if (branchId) {
-  //     // fetch branch to obtain coordinates
-  //     const branch = await this.pricingRepo.findBranchById(branchId);
-  //     if (
-  //       branch &&
-  //       branch.address &&
-  //       branch.address.lat != null &&
-  //       branch.address.long != null
-  //     ) {
-  //       pickupCoord = {
-  //         lat: Number(branch.address.lat),
-  //         lon: Number(branch.address.long),
-  //       };
-  //       console.log("PICKUP coords two :: ", pickupCoord);
+    const distance = await this.mapsService.calculateDistance(
+      pickupCoord || { lat: 0, lon: 0 },
+      deliveryCoord || { lat: 0, lon: 0 },
+    );
 
-  //     }
-  //   }
+    // --------------------------------------------------------------------
+    // 4️⃣ PRICE CALCULATION (EXACT LOGIC COPIED FROM calculatePrice(orderId))
+    // --------------------------------------------------------------------
 
-  //   console.log('DELIVERY ADDRESS FOR SUMMARY ::: ', deliveryAddress);
+    const breakdown: any = {};
 
-  //   if (
-  //     deliveryAddress &&
-  //     deliveryAddress.lat != null &&
-  //     deliveryAddress.long != null
-  //   ) {
-  //     deliveryCoord = {
-  //       lat: Number(deliveryAddress.lat),
-  //       lon: Number(deliveryAddress.long),
-  //     };
-  //     console.log("Delivery coords ::: ", deliveryCoord);
+    // 4.1 Base Fee (TariffServiceType match)
+    const service = tariff.serviceTypes.find(
+      (s) => s.serviceType === serviceType,
+    );
+    if (!service)
+      return { result: null, error: 'No serviceType pricing in tariff' };
 
-  //   }
+    breakdown.baseFee = service.baseFee;
 
-  //   // distance in kilometers (keep same unit as original order.distance)
-  //   let distanceKm = await this.mapsService.calculateDistance(
-  //     pickupCoord || { lat: 0, lon: 0 },
-  //     deliveryCoord || { lat: 0, lon: 0 },
-  //   );
+    // 4.2 Weight Bucket Fee
+    const bucket = tariff.weightBuckets.find(
+      (b) => weight >= b.startKg && weight <= b.endKg,
+    );
+    if (!bucket)
+      return { result: null, error: 'No weight bucket found in tariff' };
 
-  //   const weight = dtoWeight || 0;
-  //   const breakdown: any = {};
+    breakdown.weightPrice = bucket.price;
 
-  //   // Build a minimal OrderLike object for helper functions so they behave exactly like earlier code.
-  //   // Must include an `id` (some helper types expect it) — use transient preview id.
-  //   const orderLike: any = {
-  //     id: `preview-${Date.now()}`,
-  //     serviceType,
-  //     shippingScope,
-  //     weight,
-  //     distance: distanceKm,
-  //     // include other DTO fields that helpers might check in condition objects
-  //     quantity,
-  //     isFragile: (dto as any).isFragile,
-  //     shipmentType: (dto as any).shipmentType,
-  //     category: (dto as any).category,
-  //     // spread dto for edge cases where condition keys match dto property names
-  //     ...(dto as any),
-  //   };
+    // 4.3 Misc Charges
+    let miscTotal = 0;
+    breakdown.miscFees = [];
 
-  //   // 4️⃣ Base price calculation (exact same formula as original)
-  //   const basePrice =
-  //     (tariff.baseFee || 0) +
-  //     (tariff.perKgRate || 0) * weight +
-  //     (tariff.perKmRate || 0) * distanceKm;
-  //   breakdown.basePrice = basePrice;
+    for (const m of tariff.miscCharges) {
+      let amount = 0;
+      if (m.costPerKm) amount += m.costPerKm * distance;
+      if (m.flatFee) amount += m.flatFee;
 
-  //   // 5️⃣ Calculate misc fees
-  //   const [miscTotal, miscFees] = this.calculateMiscFees(
-  //     tariff.miscFees || [],
-  //     orderLike,
-  //     basePrice,
-  //     weight,
-  //     distanceKm,
-  //   );
+      miscTotal += amount;
+      breakdown.miscFees.push({ name: m.name, amount });
+    }
 
-  //   // 6️⃣ Calculate airport fees
-  //   const [airportTotal, airportFees] = this.calculateAirportFees(
-  //     tariff.airportFees || [],
-  //     orderLike,
-  //     weight,
-  //   );
+    // 4.4 Airport Fee
+    const airportTotal = tariff.airportFee?.amount ?? 0;
+    breakdown.airportFee = { total: airportTotal };
 
-  //   // 7️⃣ Calculate surcharges
-  //   const [surchargeTotal, surcharges] = this.calculateSurcharges(
-  //     tariff.surcharges || [],
-  //     orderLike,
-  //     basePrice,
-  //     miscTotal,
-  //     airportTotal,
-  //   );
+    // 4.5 Profit Margin
+    const subtotalBeforeProfit =
+      service.baseFee + bucket.price + miscTotal + airportTotal;
 
-  //   // 8️⃣ Calculate discounts
-  //   const [discountTotal, discounts] = category
-  //     ? await this.calculateDiscounts(
-  //         tariff.id,
-  //         category.id,
-  //         basePrice,
-  //         miscTotal,
-  //         airportTotal,
-  //         surchargeTotal,
-  //       )
-  //     : [0, []];
+    const profitTotal = tariff.profitMargin
+      ? (subtotalBeforeProfit * tariff.profitMargin.percentage) / 100
+      : 0;
 
-  //   // 9️⃣ Calculate profit margins
-  //   const [profitTotal, profitMargins] = this.calculateProfitMargins(
-  //     tariff.profitMargins || [],
-  //     orderLike,
-  //     basePrice,
-  //     miscTotal,
-  //     airportTotal,
-  //     surchargeTotal,
-  //     discountTotal,
-  //   );
+    breakdown.profit = { total: profitTotal };
 
-  //   // 🔟 Final price BEFORE commission
-  //   const finalPriceWithoutCommission =
-  //     basePrice +
-  //     miscTotal +
-  //     airportTotal +
-  //     surchargeTotal -
-  //     discountTotal +
-  //     profitTotal;
+    // 4.6 Driver Commissions
+    let commissionAmount = 0;
 
-  //   breakdown.finalPriceWithoutCommission = finalPriceWithoutCommission;
+    if (tariff.driverCommissions.length > 0) {
+      let totalCommission = 0;
 
-  //   // 1️⃣1️⃣ Fetch all active vehicle commissions
-  //   const commissions = await this.pricingRepo.getAllActiveVehicleCommissions();
+      for (const c of tariff.driverCommissions) {
+        let amount = 0;
+        if (c.fixed) amount += c.fixed;
+        if (c.perKm) amount += c.perKm * distance;
+        if (c.percentage)
+          amount += ((subtotalBeforeProfit + profitTotal) * c.percentage) / 100;
 
-  //   let appliedCommission = 0;
+        totalCommission += amount;
+      }
 
-  //   if (!commissions || commissions.length === 0) {
-  //     this.logger.warn('⚠️ No active commissions found. Using 0 commission.');
-  //     breakdown.driverCommission = 0;
-  //   } else {
-  //     // Convert all commissions to ETB amounts (same as original)
-  //     const commissionAmounts = commissions.map((c) => {
-  //       if (c.commissionType === 'PERCENTAGE') {
-  //         return (c.value / 100) * finalPriceWithoutCommission;
-  //       }
-  //       return c.value;
-  //     });
+      commissionAmount = totalCommission / tariff.driverCommissions.length;
+    }
 
-  //     const totalCommission = commissionAmounts.reduce((a, b) => a + b, 0);
-  //     const avgCommission = totalCommission / commissionAmounts.length;
-  //     const commissionCap = finalPriceWithoutCommission * 0.4;
+    breakdown.driverCommission = commissionAmount;
 
-  //     appliedCommission =
-  //       totalCommission > commissionCap ? commissionCap : avgCommission;
+    // 4.7 FINAL PRICE
+    const finalPrice = subtotalBeforeProfit + profitTotal + commissionAmount;
 
-  //     breakdown.driverCommission = appliedCommission;
-  //   }
+    breakdown.finalPrice = finalPrice;
 
-  //   const finalPrice = finalPriceWithoutCommission + appliedCommission;
+    // --------------------------------------------------------------------
+    // 5️⃣ Return identical structure as the DB version
+    // --------------------------------------------------------------------
 
-  //   breakdown.finalPrice = finalPrice;
-  //   breakdown.miscFees = miscFees;
-  //   breakdown.airportFees = airportFees;
-  //   breakdown.surcharges = surcharges;
-  //   breakdown.discounts = discounts;
-  //   breakdown.profitMargins = profitMargins;
-
-  //   this.logger.log(
-  //     '🔹 Price breakdown (preview):',
-  //     JSON.stringify(breakdown, null, 2),
-  //   );
-
-  //   // NOTE: We DO NOT call pricingRepo.logPriceCalculationAndUpdateOrder here because
-  //   // there is no orderId yet. This method is intended as an identical logic preview.
-  //   // If you want DB logging, call the original calculatePrice(orderId, userId) after creating the order.
-
-  //   return {
-  //     result: {
-  //       finalPrice,
-  //       currency: tariff.currency || 'ETB',
-  //       breakdown,
-  //     },
-  //     error: null,
-  //   };
-  // }
+    return {
+      result: {
+        finalPrice,
+        currency: tariff.currency,
+        breakdown,
+      },
+      error: null,
+    };
+  }
 
   //===========================================================HELPER METHODS===========================================================================================================
 
@@ -2803,19 +2814,18 @@ export class PricingUseCasesImpl implements PricingUseCases {
       this.pricingRepo.getDriverPayment(userId),
     ]);
 
-    console.log("Segment ::: ", segments);
-    console.log("vehicle ::: ", vehicle);
-    console.log("driver ::: ", driver);
-    console.log("driverPayments ::: ", driverPayments);
+    console.log('Segment ::: ', segments);
+    console.log('vehicle ::: ', vehicle);
+    console.log('driver ::: ', driver);
+    console.log('driverPayments ::: ', driverPayments);
 
-    
     const driverId = driver.id;
 
-    if(vehicle === null){
+    if (vehicle === null) {
       throw new RpcException({
         code: 404,
         message: 'Vehicle not found for driver',
-      })
+      });
     }
     // Fetch commissions and order segments in parallel
     const [commissions, orderSegments] = await Promise.all([
@@ -2823,17 +2833,16 @@ export class PricingUseCasesImpl implements PricingUseCases {
       this.pricingRepo.getOrdersSegments(segments.map((s) => s.orderId)),
     ]);
 
-
-        console.log("commissions ::: ", commissions);
-    console.log("orderSegments ::: ", orderSegments);
+    console.log('commissions ::: ', commissions);
+    console.log('orderSegments ::: ', orderSegments);
     const percentageCommission = commissions.find((c) => c.percentage);
     const fixedCommission = commissions.find((c) => c.fixed);
-    
+
     const perKmCommission = commissions.find((c) => c.perKm);
-    
-    console.log("percentageCommission ::: ", percentageCommission);
-    console.log("fixedCommission ::: ", fixedCommission);
-    console.log("perKmCommission ::: ", perKmCommission);
+
+    console.log('percentageCommission ::: ', percentageCommission);
+    console.log('fixedCommission ::: ', fixedCommission);
+    console.log('perKmCommission ::: ', perKmCommission);
 
     // ----------------------------
     // Build orders from segments

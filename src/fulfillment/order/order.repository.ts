@@ -696,7 +696,7 @@ export class OrderRepository {
 
         return order;
       },
-      { timeout: 60000 },
+      { timeout: 300000 },
     );
 
     // 2️⃣ Trigger async distance & pricing calculation outside transaction
@@ -745,65 +745,70 @@ export class OrderRepository {
     trackingCode: string,
     userId: string,
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      const pickup = await upsertAddress(
-        tx,
-        customerId,
-        userId,
-        data.pickupAddress,
-        'ORDER_PICKUP',
-      );
-
-      const delivery = await upsertAddress(
-        tx,
-        customerId,
-        userId,
-        data.deliveryAddress,
-        'ORDER_DELIVERY',
-      );
-
-      const order = await tx.order.create({
-        data: {
-          trackingCode,
-          status: 'CREATED',
-          serviceType: data.serviceType,
-          fulfillmentType: data.fulfillmentType,
-          weight: data.weight,
-          height: data.height,
-          width: data.width,
-          length: data.length,
-          category: data.category,
-          isFragile: data.isFragile,
-          shipmentType: data.shipmentType,
-          shippingScope: data.shippingScope,
-          pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
-          deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
-          createdBy: userId ?? customerId,
+    return this.prisma.$transaction(
+      async (tx) => {
+        const pickup = await upsertAddress(
+          tx,
           customerId,
-          receiverId,
-          quantity: data.quantity,
-          branchId: data.branchId ?? null,
-          pickupAddressId: pickup?.id ?? null,
-          deliveryAddressId: delivery.id,
-        },
-        include: {
-          pickupAddress: true,
-          deliveryAddress: true,
-        },
-      });
+          userId,
+          data.pickupAddress,
+          'ORDER_PICKUP',
+        );
 
-      await tx.orderTracking.create({
-        data: {
-          orderId: order.id,
-          status: 'CREATED',
-          location: pickup?.addressLine ?? 'Customer Home',
-          updatedBy: userId ?? customerId,
-          notes: 'Order Created.',
-        },
-      });
+        const delivery = await upsertAddress(
+          tx,
+          customerId,
+          userId,
+          data.deliveryAddress,
+          'ORDER_DELIVERY',
+        );
 
-      return order;
-    });
+        const order = await tx.order.create({
+          data: {
+            trackingCode,
+            status: 'CREATED',
+            serviceType: data.serviceType,
+            fulfillmentType: data.fulfillmentType,
+            weight: data.weight,
+            height: data.height,
+            width: data.width,
+            length: data.length,
+            category: data.category,
+            isFragile: data.isFragile,
+            shipmentType: data.shipmentType,
+            shippingScope: data.shippingScope,
+            pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
+            deliveryDate: data.deliveryDate
+              ? new Date(data.deliveryDate)
+              : null,
+            createdBy: userId ?? customerId,
+            customerId,
+            receiverId,
+            quantity: data.quantity,
+            branchId: data.branchId ?? null,
+            pickupAddressId: pickup?.id ?? null,
+            deliveryAddressId: delivery.id,
+          },
+          include: {
+            pickupAddress: true,
+            deliveryAddress: true,
+          },
+        });
+
+        await tx.orderTracking.create({
+          data: {
+            orderId: order.id,
+            status: 'CREATED',
+            location: pickup?.addressLine ?? 'Customer Home',
+            updatedBy: userId ?? customerId,
+            notes: 'Order Created.',
+          },
+        });
+
+        return order;
+      },
+      { timeout: 300000 },
+    );
   }
 
   async updateOrderDistance(orderId: string, distance: number) {

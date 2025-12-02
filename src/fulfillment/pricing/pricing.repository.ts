@@ -23,21 +23,20 @@ import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class PricingRepository {
- async getActiveTariffsWithVehicleTypeCommission(vehicleTypeId: string) {
-   return this.prisma.tariffGroup.findMany({
-     where:{
-      driverCommissions: {
-        some: {
-          vehicleTypeId: vehicleTypeId
-        }
-      }
-      ,
+  async getActiveTariffsWithVehicleTypeCommission(vehicleTypeId: string) {
+    return this.prisma.tariffGroup.findMany({
+      where: {
+        driverCommissions: {
+          some: {
+            vehicleTypeId: vehicleTypeId,
+          },
+        },
         isActive: true,
-     },
-     include:{
-      driverCommissions: true
-     }
-   })
+      },
+      include: {
+        driverCommissions: true,
+      },
+    });
   }
   async getAllActiveVehicleCommissions() {
     return this.prisma.vehicleCommission.findMany({
@@ -335,16 +334,18 @@ export class PricingRepository {
   // }
 
   async createTariff(data: any) {
-      // Use transaction if you want multi-table atomicity
-     return await this.prisma.tariffGroup.create({ data , include:{
+    // Use transaction if you want multi-table atomicity
+    return await this.prisma.tariffGroup.create({
+      data,
+      include: {
         serviceTypes: true,
         weightBuckets: true,
         driverCommissions: true,
         miscCharges: true,
         airportFee: true,
         profitMargin: true,
-
-      }});
+      },
+    });
   }
 
   // Find any tariff that overlaps the given period for that serviceType
@@ -478,22 +479,33 @@ export class PricingRepository {
   async findTariffById(id: string) {
     return this.prisma.tariffGroup.findUnique({
       where: { id },
+      include: {
+        serviceTypes: true,
+        profitMargin: true,
+        airportFee: true,
+        miscCharges: true,
+        driverCommissions: true,
+        weightBuckets: true,
+      },
       // include: { surcharges: true, discounts: true },
     });
   }
 
-  async updateTariff(id: string, data: Partial<UpdateTariffDto>) {
-    return this.prisma.tariffGroup.update({
-      where: { id },
-      data: {
-        ...data,
-        effectiveFrom: data.effectiveFrom
-          ? new Date(data.effectiveFrom)
-          : undefined,
-        effectiveTo: data.effectiveTo ? new Date(data.effectiveTo) : undefined,
-      },
-    });
-  }
+ async updateTariff(id: string, data: any) {
+  return this.prisma.tariffGroup.update({
+    where: { id },
+    data,
+    include: {
+      serviceTypes: true,
+      weightBuckets: true,
+      driverCommissions: true,
+      miscCharges: true,
+      airportFee: true,
+      profitMargin: true,
+    },
+  });
+}
+
 
   async deleteTariff(id: string) {
     return this.prisma.tariffGroup.delete({ where: { id } });
@@ -1180,18 +1192,17 @@ export class PricingRepository {
         miscCharges: true,
         airportFee: true,
         profitMargin: true,
-        serviceTypes: true, 
+        serviceTypes: true,
         weightBuckets: true,
         driverCommissions: {
-          select:{
+          select: {
             id: true,
             vehicleTypeId: true,
             fixed: true,
             percentage: true,
             perKm: true,
-
-          }
-        }
+          },
+        },
       },
     });
   }
@@ -1374,12 +1385,11 @@ export class PricingRepository {
   async getVehicleCommissions(vehicleTypeId: string) {
     return this.prisma.tariffVehicleCommission.findMany({
       where: {
-        vehicleTypeId
+        vehicleTypeId,
       },
       include: {
         vehicleType: true,
-
-      }
+      },
     });
   }
 

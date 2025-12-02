@@ -72,6 +72,10 @@ export class ServiceTypeValueDto {
   @IsNotEmpty()
   @IsNumber()
   value: number;
+
+  @IsOptional()
+  @IsString()
+  id: string;
 }
 
 /* -------------------- WEIGHT BRACKET DTO -------------------- */
@@ -88,6 +92,10 @@ export class WeightBracketDto {
   @IsNotEmpty()
   @IsNumber()
   rate: number; // birr for this weight range
+
+  @IsOptional()
+  @IsString()
+  id: string;
 }
 
 /* -------------------- DRIVER COMMISSION DTO -------------------- */
@@ -108,6 +116,10 @@ export class DriverCommissionDto {
   @IsOptional()
   @IsNumber()
   percentage?: number; // commission percentage
+
+  @IsOptional()
+  @IsString()
+  id: string;
 }
 
 /* -------------------- ADDITIONAL CHARGES DTO -------------------- */
@@ -120,6 +132,10 @@ export class AdditionalChargesDto {
   @IsOptional()
   @IsNumber()
   profitMargin?: number; // %
+
+  @IsOptional()
+  @IsString()
+  id: string;
 }
 
 /* -------------------- MAIN TARIFF DTO -------------------- */
@@ -132,6 +148,10 @@ export class AirportFeesDto {
   @IsNotEmpty()
   @IsNumber()
   price: number; // price per kg
+
+  @IsOptional()
+  @IsString()
+  id: string;
 }
 
 /* -------------------- MAIN TARIFF DTO -------------------- */
@@ -190,49 +210,56 @@ export class TariffDto {
   airportFee?: AirportFeesDto;
 }
 
-
 export class UpdateTariffDto {
   @IsOptional()
   @IsString()
-  name: string;
-
-  @IsOptional()
-  @IsString()
-  @IsEnum(ServiceType)
-  serviceType: ServiceType;
+  name?: string;
 
   @IsOptional()
   @IsEnum(ShippingScope)
-  shippingScope: ShippingScope;
-
-  @IsOptional()
-  @IsNumber()
-  baseFee: number;
+  shippingScope?: ShippingScope;
 
   @IsOptional()
   @IsString()
-  customerCategoryId: string;
+  currency?: string;
 
   @IsOptional()
-  @IsNumber()
-  perKgRate?: number;
+  @IsISO8601()
+  effectiveFrom?: string;
 
   @IsOptional()
-  @IsNumber()
-  perKmRate?: number;
-
-  @IsOptional()
-  @IsString()
-  currency: string;
-
-  @IsOptional()
-  @IsString()
-  effectiveFrom: string;
-
-  @IsOptional()
-  @IsString()
+  @IsISO8601()
   effectiveTo?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ServiceTypeValueDto)
+  serviceTypes?: ServiceTypeValueDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WeightBracketDto)
+  weightBrackets?: WeightBracketDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DriverCommissionDto)
+  driverCommissions?: DriverCommissionDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AdditionalChargesDto)
+  additionalCharges?: AdditionalChargesDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AirportFeesDto)
+  airportFee?: AirportFeesDto;
 }
+
 //===============================================================================================SURCHARGE==================================================================
 export class SurchargeDto {
   @IsNotEmpty()

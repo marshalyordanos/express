@@ -51,10 +51,11 @@ export class PricingMessageController {
   @CheckPermission('Price', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.PRICE_TARIFF_UPDATE)
   async updateTariff(
-    @Payload() payload: { id: string; data: UpdateTariffDto },
+    @Payload() payload: { id: string; data: UpdateTariffDto, user: any },
   ) {
+    const userId= payload.user?.sub
     console.log('Tariff data : ', payload);
-    const result = await this.usecases.updateTariff(payload.id, payload.data);
+    const result = await this.usecases.updateTariff(payload.id, payload.data, userId);
     return IResponse.success('Tariff updated successfully', result);
   }
 
@@ -509,16 +510,16 @@ export class PricingMessageController {
     );
   }
 
-  // @Public()
-  // @MessagePattern(PATTERNS.PRICE_GET_ORDER_PRICE_SUMMARY)
-  // async getOrderSummaryPrice(@Payload() payload: {  data: CreateOrderDto }) {
+  @Public()
+  @MessagePattern(PATTERNS.PRICE_GET_ORDER_PRICE_SUMMARY)
+  async getOrderSummaryPrice(@Payload() payload: {  data: CreateOrderDto }) {
    
-  //   const result = await this.usecases.calculatePriceFromDto(payload.data);
-  //   return IResponse.success(
-  //     `Order summary fetched successfully `,
-  //     result,
-  //   );
-  // }
+    const result = await this.usecases.calculatePriceFromDtoV2(payload.data);
+    return IResponse.success(
+      `Order summary fetched successfully `,
+      result,
+    );
+  }
 
 
 }

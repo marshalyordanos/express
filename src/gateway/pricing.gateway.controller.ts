@@ -1052,6 +1052,7 @@ export class PricingGatewayController {
   async getOrderPriceSummary(@Req() req, @Body() data: CreateOrderDto) {
     // const authHeader = req.headers['authorization'] || null;
     // let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+console.log("Processing :::: ", data);
 
     const forwarded = (req.headers['x-forwarded-for'] as string) || '';
     const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
