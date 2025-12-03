@@ -47,6 +47,7 @@ export class VehicleRepository {
       page: payload.page,
       pageSize: payload.pageSize,
       searchableFields: ['name', 'description'],
+      hasNotDate: true,
     });
 
     const query = feature.getQuery();
