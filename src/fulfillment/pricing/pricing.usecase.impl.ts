@@ -58,6 +58,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
       // ----------------------------------------------------
       // 1. VALIDATION
       // ----------------------------------------------------
+      console.log('000000000000000000000000000000000000000000000000012');
 
       if (!data.serviceTypes?.length) {
         throw new RpcException({
@@ -72,6 +73,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
           message: 'weightBrackets must be non-empty',
         });
       }
+      console.log('000000000000000000000000000000000000000000000000013');
 
       if (data.customerCategoryId) {
         const category = await this.pricingRepo.findCustomerCategoryById(
@@ -84,6 +86,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
           });
         }
       }
+      console.log('000000000000000000000000000000000000000000000000014');
 
       const currency = (data.currency ?? 'ETB').trim().toUpperCase();
       const effectiveFrom = new Date(data.effectiveFrom);
@@ -93,6 +96,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
       const sorted = [...data.weightBrackets].sort(
         (a, b) => a.startKg - b.startKg,
       );
+      console.log('000000000000000000000000000000000000000000000000017');
 
       for (let i = 0; i < sorted.length; i++) {
         const w = sorted[i];
@@ -111,6 +115,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
           });
         }
       }
+      console.log('000000000000000000000000000000000000000000000000018');
 
       // Validate driver commissions
       (data.driverCommissions || []).forEach((dc) => {
@@ -124,6 +129,8 @@ export class PricingUseCasesImpl implements PricingUseCases {
           });
         }
       });
+
+      console.log('000000000000000000000000000000000000000000000000012');
 
       // ----------------------------------------------------
       // 2. VALIDATE AIRPORT FEES
@@ -168,6 +175,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
           }
         });
       }
+      console.log('000000000000000000000000000000000000000000000000011');
 
       // ----------------------------------------------------
       // 3. BUILD PRISMA PAYLOAD
@@ -228,6 +236,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
         `Tariff creation payload :: ${JSON.stringify(payload)}`,
       );
 
+      console.log('000000000000000000000000000000000000000000000000010');
       // 1️⃣ Create tariff group
       const tariff = await this.pricingRepo.createTariffGroup(payload);
 
