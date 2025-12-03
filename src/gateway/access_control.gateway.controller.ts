@@ -66,8 +66,7 @@ export class AccessControlGatewayController {
       ip,
     });
   }
-
-
+  
 
   @Get('roles')
   async findAllRoles(

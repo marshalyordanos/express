@@ -34,8 +34,8 @@ async function bootstrap() {
   //  app.useLogger(false); // temporary fix
 
 
-  const bootstrapper = app.get(PermissionBootstrapper);
-  await bootstrapper.run();
+  // const bootstrapper = app.get(PermissionBootstrapper);
+  // await bootstrapper.run();
   
   // --- Swagger Setup ---
   const config = new DocumentBuilder()

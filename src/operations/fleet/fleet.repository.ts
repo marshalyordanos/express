@@ -7,7 +7,10 @@ import {
   AssignVehicleDto,
   VehicleMaintenanceDto,
   VehicleMaintenanceQueryDto,
+  CreateVehicleTypeDto,
 } from './fleet.entity';
+import { ListQueryDto } from '../../common/query/query.dto';
+import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 
 @Injectable()
 export class VehicleRepository {
@@ -25,6 +28,47 @@ export class VehicleRepository {
         driver: driverId ? { connect: { id: driverId } } : undefined,
       },
     });
+  }
+
+  async createVehicleType(data: CreateVehicleTypeDto, userId: string) {
+    return this.prisma.vehicleType.create({
+      data: {
+        name: data.name,
+        description: data.description,
+      },
+    });
+  }
+
+  async findVehicleType(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['name', 'description'],
+    });
+
+    const query = feature.getQuery();
+
+    // 1️⃣ Fetch branches with manager & staff count
+    const [vehicleTypes, totalVehicleTypes] = await Promise.all([
+      this.prisma.vehicleType.findMany({
+        ...query,
+        where: query.where || {},
+        select: {
+          id: true,
+          name: true,
+          description: true,
+        },
+      }),
+      this.prisma.vehicleType.count({ where: query.where || {} }),
+    ]);
+
+    return {
+      vehicleTypes,
+      pagination: feature.getPagination(totalVehicleTypes),
+    };
   }
   async findUserById(
     id: string,

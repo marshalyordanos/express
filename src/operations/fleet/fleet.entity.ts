@@ -15,6 +15,15 @@ export interface CreateVehicleDto {
   status?: VehicleStatus; // default to ACTIVE
   driverId?: string; // optional assignment on creation
 }
+export class CreateVehicleTypeDto {
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+
+  @IsNotEmpty()
+  @IsString()
+  description: string;
+}
 
 // DTO for updating vehicle details
 export class UpdateVehicleDto {

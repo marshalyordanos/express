@@ -19,10 +19,12 @@ import {
   UpdateVehicleDto,
   AssignVehicleDto,
   VehicleMaintenanceDto,
+  CreateVehicleTypeDto,
 } from '../operations/fleet/fleet.entity';
 import * as jwt from 'jsonwebtoken';
 import { SanitizePipe } from '../common/sanitize.pipe';
-
+import { query } from 'express';
+import { ListQueryDto } from '../common/query/query.dto';
 
 @Controller('fleet')
 export class FleetGatewayController {
@@ -60,8 +62,7 @@ export class FleetGatewayController {
       data: dto,
     });
   }
-  
-  
+
   // Unassign vehicle from driver
   @Patch('unassign/:id')
   async unassignVehicle(@Req() req, @Param('id') id: string) {
@@ -300,6 +301,50 @@ export class FleetGatewayController {
     });
   }
 
+  @Post('type')
+  async createVehicleType(@Body() dto: CreateVehicleTypeDto, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.fleetClient.send(PATTERNS.FLEET_CREATE_VEHICLE_TYPE, {
+      data: dto,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  @Get('type')
+  async getVehicleType(@Body() query:ListQueryDto , @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.fleetClient.send(PATTERNS.FLEET_GET_ALL_VEHICLES_TYPE, {
+      query,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
   //needs Sanitize
   // Get all vehicles (with pagination)
   @Get()
@@ -360,6 +405,7 @@ export class FleetGatewayController {
     });
   }
 
+  
   // Update a vehicle
   @Patch(':id')
   async updateVehicle(

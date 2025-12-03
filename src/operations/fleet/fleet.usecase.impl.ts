@@ -8,11 +8,13 @@ import {
   AssignVehicleDto,
   VehicleMaintenanceDto,
   VehicleMaintenanceQueryDto,
+  CreateVehicleTypeDto,
 } from './fleet.entity';
 import { Vehicle, FleetLog } from '@prisma/client';
 import { IPagination } from '../../common/types';
 import { AppLogger } from '../../common/app-logger.service';
 import { json } from 'stream/consumers';
+import { ListQueryDto } from '../../common/query/query.dto';
 
 @Injectable()
 export class FleetUseCasesImp implements FleetUsecase {
@@ -22,6 +24,27 @@ export class FleetUseCasesImp implements FleetUsecase {
   ) {
     this.logger.setContext('OperationsService', 'FleetUseCasesImp');
   }
+
+  async createVehicleType(data: CreateVehicleTypeDto, userId: string) {
+    try {
+      this.logger.log(
+        `Creating vehicle Type with data: ${JSON.stringify(data)}`,
+      );
+
+      const vehicle = await this.vehicleRepo.createVehicleType(data, userId);
+      this.logger.log(
+        `Vehicle created Type successfully with ID: ${vehicle.id}`,
+      );
+      return vehicle;
+    } catch (error) {
+      this.logger.error(
+        `Error creating vehicle Type: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(error.message || 'Failed to create vehicle Type');
+    }
+  }
+ 
 
   // Vehicle Management
   async createVehicle(data: CreateVehicleDto): Promise<Vehicle> {
@@ -45,6 +68,23 @@ export class FleetUseCasesImp implements FleetUsecase {
         error.stack,
       );
       throw new RpcException(error.message || 'Failed to create vehicle');
+    }
+  }
+
+  async getVehicleTypes(payload: ListQueryDto) {
+    try {
+      this.logger.log(
+        `Fetching vehicle Types with payload: ${JSON.stringify(payload)}`,
+      );
+      const result = await this.vehicleRepo.findVehicleType(payload);
+      this.logger.log(`Fetched ${result.vehicleTypes.length} vehicle types`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching vehicle Types: ${error.message}`,
+        error.stack,
+      );
+      throw new RpcException(error.message || 'Failed to fetch vehicle Types');
     }
   }
 

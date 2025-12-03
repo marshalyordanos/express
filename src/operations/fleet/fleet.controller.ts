@@ -8,6 +8,7 @@ import {
   AssignVehicleDto,
   VehicleMaintenanceDto,
   VehicleMaintenanceQueryDto,
+  CreateVehicleTypeDto,
 } from './fleet.entity';
 import { IResponse } from '../../common/types';
 import { handleCatch } from '../../common/handleCatch';
@@ -15,6 +16,7 @@ import { CheckPermission } from '../../common/decorator/check-permission.decorat
 import { PermissionGuard } from '../../common/permission.guard';
 import { PermissionActions } from '../../contracts/permission-actions.enum';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
+import { ListQueryDto } from 'src/common/query/query.dto';
 
 @Controller()
 export class FleetMessageController {
@@ -29,6 +31,28 @@ export class FleetMessageController {
     return IResponse.success('Vehicles created successfully', data, null);
   }
 
+
+    @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Fleet', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.FLEET_CREATE_VEHICLE_TYPE)
+  async createVehicleType(@Payload() payload: { data: CreateVehicleTypeDto , user: any}) {
+    const userId = payload.user?.sub
+    const data = await this.usecases.createVehicleType(payload.data, userId);
+    return IResponse.success('Vehicles Type created successfully', data, null);
+
+
+  }
+
+    @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Fleet', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.FLEET_GET_ALL_VEHICLES_TYPE)
+  async getVehicleType(@Payload() payload: { query: ListQueryDto;  user: any}) {
+    const userId = payload.user?.sub
+    const data = await this.usecases.getVehicleTypes(payload.query);
+    return IResponse.success('Vehicles Type fetched successfully', data, null);
+
+
+  }
   // Get all vehicles (with pagination)
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Fleet', PermissionActions.READ)

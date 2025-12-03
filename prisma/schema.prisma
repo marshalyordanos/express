@@ -527,7 +527,6 @@ model Pricing {
 
 //////////////////////////////////new tariff//////////////////////////////
 
-
 model TariffGroup {
   id            String    @id @default(cuid())
   name          String
@@ -545,9 +544,8 @@ model TariffGroup {
   weightBuckets     WeightBucket[]
   driverCommissions TariffVehicleCommission[]
   miscCharges       MiscCharge[]
-  airportFee        AirportNewFee?
   profitMargin      ProfitNewMargin?
-  orders         Order[]
+  orders            Order[]
 }
 
 model TariffServiceType {
@@ -557,6 +555,13 @@ model TariffServiceType {
 
   tariffId    String
   tariff      TariffGroup  @relation(fields: [tariffId], references: [id])
+
+  // NEW: airport fee relation (one-to-one)
+  airportFee   AirportNewFee? @relation(fields: [airportFeeId], references: [id])
+  airportFeeId String?         @unique
+
+  // keep weightBuckets if you want service-type-specific weight buckets
+  // weightBuckets     WeightBucket[]   <-- if weight buckets stay at TariffGroup level, remove
 }
 
 model WeightBucket {
@@ -570,23 +575,21 @@ model WeightBucket {
 }
 
 model TariffVehicleCommission {
-  id          String      @id @default(cuid())
-  tariffId    String?
-  vehicleTypeId String     // always connect to actual vehicle type
+  id            String      @id @default(cuid())
+  tariffId      String?
+  vehicleTypeId String      // always connect to actual vehicle type
 
-  fixed       Float?
-  perKm       Float?
-  percentage  Float?
+  fixed        Float?
+  perKm        Float?
+  percentage   Float?
 
   // relations
-  tariff      TariffGroup? @relation(fields: [tariffId], references: [id])
-  vehicleType VehicleType  @relation(fields: [vehicleTypeId], references: [id])
+  tariff       TariffGroup? @relation(fields: [tariffId], references: [id])
+  vehicleType  VehicleType  @relation(fields: [vehicleTypeId], references: [id])
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
-
-
 
 model MiscCharge {
   id         String   @id @default(cuid())
@@ -599,11 +602,28 @@ model MiscCharge {
 }
 
 model AirportNewFee {
-  id       String   @id @default(cuid())
-  amount   Float
+  id            String   @id @default(cuid())
 
-  tariffId String   @unique
-  tariff   TariffGroup @relation(fields: [tariffId], references: [id])
+  // If brackets not used → this is used
+  flatRatePerKg Float?     // e.g. 10 birr/kg flat
+
+  // Relation to TariffServiceType (each service type has at most one AirportNewFee)
+  //serviceTypeId String   @unique
+  //serviceType   TariffServiceType @relation(fields: [serviceTypeId], references: [id])
+  serviceType   TariffServiceType? @relation
+
+  // Brackets (zero or more). If brackets exist, flatRatePerKg should be null (enforce in app logic)
+  brackets      AirportFeeBracket[]
+}
+
+model AirportFeeBracket {
+  id            String   @id @default(cuid())
+  minKg         Float
+  maxKg         Float
+  rate          Float    // birr per kg
+
+  airportFeeId  String
+  airportFee    AirportNewFee @relation(fields: [airportFeeId], references: [id])
 }
 
 model ProfitNewMargin {

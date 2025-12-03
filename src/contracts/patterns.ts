@@ -99,6 +99,8 @@ export const PATTERNS = {
   FLEET_RETIRE_VEHICLE: 'fleet.retireVehicle',
   FLEET_GET_ALERTS: 'fleet.getFleetAlerts',
   FLEET_GET_DRIVER_HISTORY: 'fleet.getDriverVehicleHistory',
+  FLEET_GET_ALL_VEHICLES_TYPE: 'fleet.getAllVehiclesType',
+  FLEET_CREATE_VEHICLE_TYPE: 'fleet.createVehicleType',
 
   //Order Management System
   ORDER_CREATE: 'order.create',
