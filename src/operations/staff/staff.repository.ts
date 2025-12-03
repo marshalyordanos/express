@@ -387,7 +387,7 @@ export class StaffRepository {
     });
   }
 
-    async findVehicleById(vehicleId: string) {
+  async findVehicleById(vehicleId: string) {
     return await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
     });
@@ -417,7 +417,7 @@ export class StaffRepository {
   //           roleId: true,
   //         },
   //       });
-  
+
   //       // 2️⃣ Create Driver (connected to User)
   //       const driver = await tx.driver.create({
   //         data: {
@@ -440,7 +440,7 @@ export class StaffRepository {
   //           licenseExpiry: true,
   //         },
   //       });
-  
+
   //       // 3️⃣ Log Location (only if coordinates exist)
   //       if (data.currentLat && data.currentLong) {
   //         await tx.driverLocationLog.create({
@@ -453,19 +453,19 @@ export class StaffRepository {
   //           },
   //         });
   //       }
-  
+
   //       // 4️⃣ Update Vehicle’s assigned driver
   //       await tx.vehicle.update({
   //         where: { id: data.vehicleId },
   //         data: { driverId: driver.id },
   //       });
-  
+
   //       // ✅ Return combined result
   //       return { user, driver };
   //     });
   //   }
 
-   /** 🔹 Create driver + user transaction */
+  /** 🔹 Create driver + user transaction */
   async createDriver(userData: any, driverData: any, userId: string) {
     return this.prisma.$transaction(async (tx) => {
       // 1️⃣ Create user
@@ -494,7 +494,7 @@ export class StaffRepository {
           frontImageUrl: driverData.frontImageUrl ?? null,
           backImageUrl: driverData.backImageUrl ?? null,
           currentLat: parseFloat(driverData.currentLat) ?? null,
-          currentLon: parseFloat(driverData.currentLong)?? null,
+          currentLon: parseFloat(driverData.currentLong) ?? null,
           createdBy: userId || 'system',
         },
         select: {
@@ -530,111 +530,111 @@ export class StaffRepository {
     });
   }
 
-     async findDriver(payload: ListQueryDto) {
-        // Start building dynamic filters
-        const where: any = {
-          AND: [],
-        };
-    
-        // Apply general search (text)
-        if (payload.search) {
-          where.AND.push({
-            OR: [
-              { user: { name: { contains: payload.search, mode: 'insensitive' } } },
-              {
-                user: { email: { contains: payload.search, mode: 'insensitive' } },
-              },
-              {
-                user: { phone: { contains: payload.search, mode: 'insensitive' } },
-              },
-              {
-                vehicles: {
-                  some: {
-                    plateNumber: { contains: payload.search, mode: 'insensitive' },
-                  },
-                },
-              },
-              {
-                vehicles: {
-                  some: {
-                    model: { contains: payload.search, mode: 'insensitive' },
-                  },
-                },
-              },
-            ],
-          });
-        }
-    
-        let filters: any = {};
-        if (typeof payload.filter === 'string') {
-          try {
-            filters = JSON.parse(payload.filter);
-          } catch {
-            filters = {};
-          }
-        } else if (typeof payload.filter === 'object' && payload.filter !== null) {
-          filters = payload.filter;
-        }
-    
-        // Apply optional filters
-        if (filters.status) {
-          where.AND.push({ status: filters.status });
-        }
-        if (filters.type) {
-          where.AND.push({ type: filters.type });
-        }
-        if (filters.vehicleStatus) {
-          where.AND.push({
-            vehicles: { some: { status: filters.vehicleStatus } },
-          });
-        }
-        if (filters.userId) {
-          where.AND.push({ userId: filters.userId });
-        }
-        if (filters.vehicleId) {
-          where.AND.push({
-            vehicles: { some: { id: filters.vehicleId } },
-          });
-        }
-    
-        const feature = new PrismaQueryFeature({
-          search: payload.search,
-          filter: payload.filter,
-          sort: payload.sort,
-          page: payload.page,
-          pageSize: payload.pageSize,
-          searchableFields: [
-            'user.name',
-            'user.email',
-            'user.phone',
-            'vehicles.plateNumber',
-            'vehicles.model',
-          ],
-        });
-    
-        // Construct Prisma query
-        const query = {
-          ...feature.getQuery(),
-          where,
-          include: {
-            user: {
-              select: { id: true, name: true, email: true, phone: true, isActive: true },
-            },
+  async findDriver(payload: ListQueryDto) {
+    // Start building dynamic filters
+    const conditions: any[] = [];
+
+    // Apply general search (text)
+    if (payload.search) {
+      conditions.push({
+        OR: [
+          { user: { name: { contains: payload.search, mode: 'insensitive' } } },
+          {
+            user: { email: { contains: payload.search, mode: 'insensitive' } },
+          },
+          {
+            user: { phone: { contains: payload.search, mode: 'insensitive' } },
+          },
+          {
             vehicles: {
-              select: { id: true, plateNumber: true, model: true, status: true },
+              some: {
+                plateNumber: { contains: payload.search, mode: 'insensitive' },
+              },
             },
           },
-        };
-    
-        // Run queries in parallel transaction
-        const [drivers, total] = await this.prisma.$transaction([
-          this.prisma.driver.findMany(query),
-          this.prisma.driver.count({ where }),
-        ]);
-    
-        return {
-          drivers,
-          pagination: feature.getPagination(total),
-        };
+          {
+            vehicles: {
+              some: {
+                model: { contains: payload.search, mode: 'insensitive' },
+              },
+            },
+          },
+        ],
+      });
+    }
+
+    // Parse filters
+    let filters: any = {};
+    if (typeof payload.filter === 'string') {
+      try {
+        filters = JSON.parse(payload.filter);
+      } catch {
+        filters = {};
       }
+    } else if (typeof payload.filter === 'object' && payload.filter !== null) {
+      filters = payload.filter;
+    }
+
+    // Apply optional filters
+    if (filters.status) conditions.push({ status: filters.status });
+    if (filters.type) conditions.push({ type: filters.type });
+    if (filters.vehicleStatus) {
+      conditions.push({
+        vehicles: { some: { status: filters.vehicleStatus } },
+      });
+    }
+    if (filters.userId) conditions.push({ userId: filters.userId });
+    if (filters.vehicleId) {
+      conditions.push({ vehicles: { some: { id: filters.vehicleId } } });
+    }
+
+    // Only include AND if we actually have conditions
+    const where = conditions.length > 0 ? { AND: conditions } : {};
+
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: [
+        'user.name',
+        'user.email',
+        'user.phone',
+        'vehicles.plateNumber',
+        'vehicles.model',
+      ],
+    });
+
+    const baseQuery = feature.getQuery();
+    delete baseQuery.orderBy; // remove any sorting
+    const query = {
+      ...baseQuery,
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            isActive: true,
+          },
+        },
+        vehicles: {
+          select: { id: true, plateNumber: true, model: true, status: true },
+        },
+      },
+    };
+
+    const [drivers, total] = await this.prisma.$transaction([
+      this.prisma.driver.findMany(query),
+      this.prisma.driver.count({ where }),
+    ]);
+
+    return {
+      drivers,
+      pagination: feature.getPagination(total),
+    };
+  }
 }

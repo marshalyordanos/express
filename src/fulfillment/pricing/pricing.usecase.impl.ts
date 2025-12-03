@@ -389,69 +389,79 @@ export class PricingUseCasesImpl implements PricingUseCases {
         });
       }
     }
-
     // -------------------------
     // Airport fee
     // -------------------------
-   // -------------------------
-// Airport fee
-// -------------------------
-for (const a of dto.airportFees ?? []) {
-  if (a.id) {
-    // Existing airport fee
-    if (a.flatRatePerKg != null) {
-      // Flat fee: update the main record
-      await this.pricingRepo.updateAirportFee({
-        id: a.id,
-        serviceType: a.serviceType,
-        flatRatePerKg: a.flatRatePerKg,
-        tariffGroupId: id,
-      });
+    for (const a of dto.airportFees ?? []) {
+      if (a.id) {
+        // Existing airport fee
+        if (a.flatRatePerKg != null) {
+          // Flat fee: update the main record
+          await this.pricingRepo.updateAirportFee({
+            id: a.id,
+            flatRatePerKg: a.flatRatePerKg,
+            tariffGroupId: id,
+            serviceTypeId: a.serviceTypeId, // must be the related TariffServiceType ID
+          });
 
-      // Remove any existing brackets since flat fee is used
-      await this.pricingRepo.deleteAirportFeeBracketsByFeeId(a.id);
-    } else if (a.brackets?.length) {
-      // Brackets exist: update main record (optional fields) and upsert brackets
-      await this.pricingRepo.updateAirportFee({
-        id: a.id,
-        serviceType: a.serviceType,
-        flatRatePerKg: null, // no flat rate
-        tariffGroupId: id,
-      });
+          // Remove any existing brackets since flat fee is used
+          await this.pricingRepo.deleteAirportFeeBracketsByFeeId(a.id);
+        } else if (a.brackets?.length) {
+          // Brackets exist: update main record (optional fields)
+          await this.pricingRepo.updateAirportFee({
+            id: a.id,
+            flatRatePerKg: null,
+            tariffGroupId: id,
+            serviceTypeId: a.serviceTypeId,
+          });
 
-      // Upsert brackets and remove old ones not in DTO
-      const bracketIds = [];
-      for (const b of a.brackets) {
-        const bracket = await this.pricingRepo.upsertAirportFeeBracket(
-          b.id ? { id: b.id } : { airportFeeId_serviceType: { airportFeeId: a.id, serviceType: a.serviceType } },
-          { ...b, airportFeeId: a.id },
-          { ...b, airportFeeId: a.id },
-        );
-        bracketIds.push(bracket.id);
-      }
+          // Handle brackets
+          const bracketIds: string[] = [];
+          for (const b of a.brackets) {
+            let bracket;
+            if (b.id) {
+              // Existing bracket → upsert using id
+              bracket = await this.pricingRepo.upsertAirportFeeBracket(
+                { id: b.id },
+                { ...b, airportFeeId: a.id },
+                { ...b, airportFeeId: a.id },
+              );
+            } else {
+              // New bracket → create
+              bracket = await this.pricingRepo.createAirportFeeBracket({
+                ...b,
+                airportFeeId: a.id,
+              });
+            }
 
-      // Delete old brackets not in DTO
-      await this.pricingRepo.deleteAirportFeeBracketsNotIn(a.id, bracketIds);
-    }
-  } else {
-    // New airport fee
-    const fee = await this.pricingRepo.createAirportFee({
-      serviceType: a.serviceType,
-      flatRatePerKg: a.flatRatePerKg ?? null,
-      tariffGroupId: id,
-    });
+            bracketIds.push(bracket.id);
+          }
 
-    if (a.brackets?.length) {
-      for (const b of a.brackets) {
-        await this.pricingRepo.createAirportFeeBracket({
-          ...b,
-          airportFeeId: fee.id,
+          // Delete old brackets not in DTO
+          await this.pricingRepo.deleteAirportFeeBracketsNotIn(
+            a.id,
+            bracketIds,
+          );
+        }
+      } else {
+        // New airport fee
+        const fee = await this.pricingRepo.createAirportFee({
+          flatRatePerKg: a.flatRatePerKg ?? null,
+          // tariffGroupId: id,
+          // serviceType: a.serviceTypeId ?? '',
+          serviceTypeId: a.serviceTypeId ?? '', // must be the related TariffServiceType ID
         });
+
+        if (a.brackets?.length) {
+          for (const b of a.brackets) {
+            await this.pricingRepo.createAirportFeeBracket({
+              ...b,
+              airportFeeId: fee.id,
+            });
+          }
+        }
       }
     }
-  }
-}
-
 
     // Return updated tariff
     return await this.pricingRepo.getTariffGroup(id);

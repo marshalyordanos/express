@@ -20,9 +20,7 @@ import {
 } from '../operations/branch/branch.entity';
 import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
-import { SanitizePipe } from '../common/sanitize.pipe';
 import { lastValueFrom } from 'rxjs';
-import { tryCatch } from 'bullmq';
 
 @Controller('branch')
 export class BranchGatewayController {

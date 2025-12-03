@@ -467,9 +467,17 @@ export class PricingRepository {
   // -------------------------
   // AirportFee
   // -------------------------
-  async createAirportFee(data: any) {
-    return this.prisma.airportNewFee.create({ data });
-  }
+async createAirportFee(data: any) {
+  const { serviceTypeId, ...rest } = data;
+
+  return this.prisma.airportNewFee.create({
+    data: {
+      ...rest,
+      serviceType: serviceTypeId ? { connect: { id: serviceTypeId } } : undefined,
+    },
+  });
+}
+
 
   async updateAirportFee(fee: AirportFeesDto & { tariffGroupId?: string }) {
     if (!fee.id) throw new Error('Fee ID is required for update');
@@ -478,7 +486,7 @@ export class PricingRepository {
     const updateData: any = {
       serviceType: fee.serviceType,
       flatRatePerKg: fee.flatRatePerKg ?? null,
-      tariffGroupId: fee.tariffGroupId,
+      // tariffGroupId: fee.tariffGroupId,
     };
 
     return this.prisma.airportNewFee.update({

@@ -159,13 +159,17 @@ export class AdditionalChargesDto {
 /* -------------------- MAIN TARIFF DTO -------------------- */
 
 export class AirportFeesDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(ServiceType)
-  serviceType: ServiceType; // user selects EXPRESS, STANDARD, etc.
+  serviceType?: ServiceType; // user selects EXPRESS, STANDARD, etc.
 
   @IsOptional()
   @IsNumber()
   flatRatePerKg?: number; // example: 10 birr per kg (no brackets)
+
+  @IsOptional()
+  @IsString()
+  serviceTypeId?: string; // example: 10 birr per kg (no brackets)
 
   @IsOptional()
   @IsArray()
@@ -285,7 +289,6 @@ export class UpdateTariffDto {
   @Type(() => AirportFeesDto)
   airportFees?: AirportFeesDto[];
 }
-
 
 //===============================================================================================SURCHARGE==================================================================
 export class SurchargeDto {

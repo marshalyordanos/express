@@ -159,7 +159,9 @@ export class StaffMessageController {
     @Public()
     @MessagePattern(PATTERNS.STAFF_FIND_DRIVER)
     async findDriver(@Payload() payload: { query: ListQueryDto }) {
+      console.log("fetching");
+      
       const result = await this.usecases.findDriver(payload.query);
-      return IResponse.success('Officer created successfully', result);
+      return IResponse.success('Driver Fetched successfully', result);
     }
 }
