@@ -532,13 +532,11 @@ export class StaffRepository {
 
   async findDriver(payload: ListQueryDto) {
     // Start building dynamic filters
-    const where: any = {
-      AND: [],
-    };
+    const conditions: any[] = [];
 
     // Apply general search (text)
     if (payload.search) {
-      where.AND.push({
+      conditions.push({
         OR: [
           { user: { name: { contains: payload.search, mode: 'insensitive' } } },
           {
@@ -565,6 +563,7 @@ export class StaffRepository {
       });
     }
 
+    // Parse filters
     let filters: any = {};
     if (typeof payload.filter === 'string') {
       try {
@@ -577,25 +576,20 @@ export class StaffRepository {
     }
 
     // Apply optional filters
-    if (filters.status) {
-      where.AND.push({ status: filters.status });
-    }
-    if (filters.type) {
-      where.AND.push({ type: filters.type });
-    }
+    if (filters.status) conditions.push({ status: filters.status });
+    if (filters.type) conditions.push({ type: filters.type });
     if (filters.vehicleStatus) {
-      where.AND.push({
+      conditions.push({
         vehicles: { some: { status: filters.vehicleStatus } },
       });
     }
-    if (filters.userId) {
-      where.AND.push({ userId: filters.userId });
-    }
+    if (filters.userId) conditions.push({ userId: filters.userId });
     if (filters.vehicleId) {
-      where.AND.push({
-        vehicles: { some: { id: filters.vehicleId } },
-      });
+      conditions.push({ vehicles: { some: { id: filters.vehicleId } } });
     }
+
+    // Only include AND if we actually have conditions
+    const where = conditions.length > 0 ? { AND: conditions } : {};
 
     const feature = new PrismaQueryFeature({
       search: payload.search,
@@ -610,12 +604,12 @@ export class StaffRepository {
         'vehicles.plateNumber',
         'vehicles.model',
       ],
-      hasNotDate: true,
     });
 
-    // Construct Prisma query
+    const baseQuery = feature.getQuery();
+    delete baseQuery.orderBy; // remove any sorting
     const query = {
-      ...feature.getQuery(),
+      ...baseQuery,
       where,
       include: {
         user: {
@@ -633,7 +627,6 @@ export class StaffRepository {
       },
     };
 
-    // Run queries in parallel transaction
     const [drivers, total] = await this.prisma.$transaction([
       this.prisma.driver.findMany(query),
       this.prisma.driver.count({ where }),

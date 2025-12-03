@@ -322,6 +322,7 @@ export class StaffGatewayController {
       ip,
     });
   }
+
   @Get(':id')
   async findStaffById(@Param('id') id: string, @Req() req) {
     const authHeader = req.headers['authorization'] || null;

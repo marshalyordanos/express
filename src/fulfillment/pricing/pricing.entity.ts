@@ -64,14 +64,32 @@ import {
 //   effectiveTo?: string;
 // }
 
-export class ServiceTypeValueDto {
+export class AirportFeeBracketDto {
   @IsNotEmpty()
-  @IsEnum(ServiceType)
-  type: ServiceType;
+  @IsNumber()
+  minKg: number;
 
   @IsNotEmpty()
   @IsNumber()
-  value: number;
+  maxKg: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  rate: number;
+
+  @IsOptional()
+  @IsString()
+  id?: string;
+}
+
+export class ServiceTypeValueDto {
+  @IsNotEmpty()
+  @IsEnum(ServiceType)
+  serviceType: ServiceType;
+
+  @IsNotEmpty()
+  @IsNumber()
+  baseFee: number;
 
   @IsOptional()
   @IsString()
@@ -83,15 +101,15 @@ export class ServiceTypeValueDto {
 export class WeightBracketDto {
   @IsNotEmpty()
   @IsNumber()
-  minKg: number;
+  startKg: number;
 
   @IsNotEmpty()
   @IsNumber()
-  maxKg: number;
+  endKg: number;
 
   @IsNotEmpty()
   @IsNumber()
-  rate: number; // birr for this weight range
+  price: number; // birr for this weight range
 
   @IsOptional()
   @IsString()
@@ -141,17 +159,27 @@ export class AdditionalChargesDto {
 /* -------------------- MAIN TARIFF DTO -------------------- */
 
 export class AirportFeesDto {
-  @IsNotEmpty()
-  @IsNumber()
-  kg: number; // kg threshold
+  @IsOptional()
+  @IsEnum(ServiceType)
+  serviceType?: ServiceType; // user selects EXPRESS, STANDARD, etc.
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsNumber()
-  price: number; // price per kg
+  flatRatePerKg?: number; // example: 10 birr per kg (no brackets)
 
   @IsOptional()
   @IsString()
-  id: string;
+  serviceTypeId?: string; // example: 10 birr per kg (no brackets)
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AirportFeeBracketDto)
+  brackets?: AirportFeeBracketDto[];
+
+  @IsOptional()
+  @IsString()
+  id?: string;
 }
 
 /* -------------------- MAIN TARIFF DTO -------------------- */
@@ -205,9 +233,10 @@ export class TariffDto {
 
   // --- NEW ---
   @IsOptional()
-  @ValidateNested()
+  @IsArray()
+  @ValidateNested({ each: true })
   @Type(() => AirportFeesDto)
-  airportFee?: AirportFeesDto;
+  airportFees?: AirportFeesDto[];
 }
 
 export class UpdateTariffDto {
@@ -255,9 +284,10 @@ export class UpdateTariffDto {
   additionalCharges?: AdditionalChargesDto;
 
   @IsOptional()
-  @ValidateNested()
+  @IsArray()
+  @ValidateNested({ each: true })
   @Type(() => AirportFeesDto)
-  airportFee?: AirportFeesDto;
+  airportFees?: AirportFeesDto[];
 }
 
 //===============================================================================================SURCHARGE==================================================================
