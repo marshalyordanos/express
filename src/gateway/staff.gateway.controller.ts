@@ -18,7 +18,6 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { PATTERNS } from '../contracts';
 import {
-  
   AssignStaffToBranchDto,
   ChangeRoleDto,
   CreateDriver,
@@ -33,7 +32,6 @@ import { Express } from 'express';
 // import { Express } from 'express';
 // import { File as MulterFile } from 'multer';
 // import { File } from 'multer';
-
 
 @Controller('staff')
 export class StaffGatewayController {
@@ -219,28 +217,6 @@ export class StaffGatewayController {
     });
   }
 
-  @Get(':id')
-  async findStaffById(@Param('id') id: string, @Req() req) {
-    const authHeader = req.headers['authorization'] || null;
-    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
-
-    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
-    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
-    let decodedUser = null;
-    try {
-      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
-      // decodedUser = this.jwtService.verify(token);
-    } catch (err) {
-      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
-    }
-    return this.staffClient.send(PATTERNS.STAFF_FIND_BY_ID, {
-      id,
-      headers: { authorization: authHeader },
-      user: decodedUser, // ✅ send user info
-      ip,
-    });
-  }
-
   @Get('/branch/:branchId')
   async findStaffByBranch(
     @Req() req,
@@ -272,37 +248,37 @@ export class StaffGatewayController {
     });
   }
 
-@Post('/driver')
-@UseInterceptors(FilesInterceptor('licenseImages', 2))
-async createDriver(
-  // @UploadedFiles() files: Express.Multer.File[],
-  // @UploadedFiles() files: File[],
-  // @UploadedFiles() files: Express.Multer.File[],
-  // @UploadedFiles() files: MulterFile[],
-  @UploadedFiles() files: any[],
-  @Body() body: any,
-  @Req() req,
-) {
-  // const authHeader = req.headers['authorization'] || null;
-  // const token = authHeader?.replace('Bearer ', '');
-  // const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
+  @Post('/driver')
+  @UseInterceptors(FilesInterceptor('licenseImages', 2))
+  async createDriver(
+    // @UploadedFiles() files: Express.Multer.File[],
+    // @UploadedFiles() files: File[],
+    // @UploadedFiles() files: Express.Multer.File[],
+    // @UploadedFiles() files: MulterFile[],
+    @UploadedFiles() files: any[],
+    @Body() body: any,
+    @Req() req,
+  ) {
+    // const authHeader = req.headers['authorization'] || null;
+    // const token = authHeader?.replace('Bearer ', '');
+    // const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
 
-  // Attach files (as buffer/base64)
-  // Attach file buffers
-  if (files?.length > 0) {
-    body.licenseFront = files[0]?.buffer || null;
-    body.licenseBack = files[1]?.buffer || null;
+    // Attach files (as buffer/base64)
+    // Attach file buffers
+    if (files?.length > 0) {
+      body.licenseFront = files[0]?.buffer || null;
+      body.licenseBack = files[1]?.buffer || null;
+    }
+    const forwarded = req.headers['x-forwarded-for'] as string;
+    const ip = forwarded?.split(',')[0] || req.ip;
+
+    return this.staffClient.send(PATTERNS.STAFF_CREATE_DRIVER, {
+      data: body,
+      // headers: { authorization: authHeader },
+      user: null,
+      ip,
+    });
   }
-  const forwarded = req.headers['x-forwarded-for'] as string;
-  const ip = forwarded?.split(',')[0] || req.ip;
-
-  return this.staffClient.send(PATTERNS.STAFF_CREATE_DRIVER, {
-    data: body,
-    // headers: { authorization: authHeader },
-    user: null,
-    ip,
-  });
-}
 
   @Get('/driver')
   async findDriver(@Query() query: ListQueryDto, @Req() req) {
@@ -341,6 +317,27 @@ async createDriver(
     }
     return this.staffClient.send(PATTERNS.STAFF_ASSIGN_BRANCH, {
       data: dto,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+  @Get(':id')
+  async findStaffById(@Param('id') id: string, @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.staffClient.send(PATTERNS.STAFF_FIND_BY_ID, {
+      id,
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
       ip,

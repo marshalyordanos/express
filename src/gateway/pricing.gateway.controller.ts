@@ -15,7 +15,7 @@ import {
 import { ClientProxy } from '@nestjs/microservices';
 import { PATTERNS } from '../contracts';
 import {
-  AddDriverCommissionDto,
+  AddCommissionDto,
   AirportFeeDto,
   CustomerCategoryDto,
   DiscountDto,
@@ -25,9 +25,9 @@ import {
   SurchargeDto,
   TariffDto,
   UpdateAirportFeeDto,
+  updateCommissionDto,
   UpdateCustomerCategoryDto,
   UpdateDiscountDto,
-  updateDriverCommissionDto,
   UpdateMiscellaneousFeeDto,
   UpdateProfitMarginDto,
   UpdateSurchargeDto,
@@ -35,10 +35,10 @@ import {
 } from '../fulfillment/pricing/pricing.entity';
 import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
+import { CreateOrderDto } from '../fulfillment/order/order.entity';
 
 @Controller('pricing')
 export class PricingGatewayController {
-
   constructor(
     @Inject('FULFILLMENT_SERVICE') private readonly pricingClient: ClientProxy,
   ) {}
@@ -66,7 +66,6 @@ export class PricingGatewayController {
     });
   }
 
-  
   @Get('tariff')
   async getTariff(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
@@ -209,7 +208,6 @@ export class PricingGatewayController {
     });
   }
 
-  
   @Get('profit-margin')
   async getProfitMargin(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
@@ -298,7 +296,6 @@ export class PricingGatewayController {
     });
   }
 
-  
   @Get('airport-fee')
   async getAirportFee(@Req() req, @Query() query: ListQueryDto) {
     return this.pricingClient.send(PATTERNS.PRICE_AIRPORT_FEE_FIND_ALL, {
@@ -407,7 +404,6 @@ export class PricingGatewayController {
     });
   }
 
-  
   @Get('misc-fee')
   async getMiscFee(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
@@ -523,7 +519,6 @@ export class PricingGatewayController {
     });
   }
 
-  
   @Get('surcharge')
   async getSurcharge(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
@@ -639,7 +634,6 @@ export class PricingGatewayController {
     });
   }
 
-  
   @Get('discount')
   async getDiscount(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
@@ -755,7 +749,6 @@ export class PricingGatewayController {
     });
   }
 
-  
   @Get('customer-category')
   async getCustomerCategory(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
@@ -847,8 +840,7 @@ export class PricingGatewayController {
     });
   }
   //============================================================================================================PRICE CALCULATION AND LOG===============================================================================
-  
-  
+
   @Get('price-calculation-log')
   async getPriceCalculationLog(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
@@ -915,11 +907,10 @@ export class PricingGatewayController {
     });
   }
 
-
   ////////////////////////////////////////////////////////////////////////////
 
-    @Post('driver/commission')
-  async createDriverCommission(@Body() data: AddDriverCommissionDto, @Req() req) {
+  @Post('driver/commission')
+  async createDriverCommission(@Body() data: AddCommissionDto, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
 
@@ -932,7 +923,7 @@ export class PricingGatewayController {
     } catch (err) {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
-    return this.pricingClient.send(PATTERNS.PRICE_CREATE_DRIVER_COMMISSION, {
+    return this.pricingClient.send(PATTERNS.PRICE_CREATE_VEHICLE_COMMISSION, {
       data,
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
@@ -940,7 +931,6 @@ export class PricingGatewayController {
     });
   }
 
-  
   @Get('driver/commission')
   async getDriverCommissions(@Req() req, @Query() query: ListQueryDto) {
     const authHeader = req.headers['authorization'] || null;
@@ -955,7 +945,7 @@ export class PricingGatewayController {
     } catch (err) {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
-    return this.pricingClient.send(PATTERNS.PRICE_FIND_ALL_DRIVER_COMMISSION, {
+    return this.pricingClient.send(PATTERNS.PRICE_FIND_ALL_VEHICLE_COMMISSION, {
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
       ip,
@@ -966,7 +956,7 @@ export class PricingGatewayController {
   @Patch('driver/commission/:id')
   async updateDriverCommission(
     @Param('id') id: string,
-    @Body() data: updateDriverCommissionDto,
+    @Body() data: updateCommissionDto,
     @Req() req,
   ) {
     const authHeader = req.headers['authorization'] || null;
@@ -981,7 +971,7 @@ export class PricingGatewayController {
     } catch (err) {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
-    return this.pricingClient.send(PATTERNS.PRICE_UPDATE_DRIVER_COMMISSION, {
+    return this.pricingClient.send(PATTERNS.PRICE_UPDATE_VEHICLE_COMMISSION, {
       id,
       data,
       headers: { authorization: authHeader },
@@ -1004,12 +994,15 @@ export class PricingGatewayController {
     } catch (err) {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
-    return this.pricingClient.send(PATTERNS.PRICE_FIND_DRIVER_COMMISSION_BY_ID, {
-      id,
-      headers: { authorization: authHeader },
-      user: decodedUser, // ✅ send user info
-      ip,
-    });
+    return this.pricingClient.send(
+      PATTERNS.PRICE_FIND_VEHICLE_COMMISSION_BY_ID,
+      {
+        id,
+        headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+      },
+    );
   }
 
   @Delete('driver/commission/:id')
@@ -1026,10 +1019,54 @@ export class PricingGatewayController {
     } catch (err) {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
-    return this.pricingClient.send(PATTERNS.PRICE_DELETE_DRIVER_COMMISSION, {
+    return this.pricingClient.send(PATTERNS.PRICE_DELETE_VEHICLE_COMMISSION, {
       id,
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  @Get('driver/earning')
+  async getDriverEarning(@Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.pricingClient.send(PATTERNS.PRICE_GET_DRIVER_EARNINGS, {
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
+  @Post('order/summary')
+  async getOrderPriceSummary(@Req() req, @Body() data: CreateOrderDto) {
+    // const authHeader = req.headers['authorization'] || null;
+    // let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+console.log("Processing :::: ", data);
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    // let decodedUser = null;
+    // try {
+    //   decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+    //   // decodedUser = this.jwtService.verify(token);
+    // } catch (err) {
+    //   throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    // }
+    return this.pricingClient.send(PATTERNS.PRICE_GET_ORDER_PRICE_SUMMARY, {
+      data,
+      // headers: { authorization: authHeader },
+      // user: decodedUser, // ✅ send user info
       ip,
     });
   }

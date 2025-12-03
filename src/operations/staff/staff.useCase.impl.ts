@@ -508,17 +508,24 @@ export class StaffUseCasesImpl implements StaffUsecase {
       `Creating driver for Email ${data.email} and initiated by ${userId}`,
     );
 
-    if (!data.vehicleId || !data.roleId) {
+    /* commented */
+    // if (!data.vehicleId || !data.roleId) {
+    //   throw new RpcException({
+    //     statusCode: 400,
+    //     message: 'Vehicle ID and Role ID are required.',
+    //   });
+    // }
+    if (!data.role) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Vehicle ID and Role ID are required.',
+        message: 'Role ID are required.',
       });
     }
 
     // 🔎 DB validation
-    const [vehicle, role, user] = await Promise.all([
-      this.staffRepo.findVehicleById(data.vehicleId),
-      this.staffRepo.findRoleById(data.roleId),
+    const [role, user] = await Promise.all([
+      // this.staffRepo.findVehicleById(data.vehicleId),
+      this.staffRepo.findRoleById(data.role),
       this.staffRepo.findStaffByEmailAndPhone(data.email, data.phone),
     ]);
 
@@ -579,8 +586,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
     data.licenseFrontUrl = uploadedFront?.url || null;
     data.licenseBackUrl = uploadedBack?.url || null;
 
-    console.log("Driver image after saved to cloudinary ::: Data:", data);
-    
+    console.log('Driver image after saved to cloudinary ::: Data:', data);
 
     // -------------------------------------------------------------------
     // 2. 🔥 OCR Extraction
@@ -602,7 +608,6 @@ export class StaffUseCasesImpl implements StaffUsecase {
 
     // console.log(`Processed image for back ::: `, ocrBack);
 
-
     // // Merge best extracted values
     // const ocr = { ...ocrBack, ...ocrFront }; // front wins if both exist
     // console.log(`OCR big one :: `, ocr);
@@ -614,7 +619,6 @@ export class StaffUseCasesImpl implements StaffUsecase {
 
     // data.emergencyContactName ||= ocr.emergencyContactName;
     // data.emergencyContactPhone ||= ocr.emergencyContactPhone;
-
 
     // -------------------------------------------------------------------
     // 3. Continue your existing user creation logic
@@ -630,14 +634,13 @@ export class StaffUseCasesImpl implements StaffUsecase {
       isStaff: true,
       isActive: true,
       customId,
-      branchId: data.type === 'INTERNAL' ? data.branchId : null,
-      roleId: data.roleId,
+      // branchId: data.type === 'INTERNAL' ? data.branchId : null,
+      roleId: data.role,
       emergencyContactName: data.emergencyContactName,
       emergencyContactPhone: data.emergencyContactPhone,
     };
 
     const result = await this.staffRepo.createDriver(userData, data, userId);
-
 
     this.logger.log(`Driver created successfully: ${customId}`);
     return {
@@ -652,10 +655,16 @@ export class StaffUseCasesImpl implements StaffUsecase {
     this.logger.log(`Finding drivers with query: ${JSON.stringify(query)}`);
 
     try {
+      console.log('=======================================11111');
+
       const drivers = await this.staffRepo.findDriver(query);
+      console.log('=======================================11111', drivers);
+
       this.logger.verbose(`Found ${drivers.pagination.total} drivers`);
       return drivers;
     } catch (error) {
+      console.log('=======================================');
+      console.log(error);
       this.logger.error(`Find driver failed: ${error.message}`, error.stack);
       throw new RpcException(error.message);
     }

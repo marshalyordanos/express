@@ -345,6 +345,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
           notes: data.notes,
           location: 'At Airport',
         },
+        data?.podImages,
       );
 
       this.logger.verbose(
@@ -1112,7 +1113,82 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         : new RpcException(error.message);
     }
   }
-  async scanOrder(officerId: string, scannedToken: string, userId: string) {
+  async scanOrder(scannedToken: string, userId: string) {
+    this.logger.log(`Scan request received by officer ${userId}`);
+
+    let payload: OrderQRCodeData;
+    try {
+      const jsonString = Buffer.from(
+        scannedToken.split(',')[1],
+        'base64',
+      ).toString();
+      payload = JSON.parse(jsonString);
+      this.logger.verbose(
+        `QR token decoded successfully for trackingCode: ${payload.trackingCode}`,
+      );
+    } catch (err) {
+      this.logger.error(`Failed to decode QR token: ${err.message}`, err.stack);
+      throw new RpcException('Invalid QR token format');
+    }
+
+    // Find order by tracking code
+    const order = await this.dispatchRepo.findByTrackingCode(
+      payload.trackingCode,
+    );
+    if (!order) {
+      this.logger.warn(
+        `Order not found for trackingCode: ${payload.trackingCode}`,
+      );
+      throw new RpcException('Order not found');
+    }
+    this.logger.verbose(
+      `Order found: ${order.id} for trackingCode: ${order.trackingCode}`,
+    );
+
+    // Decode and validate QR
+    let result: any;
+    try {
+      result = decodeAndValidateQRCode(scannedToken, order);
+      this.logger.log(
+        `QR validation result for order ${order.id}: valid=${result.valid}`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `QR validation failed for order ${order.id}: ${err.message}`,
+        err.stack,
+      );
+      throw new RpcException(`QR validation failed: ${err.message}`);
+    }
+
+    // Save scan log
+    const location = 'At airport';
+    try {
+      await this.dispatchRepo.createScan(
+        {
+          orderId: order.id,
+          scannedBy: userId,
+          valid: result.valid,
+          notes: result.notes,
+          batchId: order.batchId ?? undefined,
+        },
+        location,
+      );
+      this.logger.verbose(
+        `Scan log created for order ${order.id} at ${location}`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to create scan log for order ${order.id}: ${err.message}`,
+        err.stack,
+      );
+      throw new RpcException(`Failed to create scan log: ${err.message}`);
+    }
+
+    return result;
+  }
+
+
+    async scanBatches(scannedToken: string, userId: string) {
     this.logger.log(`Scan request received by officer ${userId}`);
 
     let payload: OrderQRCodeData;
@@ -1324,7 +1400,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         dto.handedById,
         dto.method,
         dto.reference,
-        dto.notes,
+        dto.notes
       );
 
       this.logger.log(`Handover confirmed by officer ${dto.handedById}`);

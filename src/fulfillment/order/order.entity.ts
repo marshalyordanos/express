@@ -258,6 +258,15 @@ export class ConfirmPickUpOrderDto {
   @IsNotEmpty({ message: 'Driver Id field is required' })
   @Transform(({ value }) => sanitize(value))
   driverId: string;
+
+  @IsArray()
+  @IsOptional()
+  podImages?: {
+    url: string;
+    publicId?: string;
+    fileName?: string;
+    fileType?: string;
+  }[];
 }
 
 // ---------------- CONFIRM PICKUP ORDER ----------------
@@ -333,4 +342,31 @@ export class CancelOrderDto {
   @IsNotEmpty({ message: 'Cancel reason is required' })
   @Transform(({ value }) => sanitize(value))
   reason: string;
+}
+
+// =---------------------------- ADD ORDER ON HOLD---------------------------
+export class AddOrderOnHold {
+
+  @IsNotEmpty()
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true,message: 'Order ID must be a string' })
+  orderIds: string[];
+
+  @IsString({ message: 'Reason must be a string' })
+  @IsNotEmpty({ message: 'Cancel reason is required' })
+  @Transform(({ value }) => sanitize(value))
+  reason: string;
+
+  
+}
+
+//----------------------------- REMOVE ORDER FROM ON HOLD---------------------------
+export class RemoveOrderFromOnHold {
+
+  @IsNotEmpty()
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true,message: 'Order ID must be a string' })
+  orderIds: string[];
 }

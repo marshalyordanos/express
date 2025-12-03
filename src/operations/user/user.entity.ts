@@ -8,6 +8,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MinLength,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 
@@ -20,6 +21,94 @@ export interface UserDto {
   phone?: string;
   emergencyContactPhone: string;
   emergencyContactName: string;
+}
+
+export class CreateCustomerDto {
+  @IsNotEmpty({ message: 'Name is required' })
+  @IsString({ message: 'Name must be a string' })
+  @Transform(({ value }) => escape(value.trim()))
+  name: string;
+
+  @IsNotEmpty({ message: 'Email is required' })
+  @IsEmail({}, { message: 'Email must be valid' })
+  @Transform(({ value }) => value.trim().toLowerCase())
+  email: string;
+
+  // @IsNotEmpty({ message: 'Password is required' })
+  // @IsString({ message: 'Password must be a string' })
+  // @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  // @Transform(({ value }) => value.trim())
+  // password: string;
+
+  @IsNotEmpty({ message: 'Role Id is required' })
+  @IsString({ message: 'Role Id must be a string' })
+  @Transform(({ value }) => value?.trim())
+  role: string;
+
+  @IsOptional()
+  @IsString({ message: 'Branch ID must be a string' })
+  @Transform(({ value }) => value?.trim())
+  branchId?: string;
+
+  @IsString()
+  @Transform(({ value }) => escape(value.trim()))
+  customerType: string = 'INDIVIDUAL';
+
+  @IsOptional()
+  @IsString({ message: 'Customer category ID must be a string' })
+  customerCategoryId?: string;
+
+  @IsNotEmpty({ message: 'Phone is required' })
+  @IsString({ message: 'Phone must be a string' })
+  @Transform(({ value }) => value.trim())
+  phone: string;
+
+  // --- Corporate only fields ---
+  @IsOptional()
+  @IsString({ message: 'Company name must be a string' })
+  @Transform(({ value }) => escape(value?.trim()))
+  companyName?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Tax ID must be a string' })
+  @Transform(({ value }) => escape(value?.trim()))
+  taxId?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Contact person must be a string' })
+  @Transform(({ value }) => escape(value?.trim()))
+  contactPerson?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Contact phone must be a string' })
+  @Transform(({ value }) => value?.trim())
+  contactPhone?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Contact email must be a string' })
+  @Transform(({ value }) => value?.trim().toLowerCase())
+  @IsEmail({}, { message: 'Contact email must be valid' })
+  contactEmail?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Industry type must be a string' })
+  @Transform(({ value }) => escape(value?.trim()))
+  industryType?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Website must be a string' })
+  @Transform(({ value }) => escape(value?.trim()))
+  website?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Address must be a string' })
+  @Transform(({ value }) => escape(value?.trim()))
+  address?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Notes must be a string' })
+  @Transform(({ value }) => escape(value?.trim()))
+  notes?: string;
 }
 
 export class UserUpdateDto {

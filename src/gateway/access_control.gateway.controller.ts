@@ -25,6 +25,7 @@ import {
 import * as jwt from 'jsonwebtoken';
 import { ListQueryDto } from '../common/query/query.dto';
 
+
 @Controller('access-control')
 export class AccessControlGatewayController {
   constructor(

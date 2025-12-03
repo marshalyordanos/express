@@ -77,13 +77,16 @@ export class MapsService {
     origin: LatLon,
     destination: LatLon,
   ): Promise<number> {
+  console.log("CALCULTING DISTANCE ::: ", origin, destination);
+  
     const o = { lat: Number(origin.lat), lon: Number(origin.lon) };
     const d = { lat: Number(destination.lat), lon: Number(destination.lon) };
-
+    
     if ([o.lat, o.lon, d.lat, d.lon].some((v) => Number.isNaN(v))) {
       throw new RpcException('Invalid coordinates (not numbers)');
     }
-
+    
+    console.log("VALID COORDINATES ");
     try {
       return await this.callOpenRouteService(o, d);
     } catch (err) {

@@ -2,6 +2,7 @@ import { ListQueryDto } from '../../common/query/query.dto';
 import {
   AddException,
   CancelOrderDto,
+  ConfirmPickUpOrderDto,
   CreateOrderDto,
   UpdateOrderDto,
   ValidateOrderDto,
@@ -19,7 +20,7 @@ export interface OrderUseCases {
   //  string, data: any): Promise<any>;
   // updateOrderType(id: string, data: any): Promise<any>;
   // updateOrderDriver(id: string, data: any): Promise<any>;
-  confirmPickupOrder(orderId: string, driverId: string, userId: string): Promise<any>;
+  confirmPickupOrder(data: ConfirmPickUpOrderDto, userId: string): Promise<any>;
   validateOrder(orderId: string, data: ValidateOrderDto, userId: string): Promise<any>;
   trackOrder(code: string, userId: string): Promise<any>;
   markUnusualOrder(orderId: string, data: any): Promise<any>;

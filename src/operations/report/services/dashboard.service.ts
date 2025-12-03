@@ -3,7 +3,8 @@ import { DashboardReportRepository } from '../repositories/dashboard.repository'
 import { RedisService } from '../../../redis/redis.service';
 import { VehicleStatus } from '@prisma/client';
 import { AppLogger } from '../../../common/app-logger.service';
-
+import { RpcException } from '@nestjs/microservices';
+import { handleCatch } from '../../../common/handleCatch';
 
 @Injectable()
 export class DashboardReportService {
@@ -15,7 +16,6 @@ export class DashboardReportService {
     private readonly logger: AppLogger,
   ) {
     this.logger.setContext('OperationsService', 'ReportDashboard');
-
   }
 
   /**
@@ -138,7 +138,7 @@ export class DashboardReportService {
     const now = new Date();
 
     const startOfWeek = new Date();
-    startOfWeek.setDate(now.getDate() - now.getDay()); 
+    startOfWeek.setDate(now.getDate() - now.getDay());
     const twoWeeksAgo = new Date();
     twoWeeksAgo.setDate(now.getDate() - 14);
 
@@ -239,7 +239,7 @@ export class DashboardReportService {
         change: percentChange(
           twoWeeksOrderCounts.returnOrders,
           twoWeeksOrderCounts.returnOrders,
-        ), 
+        ),
       },
       fulfilledOrders: {
         value: twoWeeksOrderCounts.fulfilledOrders,
@@ -254,7 +254,7 @@ export class DashboardReportService {
     };
   }
 
-   async getCustomerAnalytics() {
+  async getCustomerAnalytics() {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -271,16 +271,34 @@ export class DashboardReportService {
       newCorporateThisMonth,
       loyaltyMembers,
     ] = await Promise.all([
-      this.cacheWrap('dashboard:customer:total', 60, () => this.dashboardRepo.getTotalCustomers()),
-      this.cacheWrap('dashboard:customer:newThisMonth', 60, () => this.dashboardRepo.getNewCustomers(startOfMonth, startOfNextMonth)),
-      this.cacheWrap('dashboard:customer:newLastMonth', 60, () => this.dashboardRepo.getNewCustomers(startOfLastMonth, startOfMonth)),
-      this.cacheWrap('dashboard:customer:active', 60, () => this.dashboardRepo.getActiveCustomers(twoWeeksAgo)),
-      this.cacheWrap('dashboard:customer:corporateClients', 60, () => this.dashboardRepo.getCorporateClients()),
-      this.cacheWrap('dashboard:customer:newCorporateThisMonth', 60, () => this.dashboardRepo.getNewCorporateClients(startOfMonth, startOfNextMonth)),
-      this.cacheWrap('dashboard:customer:loyaltyMembers', 60, () => this.dashboardRepo.getLoyaltyMembers()),
+      this.cacheWrap('dashboard:customer:total', 60, () =>
+        this.dashboardRepo.getTotalCustomers(),
+      ),
+      this.cacheWrap('dashboard:customer:newThisMonth', 60, () =>
+        this.dashboardRepo.getNewCustomers(startOfMonth, startOfNextMonth),
+      ),
+      this.cacheWrap('dashboard:customer:newLastMonth', 60, () =>
+        this.dashboardRepo.getNewCustomers(startOfLastMonth, startOfMonth),
+      ),
+      this.cacheWrap('dashboard:customer:active', 60, () =>
+        this.dashboardRepo.getActiveCustomers(twoWeeksAgo),
+      ),
+      this.cacheWrap('dashboard:customer:corporateClients', 60, () =>
+        this.dashboardRepo.getCorporateClients(),
+      ),
+      this.cacheWrap('dashboard:customer:newCorporateThisMonth', 60, () =>
+        this.dashboardRepo.getNewCorporateClients(
+          startOfMonth,
+          startOfNextMonth,
+        ),
+      ),
+      this.cacheWrap('dashboard:customer:loyaltyMembers', 60, () =>
+        this.dashboardRepo.getLoyaltyMembers(),
+      ),
     ]);
 
-    const percentChange = (curr: number, prev: number) => (prev === 0 ? 100 : +(((curr - prev) / prev) * 100).toFixed(2));
+    const percentChange = (curr: number, prev: number) =>
+      prev === 0 ? 100 : +(((curr - prev) / prev) * 100).toFixed(2);
 
     return {
       totalCustomers: {
@@ -303,10 +321,12 @@ export class DashboardReportService {
     };
   }
 
-
-    private parseJsonArray(jsonArray: any[]): number {
+  private parseJsonArray(jsonArray: any[]): number {
     if (!jsonArray || !Array.isArray(jsonArray)) return 0;
-    return jsonArray.reduce((sum, item) => sum + (item.amount ?? item.value ?? 0), 0);
+    return jsonArray.reduce(
+      (sum, item) => sum + (item.amount ?? item.value ?? 0),
+      0,
+    );
   }
 
   private sumMetrics(logs: any[]) {
@@ -317,7 +337,7 @@ export class DashboardReportService {
     let totalMiscFees = 0;
     let totalAirportFee = 0;
 
-    logs.forEach(log => {
+    logs.forEach((log) => {
       totalRevenue += log.finalPrice;
       totalProfit += log.profit?.total ?? 0;
       totalSurcharge += this.parseJsonArray(log.surcharges);
@@ -326,7 +346,8 @@ export class DashboardReportService {
       totalAirportFee += log.airportFee?.total ?? 0;
     });
 
-    const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+    const profitMargin =
+      totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
     return {
       totalRevenue,
@@ -352,11 +373,15 @@ export class DashboardReportService {
     }
 
     const now = new Date();
-    const startOfDay = new Date(now); startOfDay.setHours(0,0,0,0);
-    const startOfPrevDay = new Date(startOfDay); startOfPrevDay.setDate(startOfDay.getDate() - 1);
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const startOfPrevDay = new Date(startOfDay);
+    startOfPrevDay.setDate(startOfDay.getDate() - 1);
 
-    const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
-    const startOfPrevWeek = new Date(startOfWeek); startOfPrevWeek.setDate(startOfWeek.getDate() - 7);
+    const startOfWeek = new Date(startOfDay);
+    startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+    const startOfPrevWeek = new Date(startOfWeek);
+    startOfPrevWeek.setDate(startOfWeek.getDate() - 7);
 
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -402,29 +427,34 @@ export class DashboardReportService {
     return report;
   }
 
-
- // ✅ Full Fleet Summary
+  // ✅ Full Fleet Summary
   async getFleetSummary() {
     return this.cacheWrap('fleet:summary', 60, async () => {
       const vehicles = await this.dashboardRepo.getVehicles();
 
       const total = vehicles.length;
       // ✅ 1. In-house vs External
-      const inHouse = vehicles.filter(v => v.type === 'INTERNAL').length;
-      const external = vehicles.filter(v => v.type === 'EXTERNAL').length;
+      const inHouse = vehicles.filter((v) => v.type === 'INTERNAL').length;
+      const external = vehicles.filter((v) => v.type === 'EXTERNAL').length;
 
       // ✅ 2. Active Vehicles
-      const active = vehicles.filter(v => v.status === VehicleStatus.ACTIVE).length;
-      const activePercentage = total > 0 ? +(active / total * 100).toFixed(1) : 0;
+      const active = vehicles.filter(
+        (v) => v.status === VehicleStatus.ACTIVE,
+      ).length;
+      const activePercentage =
+        total > 0 ? +((active / total) * 100).toFixed(1) : 0;
 
       // ✅ 3. Under Maintenance
       const maintenanceVehicles = vehicles
-        .filter(v => v.status === VehicleStatus.MAINTENANCE)
-        .map(v => v.plateNumber);
+        .filter((v) => v.status === VehicleStatus.MAINTENANCE)
+        .map((v) => v.plateNumber);
 
       // ✅ 4. Avg Utilization (example: based on total logs cost)
       const utilizationData = await this.dashboardRepo.getUtilizationStats();
-      const totalUtil = utilizationData.reduce((sum, v) => sum + v.fleetLogs.length, 0);
+      const totalUtil = utilizationData.reduce(
+        (sum, v) => sum + v.fleetLogs.length,
+        0,
+      );
       const avgUtilization = total > 0 ? +(totalUtil / total).toFixed(2) : 0;
 
       // ✅ 5. Mock Change From Last Month (adjust as needed)
@@ -447,107 +477,183 @@ export class DashboardReportService {
     });
   }
 
-async getDispatchSummary() {
-  return this.cacheWrap("dispatch:summary", 60, async () => {
-    const dispatches = await this.dashboardRepo.getDispatches();
+  async getDispatchSummary() {
+    return this.cacheWrap('dispatch:summary', 60, async () => {
+      const dispatches = await this.dashboardRepo.getDispatches();
 
-    // ✅ existing dispatch analytics
-    const totalDispatches = dispatches.length;
-    const byStatus = {};
-    const byScope = {};
-    const byServiceType = {};
+      // ✅ existing dispatch analytics
+      const totalDispatches = dispatches.length;
+      const byStatus = {};
+      const byScope = {};
+      const byServiceType = {};
 
-    for (const d of dispatches) {
-      byStatus[d.status] = (byStatus[d.status] || 0) + 1;
-      byScope[d.scope] = (byScope[d.scope] || 0) + 1;
-      byServiceType[d.serviceType] =
-        (byServiceType[d.serviceType] || 0) + 1;
-    }
+      for (const d of dispatches) {
+        byStatus[d.status] = (byStatus[d.status] || 0) + 1;
+        byScope[d.scope] = (byScope[d.scope] || 0) + 1;
+        byServiceType[d.serviceType] = (byServiceType[d.serviceType] || 0) + 1;
+      }
 
-    const assignedToDrivers = dispatches.filter(d => d.driverId).length;
-    const unassigned = totalDispatches - assignedToDrivers;
+      const assignedToDrivers = dispatches.filter((d) => d.driverId).length;
+      const unassigned = totalDispatches - assignedToDrivers;
 
-    const weights = dispatches.map(d => d.weight || 0);
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
-    const avgWeightPerDispatch = totalDispatches ? +(totalWeight / totalDispatches).toFixed(2) : 0;
+      const weights = dispatches.map((d) => d.weight || 0);
+      const totalWeight = weights.reduce((a, b) => a + b, 0);
+      const avgWeightPerDispatch = totalDispatches
+        ? +(totalWeight / totalDispatches).toFixed(2)
+        : 0;
 
-    let dispatchedOrders = 0;
-    let completedOrders = 0;
-    let failedOrders = 0;
+      let dispatchedOrders = 0;
+      let completedOrders = 0;
+      let failedOrders = 0;
 
-    for (const d of dispatches) {
-      dispatchedOrders += d.orders.length;
-      completedOrders += d.orders.filter(o => o.status === "DELIVERED").length;
-      failedOrders += d.orders.filter(o => o.status === "FAILED").length;
-    }
+      for (const d of dispatches) {
+        dispatchedOrders += d.orders.length;
+        completedOrders += d.orders.filter(
+          (o) => o.status === 'DELIVERED',
+        ).length;
+        failedOrders += d.orders.filter((o) => o.status === 'FAILED').length;
+      }
 
-    const vehicleSet = new Set(dispatches.map(d => d.vehicleId).filter(Boolean));
-    const driverSet = new Set(dispatches.map(d => d.driverId).filter(Boolean));
+      const vehicleSet = new Set(
+        dispatches.map((d) => d.vehicleId).filter(Boolean),
+      );
+      const driverSet = new Set(
+        dispatches.map((d) => d.driverId).filter(Boolean),
+      );
 
-    const vehiclesUsed = vehicleSet.size;
-    const driversUsed = driverSet.size;
+      const vehiclesUsed = vehicleSet.size;
+      const driversUsed = driverSet.size;
 
-    const originBranches = new Set(dispatches.map(d => d.originId).filter(Boolean)).size;
-    const destinationBranches = new Set(dispatches.map(d => d.destinationId).filter(Boolean)).size;
+      const originBranches = new Set(
+        dispatches.map((d) => d.originId).filter(Boolean),
+      ).size;
+      const destinationBranches = new Set(
+        dispatches.map((d) => d.destinationId).filter(Boolean),
+      ).size;
 
-    const dispatchesToday = await this.dashboardRepo.getTodayDispatches();
-    const dispatchesThisWeek = await this.dashboardRepo.getWeekDispatches();
+      const dispatchesToday = await this.dashboardRepo.getTodayDispatches();
+      const dispatchesThisWeek = await this.dashboardRepo.getWeekDispatches();
 
-    // ✅ NEW KPIs -------------------------------------------------
+      // ✅ NEW KPIs -------------------------------------------------
 
-    const activeDrivers = await this.dashboardRepo.getActiveDrivers();
-    const activeDriversYesterday = await this.dashboardRepo.getActiveDriversYesterday();
-    const activeDriverChange = activeDrivers - activeDriversYesterday;
+      const activeDrivers = await this.dashboardRepo.getActiveDrivers();
+      const activeDriversYesterday =
+        await this.dashboardRepo.getActiveDriversYesterday();
+      const activeDriverChange = activeDrivers - activeDriversYesterday;
 
-    const deliveriesToday = await this.dashboardRepo.getDeliveriesToday();
-    const deliveriesYesterday = await this.dashboardRepo.getDeliveriesYesterday();
-    const deliveryChange = deliveriesYesterday ? +(((deliveriesToday - deliveriesYesterday) / deliveriesYesterday) * 100).toFixed(2) : 0;
+      const deliveriesToday = await this.dashboardRepo.getDeliveriesToday();
+      const deliveriesYesterday =
+        await this.dashboardRepo.getDeliveriesYesterday();
+      const deliveryChange = deliveriesYesterday
+        ? +(
+            ((deliveriesToday - deliveriesYesterday) / deliveriesYesterday) *
+            100
+          ).toFixed(2)
+        : 0;
 
-    const onTime = await this.dashboardRepo.getOnTimeOrders();
-    const totalDelivered = await this.dashboardRepo.getTotalDelivered();
-    const onTimeRate = totalDelivered ? +(onTime / totalDelivered * 100).toFixed(2) : 0;
-    const onTimeImprovement = 2; // you can calculate historically if needed
+      const onTime = await this.dashboardRepo.getOnTimeOrders();
+      const totalDelivered = await this.dashboardRepo.getTotalDelivered();
+      const onTimeRate = totalDelivered
+        ? +((onTime / totalDelivered) * 100).toFixed(2)
+        : 0;
+      const onTimeImprovement = 2; // you can calculate historically if needed
 
-    const routeEfficiency = await this.dashboardRepo.getRouteEfficiency();
-    const routeEfficiencyChange = 5; // static for now
+      const routeEfficiency = await this.dashboardRepo.getRouteEfficiency();
+      const routeEfficiencyChange = 5; // static for now
 
+      return {
+        // ✅ dispatch data
+        totalDispatches,
+        byStatus,
+        byScope,
+        byServiceType,
+        assignedToDrivers,
+        unassigned,
+        avgWeightPerDispatch,
+        totalWeight,
+        dispatchedOrders,
+        completedOrders,
+        failedOrders,
+        vehiclesUsed,
+        driversUsed,
+        originBranches,
+        destinationBranches,
+        dispatchesToday,
+        dispatchesThisWeek,
+
+        // ✅ new driver & delivery KPIs
+        activeDrivers,
+        activeDriverChange,
+
+        deliveriesToday,
+        deliveryChange,
+
+        onTimeRate,
+        onTimeImprovement,
+
+        routeEfficiency,
+        routeEfficiencyChange,
+
+        utilizationChange: 7,
+      };
+    });
+  }
+
+  async getDriverDashboard(driverId: string) {
+    const today = new Date();
+
+    const data = await this.dashboardRepo.getDriverDashboardData(
+      driverId,
+      today,
+    );
     return {
-      // ✅ dispatch data
-      totalDispatches,
-      byStatus,
-      byScope,
-      byServiceType,
-      assignedToDrivers,
-      unassigned,
-      avgWeightPerDispatch,
-      totalWeight,
-      dispatchedOrders,
-      completedOrders,
-      failedOrders,
-      vehiclesUsed,
-      driversUsed,
-      originBranches,
-      destinationBranches,
-      dispatchesToday,
-      dispatchesThisWeek,
-
-      // ✅ new driver & delivery KPIs
-      activeDrivers,
-      activeDriverChange,
-
-      deliveriesToday,
-      deliveryChange,
-
-      onTimeRate,
-      onTimeImprovement,
-
-      routeEfficiency,
-      routeEfficiencyChange,
-
-      utilizationChange: 7
+      driverId,
+      date: today.toISOString(),
+      ...data,
     };
-  });
-}
+  }
+
+  async getDriverDashboardDelivery(driverId: string) {
+    const data = await this.dashboardRepo.getDriverAllTimeDeliveries(driverId);
+    return {
+      driverId,
+      ...data,
+    };
+  }
+
+  async getCargoOfficerDashboard(officerId: string) {
+    try {
+      const user = await this.dashboardRepo.getUserWithBranch(officerId);
+      if (user && !user.branch) {
+        throw new RpcException('Branch not found');
+      }
+      const data = await this.dashboardRepo.getCargoOfficerDashboard(
+        user.branch.id,
+        officerId,
+      );
+      return {
+        officerId,
+        ...data,
+      };
+    } catch (error) {
+      throw handleCatch(error);
+    }
+  }
+
+  async getSortedOrder(officerId: string) {
+    try {
+      const user = await this.dashboardRepo.getUserWithBranch(officerId);
+      if (user && !user.branch) {
+        throw new RpcException('Branch not found');
+      }
+      const data = await this.dashboardRepo.getSortedOrdersSummary(
+        user.branch.id,
+      );
+      return data;
+    } catch (error) {
+      throw handleCatch(error);
+    }
+  }
 
   // Redis cache wrapper
   private async cacheWrap<T>(

@@ -178,9 +178,30 @@ export class BatchHandoverDto {
   @IsString()
   @Transform(({ value }) => escape(value?.trim()))
   currentLocation?: string; // additional notes or comments
+
+  @IsArray()
+  @IsOptional()
+  podImages?: {
+    url: string;
+    publicId?: string;
+    fileName?: string;
+    fileType?: string;
+  }[];
 }
 
 export class OrderScanTokenDto {
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  scannedBy: string; // officer ID
+
+  @IsNotEmpty()
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  token: string; // scanned QR code token
+}
+
+export class BatchesScanTokenDto {
   @IsOptional()
   @IsString()
   @Transform(({ value }) => value.trim())
@@ -212,6 +233,15 @@ export class ConfirmBatchHandoverDto {
   @IsOptional()
   @Transform(({ value }) => escape(value?.trim()))
   notes?: string;
+
+  @IsArray()
+  @IsOptional()
+  podImages?: {
+    url: string;
+    publicId?: string;
+    fileName?: string;
+    fileType?: string;
+  }[];
 }
 
 export class CompleteDeliveryDto {
@@ -308,8 +338,7 @@ export class CreateAssignmentRequestsDto {
   expiresAt?: Date | null;
 }
 
-
-export class DriverCancelOrder{
+export class DriverCancelOrder {
   @IsNotEmpty()
   @IsString()
   orderId: string;
@@ -318,3 +347,15 @@ export class DriverCancelOrder{
   @IsString()
   reason: string;
 }
+
+// enum VehicleType {
+//   MOTORCYCLE
+//   SCOOTER
+//   BAJAJ
+//   CAR
+//   VAN
+//   TRUCK
+//   CARGO_CAR
+//   AUTOMOBILE
+//   BICYCLE
+// }

@@ -238,6 +238,60 @@ export class AuthUseCaseImpl implements AuthUseCase {
     }
   }
 
+  async loginMobileDriver(data: AuthLoginMobileDto): Promise<any> {
+    this.logger.log(`Mobile login attempt for phone: ${data.phone}`);
+
+    try {
+      // 1️⃣ Find user by phone
+      const user = await this.authRepository.findByPhoneDriver(data.phone);
+      if (!user) {
+        this.logger.warn(
+          `Login failed — user not found for phone: ${data.phone}`,
+        );
+        throw new RpcException({
+          statusCode: 401,
+          message: 'Invalid credentials',
+        });
+      }
+      this.logger.verbose(`User found: ${user.id} (${user.phone})`);
+
+      // 2️⃣ Validate password
+      const isPasswordValid = await bcrypt.compare(
+        data.password,
+        user.password,
+      );
+      if (!isPasswordValid) {
+        this.logger.warn(`Invalid password for user (phone): ${data.phone}`);
+        throw new RpcException({
+          statusCode: 401,
+          message: 'Invalid credentials',
+        });
+      }
+
+      // 3️⃣ Generate tokens
+      this.logger.verbose(`Generating tokens for user: ${user.id}`);
+      const tokens = await this.generateTokens(user);
+
+      // 4️⃣ Save refresh token
+      await this.authRepository.saveRefreshToken(user.id, tokens.refreshToken);
+      this.logger.log(`Refresh token saved for user: ${user.id}`);
+
+      // 5️⃣ Remove sensitive info
+      delete user.password;
+
+      // 6️⃣ Success response
+      this.logger.log(`Mobile login successful for user: ${user.id}`);
+      return { user, tokens };
+    } catch (error) {
+      this.logger.error(
+        `Mobile login failed for ${data.phone}: ${error.message}`,
+        // error.stack,
+      );
+      throw error instanceof RpcException
+        ? error
+        : new RpcException('Mobile login process failed. Please try again.');
+    }
+  }
   async logout(userId: string, sessionId?: string): Promise<void> {
     this.logger.log(
       `Logout initiated for user: ${userId}, session: ${sessionId ?? 'N/A'}`,
@@ -573,7 +627,6 @@ export class AuthUseCaseImpl implements AuthUseCase {
     }
   }
 
-  
   // ----------------- Helper -----------------
   private async generateTokens(user: User): Promise<AuthTokens> {
     try {

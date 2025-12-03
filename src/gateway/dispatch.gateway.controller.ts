@@ -133,7 +133,9 @@ export class DispatchGatewayController {
 
   //COntroller used for delivering dispatch to the airport and it is done by cargo officer
   @Post('/handover')
+  @UseInterceptors(FilesInterceptor('podImages'))
   async handoverBatchesToAirport(
+    @UploadedFiles() files: any[],
     @Body() data: BatchHandoverDto,
     @Req() req,
   ): Promise<any> {
@@ -148,6 +150,39 @@ export class DispatchGatewayController {
       // decodedUser = this.jwtService.verify(token);
     } catch (err) {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+
+    let uploadedImages = [];
+
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0'); // month is 0-indexed
+    const dd = String(today.getDate()).padStart(2, '0');
+    const dateFolder = `${yyyy}-${mm}-${dd}`;
+
+    // ✅ Upload only if files exist and are valid
+    if (files && files.length > 0) {
+      try {
+        const fileStreamsOrBuffers = files.map(
+          (file) => file.stream || file.buffer,
+        );
+        uploadedImages = await this.cloudinaryUploader.uploadFiles(
+          fileStreamsOrBuffers,
+          `pod_images/handover/${data.handedById}/date/${dateFolder}`,
+        );
+
+        data.podImages = uploadedImages;
+        console.log('Proof of delivery images uploaded successfully.');
+      } catch (error) {
+        console.error('Cloudinary upload failed:', error);
+        throw new HttpException(
+          'Failed to upload proof of delivery images',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    } else {
+      console.log('No files provided — skipping upload.');
+      data.podImages = []; // keep consistent structure
     }
     return this.dispatchClient.send(
       PATTERNS.DISPATCH_HAND_OVER_BATCHES_TO_AIRPORT,
@@ -185,6 +220,32 @@ export class DispatchGatewayController {
       ip,
     });
   }
+
+  @Post('/pickup/baches')
+  async collectBatchesForPickup(
+    @Body() data: OrderScanTokenDto,
+    @Req() req,
+  ): Promise<any> {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.dispatchClient.send(PATTERNS.DISPATCH_COLLECT_FROM_AIRPORT, {
+      data,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
+
 
   @Patch('/compare/:officerId')
   async compareOrders(
@@ -228,6 +289,7 @@ export class DispatchGatewayController {
     } catch (err) {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
+
     return this.dispatchClient.send(
       PATTERNS.DISPATCH_CONFIRM_ARRIVAL_AND_HANDOVER,
       {
@@ -388,6 +450,16 @@ export class DispatchGatewayController {
     @Body() data: CompleteDeliveryDto,
     @Req() req,
   ) {
+    // ✅ Decode JWT
+    const authHeader = req.headers['authorization'] || null;
+    let decodedUser = null;
+    try {
+      const token = authHeader?.replace('Bearer ', '');
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+    } catch {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+
     let uploadedImages = [];
 
     // ✅ Upload only if files exist and are valid
@@ -399,7 +471,7 @@ export class DispatchGatewayController {
         );
         uploadedImages = await this.cloudinaryUploader.uploadFiles(
           fileStreamsOrBuffers,
-          `pod_images/${data.driverId}/${data.orderId}`,
+          `pod_images/delivery/${data.driverId}/${data.orderId}`,
         );
 
         data.podImages = uploadedImages;
@@ -415,18 +487,6 @@ export class DispatchGatewayController {
       console.log('No files provided — skipping upload.');
       data.podImages = []; // keep consistent structure
     }
-
-    // ✅ Decode JWT
-    const authHeader = req.headers['authorization'] || null;
-    let decodedUser = null;
-    try {
-      const token = authHeader?.replace('Bearer ', '');
-      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
-    } catch {
-      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
-    }
-
-    console.log('Sending to microservice');
 
     // ✅ Get IP address
     const forwarded = (req.headers['x-forwarded-for'] as string) || '';
@@ -649,7 +709,7 @@ export class DispatchGatewayController {
     });
   }
 
-    @Patch('/driver/cancel')
+  @Patch('/driver/cancel')
   async driverCancelOrder(@Body() data: DriverCancelOrder, @Req() req) {
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
@@ -686,12 +746,15 @@ export class DispatchGatewayController {
     } catch (err) {
       throw handleCatch(err);
     }
-    return this.dispatchClient.send(PATTERNS.DISPATCH_FIND_CANCELLED_ORDERS_BY_DRIVER, {
-      query,
-      headers: { authorization: authHeader },
-      user: decodedUser, // ✅ send user info
-      ip,
-    });
+    return this.dispatchClient.send(
+      PATTERNS.DISPATCH_FIND_CANCELLED_ORDERS_BY_DRIVER,
+      {
+        query,
+        headers: { authorization: authHeader },
+        user: decodedUser, // ✅ send user info
+        ip,
+      },
+    );
   }
 
   @Get(':id')

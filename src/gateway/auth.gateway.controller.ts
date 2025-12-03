@@ -19,7 +19,6 @@ import {
 } from '../auth/auth.entity';
 import * as jwt from 'jsonwebtoken';
 
-
 @Controller('auth')
 export class AuthGatewayController {
   constructor(
@@ -50,6 +49,19 @@ export class AuthGatewayController {
     const forwarded = (req.headers['x-forwarded-for'] as string) || '';
     const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
     return this.authClient.send(PATTERNS.AUTH_LOGIN_MOBILE, {
+      dto,
+      ip,
+    });
+  }
+
+  @Post('login/mobile')
+  async loginMobileDriver(
+    @Body() dto: AuthLoginMobileDto,
+    @Req() req: Request,
+  ) {
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    return this.authClient.send(PATTERNS.AUTH_LOGIN_MOBILE_DRIVEVR, {
       dto,
       ip,
     });

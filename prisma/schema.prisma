@@ -63,7 +63,6 @@ model User {
   corporateInfo CorporateInfo?
   driver        Driver?
   orderSegments OrderRouteSegment[] @relation("DriverSegments")
-  commissions   DriverCommission[]
 
   createdBy String?
 
@@ -203,23 +202,28 @@ model Branch {
   manager   User?    @relation("BranchManager", fields: [managerId], references: [id])
   orders    Order[]
   staff     User[]
-  address   Address? @relation("BranchAddress")
-
   createdBy String?
+
+  address Address? @relation("BranchAddress")
+
+  originBatches      BatchDispatch[] @relation("OriginBranchRelation")
+  destinationBatches BatchDispatch[] @relation("DestinationBranchRelation")
 }
 
 model Vehicle {
-  id          String        @id @default(cuid())
-  plateNumber String        @unique
-  type        String
-  status      VehicleStatus
-  model       String?
-  driverId    String?
-  maxLoad     Float?        @default(100)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  fleetLogs   FleetLog[]
-  createdBy   String?
+  id            String        @id @default(cuid())
+  plateNumber   String        @unique
+  vehicleTypeId String?
+  vehicleType   VehicleType?  @relation(fields: [vehicleTypeId], references: [id])
+  type          String?
+  status        VehicleStatus
+  model         String?
+  driverId      String?
+  maxLoad       Float?        @default(100)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  fleetLogs     FleetLog[]
+  createdBy     String?
 
   // driver      User?         @relation(fields: [driverId], references: [id])
   batchDispatches BatchDispatch[] @relation("BatchDispatchVehicle")
@@ -295,9 +299,9 @@ model Order {
 
   // Tariff & Pricing
   tariffId          String?
-  tariff            Tariff? @relation(fields: [tariffId], references: [id], onDelete: Restrict)
+  tariff            TariffGroup? @relation(fields: [tariffId], references: [id], onDelete: Restrict)
   finalPrice        Float? // after all surcharges, fees, discounts, margins
-  currency          String? @default("ETB")
+  currency          String?      @default("ETB")
   optimizationJobId String?
 
   // Relations
@@ -325,6 +329,7 @@ model Order {
   podImages                PodImage[]
   driverAssignmentRequests DriverAssignmentRequest[]
   routeSegments            OrderRouteSegment[]
+  driverPayments           DriverPayment[]
 
   @@index([pickupAddressId, deliveryAddressId], name: "idx_order_addresses") // compound index for route optimization
   @@index([branchId, status], name: "idx_branch_status") // filter orders by branch + status
@@ -439,21 +444,25 @@ model BatchDispatch {
   createdUser  String?
 
   // Relations
-  originId         String?
-  destinationId    String?
-  origin           Address?          @relation("BatchOrigin", fields: [originId], references: [id], onDelete: SetNull)
-  destination      Address?          @relation("BatchDestination", fields: [destinationId], references: [id], onDelete: SetNull)
-  orders           Order[]           @relation("BatchOrders")
-  createdBy        User?             @relation("CreatedBatches", fields: [createdById], references: [id])
-  driverId         String?
-  driver           User?             @relation("BatchDispatchDriver", fields: [driverId], references: [id])
-  vehicleId        String?
-  vehicle          Vehicle?          @relation("BatchDispatchVehicle", fields: [vehicleId], references: [id])
-  awbNumber        String? // for international shipments
-  officerId        String?
-  officer          User?             @relation("BatchDispatchOfficer", fields: [officerId], references: [id])
-  handovers        BatchHandover[]   @relation("HandoverBatches")
-  optimizationJobs OptimizationJob[] // one batch can have multiple optimization jobs
+  originBranchId      String?
+  destinationBranchId String?
+  originBranch        Branch?           @relation(name: "OriginBranchRelation", fields: [originBranchId], references: [id])
+  destinationBranch   Branch?           @relation(name: "DestinationBranchRelation", fields: [destinationBranchId], references: [id])
+  originId            String?
+  destinationId       String?
+  origin              Address?          @relation("BatchOrigin", fields: [originId], references: [id], onDelete: SetNull)
+  destination         Address?          @relation("BatchDestination", fields: [destinationId], references: [id], onDelete: SetNull)
+  orders              Order[]           @relation("BatchOrders")
+  createdBy           User?             @relation("CreatedBatches", fields: [createdById], references: [id])
+  driverId            String?
+  driver              User?             @relation("BatchDispatchDriver", fields: [driverId], references: [id])
+  vehicleId           String?
+  vehicle             Vehicle?          @relation("BatchDispatchVehicle", fields: [vehicleId], references: [id])
+  awbNumber           String? // for international shipments
+  officerId           String?
+  officer             User?             @relation("BatchDispatchOfficer", fields: [officerId], references: [id])
+  handovers           BatchHandover[]   @relation("HandoverBatches")
+  optimizationJobs    OptimizationJob[] // one batch can have multiple optimization jobs
 }
 
 model BatchHandover {
@@ -514,133 +523,248 @@ model Pricing {
   createdBy   String?
 }
 
-/// ─────────────────── Pricing & Tariff Management ────────────────────────────────
+//////////////////////////////////new tariff//////////////////////////////
 
-model Tariff {
-  id                 String            @id @default(cuid())
-  name               String // e.g., "Express Tariff"
-  serviceType        ServiceType
-  baseFee            Float             @default(0) // Minimum starting fee
-  perKmRate          Float             @default(0) // Cost per kilometer
-  perKgRate          Float             @default(0) // Cost per kilogram
-  currency           String            @default("ETB")
-  isActive           Boolean           @default(true)
-  effectiveFrom      DateTime          @default(now())
-  effectiveTo        DateTime?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  shippingScope      ShippingScope?
-  customerCategoryId String?
-  createdBy          String?
-  customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id])
+model TariffGroup {
+  id            String        @id @default(cuid())
+  name          String
+  shippingScope ShippingScope
+  currency      String        @default("ETB")
+  effectiveFrom DateTime      @default(now())
+  effectiveTo   DateTime?
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  createdBy     String?
 
   // Relations
-  orders        Order[]
-  surcharges    Surcharge[]
-  discounts     DiscountRule[]
-  miscFees      MiscFee[]
-  airportFees   AirportFee[]
-  profitMargins ProfitMargin[]
+  serviceTypes      TariffServiceType[]
+  weightBuckets     WeightBucket[]
+  driverCommissions TariffVehicleCommission[]
+  miscCharges       MiscCharge[]
+  airportFee        AirportNewFee?
+  profitMargin      ProfitNewMargin?
+  orders            Order[]
 }
 
-model ProfitMargin {
-  id       String @id @default(cuid())
+model TariffServiceType {
+  id          String      @id @default(cuid())
+  serviceType ServiceType
+  baseFee     Float
+
   tariffId String
-  tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
-
-  serviceType   ServiceType?
-  shippingScope ShippingScope?
-
-  percentage Float // e.g. 10% of tariff cost
-  minAmount  Float? // enforce minimum margin
-  maxAmount  Float? // optional cap on margin
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  createdBy  String?
+  tariff   TariffGroup @relation(fields: [tariffId], references: [id])
 }
 
-model AirportFee {
-  id       String @id @default(cuid())
+model WeightBucket {
+  id      String @id @default(cuid())
+  startKg Float
+  endKg   Float
+  price   Float
+
   tariffId String
-  tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
-
-  serviceType   ServiceType?
-  shippingScope ShippingScope?
-
-  airportCode   String // e.g., "ADD", "DXB"
-  perKgRate     Float? // Cost per kilogram
-  flatFee       Float? // Flat airport charge
-  effectiveFrom DateTime  @default(now())
-  effectiveTo   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  createdBy     String?
+  tariff   TariffGroup @relation(fields: [tariffId], references: [id])
 }
 
-model MiscFee {
-  id       String @id @default(cuid())
-  tariffId String
-  tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+model TariffVehicleCommission {
+  id            String  @id @default(cuid())
+  tariffId      String?
+  vehicleTypeId String // always connect to actual vehicle type
 
-  serviceType   ServiceType?
-  shippingScope ShippingScope?
+  fixed      Float?
+  perKm      Float?
+  percentage Float?
 
-  name         String // e.g. "Fragile Handling"
-  description  String?
-  feeType      FeeType? // PERCENTAGE, FLAT, PER_KG
-  amount       Float
-  currency     String? // e.g., "ETB", "USD"
-  isPercentage Boolean  @default(false) // true = percentage of base tariff
-
-  // New dynamic conditions
-  condition Json? // e.g., { "isFragile": true, "category": "ELECTRONICS" }
-
-  effectiveFrom DateTime? @default(now())
-  effectiveTo   DateTime?
+  // relations
+  tariff      TariffGroup? @relation(fields: [tariffId], references: [id])
+  vehicleType VehicleType  @relation(fields: [vehicleTypeId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model MiscCharge {
+  id        String @id @default(cuid())
+  name      String
+  costPerKm Float?
+  flatFee   Float?
+
+  tariffId String
+  tariff   TariffGroup @relation(fields: [tariffId], references: [id])
+}
+
+model AirportNewFee {
+  id     String @id @default(cuid())
+  amount Float
+
+  tariffId String      @unique
+  tariff   TariffGroup @relation(fields: [tariffId], references: [id])
+}
+
+model ProfitNewMargin {
+  id         String @id @default(cuid())
+  percentage Float
+
+  tariffId String      @unique
+  tariff   TariffGroup @relation(fields: [tariffId], references: [id])
+}
+
+model VehicleCommission {
+  id             String         @id @default(cuid())
+  //vehicleTypeId  String
+  commissionType CommissionType
+  value          Float
+  isActive       Boolean        @default(true)
+
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  currency      String    @default("ETB")
+
   createdBy String?
+  updatedBy String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  //vehicleType VehicleType @relation(fields: [vehicleTypeId], references: [id])
+
+  // relation back to tariff-level overrides
+  //tariffVehicleCommissions TariffVehicleCommission[]
+
+  //@@index([vehicleTypeId])
+  @@index([commissionType])
+  @@index([isActive])
+  @@index([effectiveFrom])
 }
 
-model Surcharge {
-  id       String @id @default(cuid())
-  tariffId String
-  tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+/// ─────────────────── Pricing & Tariff Management ────────────────────────────────
 
-  serviceType   ServiceType?
-  shippingScope ShippingScope?
-  name          String // e.g., "Fuel Surcharge"
-  type          String // "percentage" or "fixed"
-  value         Float
-  description   String?
-  isActive      Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  createdBy     String?
-}
+// model Tariff {
+//   id                 String            @id @default(cuid())
+//   name               String // e.g., "Express Tariff"
+//   serviceType        ServiceType
+//   baseFee            Float             @default(0) // Minimum starting fee
+//   perKmRate          Float             @default(0) // Cost per kilometer
+//   perKgRate          Float             @default(0) // Cost per kilogram
+//   currency           String            @default("ETB")
+//   isActive           Boolean           @default(true)
+//   effectiveFrom      DateTime          @default(now())
+//   effectiveTo        DateTime?
+//   createdAt          DateTime          @default(now())
+//   updatedAt          DateTime          @updatedAt
+//   shippingScope      ShippingScope?
+//   customerCategoryId String?
+//   createdBy          String?
+//   customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id])
 
-model DiscountRule {
-  id       String @id @default(cuid())
-  tariffId String
-  tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+//   // Relations
+//   orders         Order[]
+//   surcharges     Surcharge[]
+//   discounts      DiscountRule[]
+//   miscFees       MiscFee[]
+//   airportFees    AirportFee[]
+//   profitMargins  ProfitMargin[]
+// }
 
-  shippingScope ShippingScope?
-  serviceType   ServiceType?
-  name          String
-  type          String // "percentage" or "fixed"
-  value         Float
-  validFrom     DateTime
-  validTo       DateTime?
-  description   String?
-  isActive      Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  createdBy     String?
+// model ProfitMargin {
+//   id       String @id @default(cuid())
+//   tariffId String
+//   tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
 
-  customerCategoryId String?
-  customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id])
-}
+//   serviceType   ServiceType?
+//   shippingScope ShippingScope?
+
+//   percentage Float // e.g. 10% of tariff cost
+//   minAmount  Float? // enforce minimum margin
+//   maxAmount  Float? // optional cap on margin
+//   createdAt  DateTime @default(now())
+//   updatedAt  DateTime @updatedAt
+//   createdBy  String?
+// }
+
+// model AirportFee {
+//   id       String @id @default(cuid())
+//   tariffId String
+//   tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+
+//   serviceType   ServiceType?
+//   shippingScope ShippingScope?
+
+//   airportCode   String // e.g., "ADD", "DXB"
+//   perKgRate     Float? // Cost per kilogram
+//   flatFee       Float? // Flat airport charge
+//   effectiveFrom DateTime  @default(now())
+//   effectiveTo   DateTime?
+//   createdAt     DateTime  @default(now())
+//   updatedAt     DateTime  @updatedAt
+//   createdBy     String?
+// }
+
+// model MiscFee {
+//   id       String @id @default(cuid())
+//   tariffId String
+//   tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+
+//   serviceType   ServiceType?
+//   shippingScope ShippingScope?
+
+//   name         String // e.g. "Fragile Handling"
+//   description  String?
+//   feeType      FeeType? // PERCENTAGE, FLAT, PER_KG
+//   amount       Float
+//   currency     String? // e.g., "ETB", "USD"
+//   isPercentage Boolean  @default(false) // true = percentage of base tariff
+
+//   // New dynamic conditions
+//   condition Json? // e.g., { "isFragile": true, "category": "ELECTRONICS" }
+
+//   effectiveFrom DateTime? @default(now())
+//   effectiveTo   DateTime?
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+//   createdBy String?
+// }
+
+// model Surcharge {
+//   id       String @id @default(cuid())
+//   tariffId String
+//   tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+
+//   serviceType   ServiceType?
+//   shippingScope ShippingScope?
+//   name          String // e.g., "Fuel Surcharge"
+//   type          String // "percentage" or "fixed"
+//   value         Float
+//   description   String?
+//   isActive      Boolean        @default(true)
+//   createdAt     DateTime       @default(now())
+//   updatedAt     DateTime       @updatedAt
+//   createdBy     String?
+// }
+
+// model DiscountRule {
+//   id       String @id @default(cuid())
+//   tariffId String
+//   tariff   Tariff @relation(fields: [tariffId], references: [id], onDelete: Cascade)
+
+//   shippingScope ShippingScope?
+//   serviceType   ServiceType?
+//   name          String
+//   type          String // "percentage" or "fixed"
+//   value         Float
+//   validFrom     DateTime
+//   validTo       DateTime?
+//   description   String?
+//   isActive      Boolean        @default(true)
+//   createdAt     DateTime       @default(now())
+//   updatedAt     DateTime       @updatedAt
+//   createdBy     String?
+
+//   customerCategoryId String?
+//   customerCategory   CustomerCategory? @relation(fields: [customerCategoryId], references: [id])
+// }
 
 model CustomerCategory {
   id          String   @id @default(cuid())
@@ -650,10 +774,10 @@ model CustomerCategory {
   updatedAt   DateTime @updatedAt
   createdBy   String?
 
-  users         User[]
-  tariffs       Tariff[]
-  pricingRules  PricingRule[]
-  discountRules DiscountRule[]
+  users        User[]
+  //tariffs       Tariff[]
+  pricingRules PricingRule[]
+  //discountRules DiscountRule[]
 }
 
 model PricingRule {
@@ -866,6 +990,7 @@ model Driver {
   vehicles         Vehicle[]           @relation("VehicleDriver")
   logs             DriverLocationLog[]
   optimizationJobs OptimizationJob[]
+  payments         DriverPayment[]
 
   @@index([userId])
   @@index([vehicleId])
@@ -906,7 +1031,7 @@ model TrafficCondition {
 
 model OrderRouteSegment {
   id                   String        @id @default(cuid())
-  orderId              String
+  orderId              String?
   driverId             String?
   segmentType          SegmentType
   fromType             LocationType // DRIVER_LOCATION, PICKUP, DELIVERY, BRANCH
@@ -926,8 +1051,11 @@ model OrderRouteSegment {
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
-  order  Order @relation(fields: [orderId], references: [id])
-  driver User? @relation("DriverSegments", fields: [driverId], references: [id])
+  order  Order? @relation(fields: [orderId], references: [id])
+  driver User?  @relation("DriverSegments", fields: [driverId], references: [id])
+
+  driverPayment   DriverPayment? @relation(fields: [driverPaymentId], references: [id])
+  driverPaymentId String?
 
   @@index([driverId, startTime])
   @@index([status])
@@ -1048,6 +1176,7 @@ enum OrderStatus {
   FAILED
   EXCEPTION
   CANCELED
+  ON_HOLD
 }
 
 enum ServiceType {
@@ -1119,20 +1248,8 @@ enum AssignmentStatus {
 }
 
 enum CommissionType {
-  FIXED
-  PERCENTAGE
-}
-
-enum VehicleType {
-  MOTORCYCLE
-  SCOOTER
-  BAJAJ
-  CAR
-  VAN
-  TRUCK
-  CARGO_CAR
-  AUTOMOBILE
-  BICYCLE
+  FIXED // ETB amount
+  PERCENTAGE // % of final price
 }
 
 model DriverAssignmentRequest {
@@ -1154,33 +1271,31 @@ model DriverAssignmentRequest {
   @@index([status])
 }
 
-model DriverCommission {
-  id String @id @default(cuid())
+model DriverPayment {
+  id         String @id @default(cuid())
+  driverId   String
+  orderId    String
+  amount     Float
+  distanceKm Float
+  status     String @default("PENDING")
+  currency   String @default("ETB")
 
-  driverId       String
-  commissionType CommissionType
-  amount         Float
-  effectiveFrom  DateTime?
-  effectiveTo    DateTime?
-  currency       String         @default("ETB")
-  vehicleType    VehicleType
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // --- Professional / Operational Fields ---
-  isActive  Boolean @default(true)
-  notes     String? // optional admin notes
-  createdBy String? // admin or system user who created the record
-  updatedBy String? // admin or system user who last updated the record
-  source    String? // e.g. “SYSTEM”, “ADMIN_PANEL”, “AUTO_RULE”
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime? // for soft delete
-
-  driver User @relation(fields: [driverId], references: [id])
+  driver   Driver              @relation(fields: [driverId], references: [id])
+  order    Order               @relation(fields: [orderId], references: [id])
+  segments OrderRouteSegment[] // <-- one payment can have many segments
 
   @@index([driverId])
-  @@index([commissionType])
-  @@index([vehicleType])
-  @@index([isActive])
-  @@index([effectiveFrom])
+  @@index([orderId])
+}
+
+model VehicleType {
+  id          String                    @id @default(cuid())
+  name        String                    @unique // e.g. "Motorcycle", "Van", "Truck"
+  description String?
+  //commissions VehicleCommission[]
+  vehicles    Vehicle[]
+  commissions TariffVehicleCommission[]
 }

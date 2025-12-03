@@ -3,6 +3,7 @@ import { UserRepository } from './user.repository';
 import {
   AddressDto,
   AddressUpdateDto,
+  CreateCustomerDto,
   CreateDriver,
   CustomerCategoryDto,
   NotificationPreferencesDto,
@@ -11,19 +12,173 @@ import {
   UpdateCustomerCategoryDto,
   UserDto,
 } from './user.entity';
+import * as bcrypt from 'bcrypt';
 import { Address, User } from '@prisma/client';
 import { UserUsecase } from './user.usecase';
 import { RpcException } from '@nestjs/microservices';
 import { ListQueryDto } from 'src/common/query/query.dto';
 import { AppLogger } from '../../common/app-logger.service';
+import { handleCatch } from '../../common/handleCatch';
+import { RedisService } from '../..//redis/redis.service';
 
 @Injectable()
 export class UserUseCasesImp implements UserUsecase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly logger: AppLogger,
+    private readonly redis: RedisService,
   ) {
     this.logger.setContext('OperationsService', 'UserUseCasesImp');
+  }
+  async getCustomerDetail(query: ListQueryDto, customerId: string) {
+    try {
+      const customerRole = await this.userRepo.findRoleByName('CUSTOMER');
+      return await this.userRepo.getCustomerDetail(
+        query,
+        customerId,
+        customerRole.id,
+      );
+    } catch (error) {
+      handleCatch(error);
+    }
+  }
+
+  async createCustomer(dto: CreateCustomerDto, userId: string) {
+    try {
+      this.logger.log(
+        `🔹 Starting customer creation: ${dto.name} and initiated by ${userId}`,
+      );
+
+      // -------------------------------
+      // 1️⃣ Basic required field validation
+      // -------------------------------
+      if (!dto.name || !dto.email || !dto.role || !dto.phone) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Missing required fields',
+        });
+      }
+
+      // -------------------------------
+      // 2️⃣ Check unique fields
+      // -------------------------------
+      const existingEmail = await this.userRepo.findUserByEmail(dto.email);
+      if (existingEmail) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Email already exists: ${dto.email}`,
+        });
+      }
+
+      const existingPhone = await this.userRepo.findUserByPhone(dto.phone);
+      if (existingPhone) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Phone already exists: ${dto.phone}`,
+        });
+      }
+
+      // -------------------------------
+      // 3️⃣ Check role exists
+      // -------------------------------
+      const role = await this.userRepo.findRoleById(dto.role);
+      if (!role) {
+        throw new RpcException({
+          statusCode: 404,
+          message: `Role not found: ${dto.role}`,
+        });
+      }
+      this.logger.log(`🔹 Role validated: ${role.name} (${role.id})`);
+
+      // -------------------------------
+      // 4️⃣ Check branch if provided
+      // -------------------------------
+      let branch = null;
+      if (dto.branchId) {
+        branch = await this.userRepo.findBranchById(dto.branchId);
+        if (!branch) {
+          throw new RpcException({
+            statusCode: 404,
+            message: `Branch not found: ${dto.branchId}`,
+          });
+        }
+        this.logger.log(`🔹 Branch validated: ${branch.name} (${branch.id})`);
+      }
+
+      // -------------------------------
+      // 5️⃣ Check customer category if provided
+      // -------------------------------
+      let category = null;
+      if (dto.customerCategoryId) {
+        category = await this.userRepo.findCustomerCategoryById(
+          dto.customerCategoryId,
+        );
+        if (!category) {
+          throw new RpcException({
+            statusCode: 404,
+            message: `Customer category not found: ${dto.customerCategoryId}`,
+          });
+        }
+        this.logger.log(
+          `🔹 Customer category validated: ${category.name} (${category.id})`,
+        );
+      }
+      const password = dto.email;
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const customId = await this.generateCustomId(role.name);
+      // -------------------------------
+      // 6️⃣ Build payload for DB
+      // -------------------------------
+      const payload: any = {
+        name: dto.name,
+        email: dto.email,
+        password: hashedPassword, // hash before saving in real case
+        phone: dto.phone,
+        roleId: dto.role,
+        customId: customId,
+        branchId: dto.branchId ?? null,
+        customerType: dto.customerType,
+        customerCategoryId: dto.customerCategoryId ?? null,
+        createdBy: userId ?? null,
+      };
+
+      // Add corporate info if CORPORATE
+      if (dto.customerType === 'CORPORATE') {
+        payload.corporateInfo = {
+          create: {
+            companyName: dto.companyName ?? '',
+            taxId: dto.taxId ?? null,
+            contactPerson: dto.contactPerson ?? null,
+            contactPhone: dto.contactPhone ?? null,
+            contactEmail: dto.contactEmail ?? null,
+            industryType: dto.industryType ?? null,
+            website: dto.website ?? null,
+            address: dto.address ?? null,
+            notes: dto.notes ?? null,
+            createdBy: userId ?? null,
+          },
+        };
+        this.logger.log('🔹 Corporate info payload prepared');
+      }
+
+      this.logger.log('🔹 Customer payload ready for repository');
+
+      // -------------------------------
+      // 7️⃣ Call repository
+      // -------------------------------
+      const created = await this.userRepo.createUser(payload);
+
+      this.logger.log(`✅ Customer created successfully: ${created.id}`);
+
+      delete created.password;
+      return created;
+    } catch (error) {
+      this.logger.error(
+        `❌ Failed to create customer: ${error?.message || error.toString()}`,
+      );
+      handleCatch(error);
+    }
   }
 
   // ✅ FIND USER BY EMAIL (with logger + error handling)
@@ -655,5 +810,29 @@ export class UserUseCasesImp implements UserUsecase {
       this.logger.error(`Find driver failed: ${error.message}`, error.stack);
       throw new RpcException(error.message);
     }
+  }
+
+  private async generateCustomId(roleName: string): Promise<string> {
+    const prefix = 'LN';
+    const roleAbbr = roleName.slice(0, 2).toUpperCase();
+    const redisKey = `staff:counter:${roleAbbr}`;
+
+    // 🔹 Increment Redis counter atomically
+    let nextNumber = await this.redis.getClient().incr(redisKey);
+
+    // 🔹 Fallback if Redis counter is 1, sync from DB
+    if (nextNumber === 1) {
+      const lastCustomId = await this.userRepo.getLastCustomId(
+        prefix,
+        roleAbbr,
+      );
+      if (lastCustomId) {
+        const lastNum = parseInt(lastCustomId.split('-')[2], 10);
+        nextNumber = lastNum + 1;
+        await this.redis.getClient().set(redisKey, String(nextNumber));
+      }
+    }
+
+    return `${prefix}-${roleAbbr}-${String(nextNumber).padStart(5, '0')}`;
   }
 }

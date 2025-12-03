@@ -1,6 +1,6 @@
 import { Injectable, forwardRef, Inject } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { UpdateOrderDto } from './order.entity';
+import { ConfirmPickUpOrderDto, UpdateOrderDto } from './order.entity';
 import {
   OrderStatus,
   Address,
@@ -696,7 +696,7 @@ export class OrderRepository {
 
         return order;
       },
-      { timeout: 60000 },
+      { timeout: 300000 },
     );
 
     // 2️⃣ Trigger async distance & pricing calculation outside transaction
@@ -745,65 +745,70 @@ export class OrderRepository {
     trackingCode: string,
     userId: string,
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      const pickup = await upsertAddress(
-        tx,
-        customerId,
-        userId,
-        data.pickupAddress,
-        'ORDER_PICKUP',
-      );
-
-      const delivery = await upsertAddress(
-        tx,
-        customerId,
-        userId,
-        data.deliveryAddress,
-        'ORDER_DELIVERY',
-      );
-
-      const order = await tx.order.create({
-        data: {
-          trackingCode,
-          status: 'CREATED',
-          serviceType: data.serviceType,
-          fulfillmentType: data.fulfillmentType,
-          weight: data.weight,
-          height: data.height,
-          width: data.width,
-          length: data.length,
-          category: data.category,
-          isFragile: data.isFragile,
-          shipmentType: data.shipmentType,
-          shippingScope: data.shippingScope,
-          pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
-          deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
-          createdBy: userId ?? customerId,
+    return this.prisma.$transaction(
+      async (tx) => {
+        const pickup = await upsertAddress(
+          tx,
           customerId,
-          receiverId,
-          quantity: data.quantity,
-          branchId: data.branchId ?? null,
-          pickupAddressId: pickup?.id ?? null,
-          deliveryAddressId: delivery.id,
-        },
-        include: {
-          pickupAddress: true,
-          deliveryAddress: true,
-        },
-      });
+          userId,
+          data.pickupAddress,
+          'ORDER_PICKUP',
+        );
 
-      await tx.orderTracking.create({
-        data: {
-          orderId: order.id,
-          status: 'CREATED',
-          location: pickup?.addressLine ?? 'Customer Home',
-          updatedBy: userId ?? customerId,
-          notes: 'Order Created.',
-        },
-      });
+        const delivery = await upsertAddress(
+          tx,
+          customerId,
+          userId,
+          data.deliveryAddress,
+          'ORDER_DELIVERY',
+        );
 
-      return order;
-    });
+        const order = await tx.order.create({
+          data: {
+            trackingCode,
+            status: 'CREATED',
+            serviceType: data.serviceType,
+            fulfillmentType: data.fulfillmentType,
+            weight: data.weight,
+            height: data.height,
+            width: data.width,
+            length: data.length,
+            category: data.category,
+            isFragile: data.isFragile,
+            shipmentType: data.shipmentType,
+            shippingScope: data.shippingScope,
+            pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
+            deliveryDate: data.deliveryDate
+              ? new Date(data.deliveryDate)
+              : null,
+            createdBy: userId ?? customerId,
+            customerId,
+            receiverId,
+            quantity: data.quantity,
+            branchId: data.branchId ?? null,
+            pickupAddressId: pickup?.id ?? null,
+            deliveryAddressId: delivery.id,
+          },
+          include: {
+            pickupAddress: true,
+            deliveryAddress: true,
+          },
+        });
+
+        await tx.orderTracking.create({
+          data: {
+            orderId: order.id,
+            status: 'CREATED',
+            location: pickup?.addressLine ?? 'Customer Home',
+            updatedBy: userId ?? customerId,
+            notes: 'Order Created.',
+          },
+        });
+
+        return order;
+      },
+      { timeout: 300000 },
+    );
   }
 
   async updateOrderDistance(orderId: string, distance: number) {
@@ -864,13 +869,13 @@ export class OrderRepository {
   }
 
   async confirmPickupOrder(
-    orderId: string,
+    data: ConfirmPickUpOrderDto,
     location: string,
     updatedBy: string,
   ) {
     const result = await this.prisma.$transaction(async (tx) => {
       const updatedOrder = await tx.order.update({
-        where: { id: orderId },
+        where: { id: data.orderId },
         data: {
           status: 'PICKED_UP',
           pickupConfirmed: true,
@@ -891,9 +896,24 @@ export class OrderRepository {
         },
       });
 
-      const orderLog = await this.logOrderStatus(
+      if (data.podImages && data.podImages.length > 0) {
+        for (const img of data.podImages) {
+          await tx.podImage.create({
+            data: {
+              orderId: data.orderId,
+              driverId: data.driverId ?? updatedBy,
+              url: img.url,
+              publicId: img.publicId,
+              fileName: img.fileName,
+              fileType: img.fileType,
+            },
+          });
+        }
+      }
+
+      await this.logOrderStatus(
         tx, // pass the transaction client here
-        orderId,
+        data.orderId,
         'PICKED_UP',
         location,
         updatedBy,
@@ -1542,6 +1562,196 @@ export class OrderRepository {
       },
     });
   }
+
+  async findUserWithBranch(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        branch: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getOrdersForSorting(branchId: string) {
+    return this.prisma.order.findMany({
+      where: {
+        dropoffConfirmed: true,
+        batchId: null,
+        status: {
+          notIn: ['CANCELED', 'DELIVERED', 'FAILED', 'EXCEPTION', 'REJECTED'],
+        },
+        OR: [
+          { branchId }, // orders directly assigned to the branch
+          { pickupDriver: { branchId } }, // orders where the pickup driver belongs to the branch
+        ],
+      },
+      include: {
+        deliveryAddress: {
+          select: {
+            id: true,
+            label: true,
+            country: true,
+            state: true,
+            city: true,
+            addressLine: true,
+            postalCode: true,
+            lat: true,
+            long: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getBatchOrdersForSorting(branchId: string) {
+    return this.prisma.batchDispatch.findMany({
+      where: {
+        destinationBranchId: branchId,
+        status: {
+          notIn: ['COMPLETED', 'CLOSED', 'CANCELLED'],
+        },
+      },
+      include: {
+        orders: {
+          select: {
+            id: true,
+            trackingCode: true,
+            shippingScope: true,
+            serviceType: true,
+            category: true,
+            isFragile: true,
+            weight: true,
+            height: true,
+            width: true,
+            length: true,
+            shipmentType: true,
+            isUnusual: true,
+            unusualReason: true,
+            validatedNotes: true,
+            deliveryAddress: {
+              select: {
+                id: true,
+                label: true,
+                country: true,
+                state: true,
+                city: true,
+                addressLine: true,
+                postalCode: true,
+                lat: true,
+                long: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async addOnHold(orderIds: string[], reason: string, userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Create exception records
+      await tx.orderException.createMany({
+        data: orderIds.map((orderId) => ({
+          orderId,
+          reason,
+          type: 'ON_HOLD',
+          createdBy: userId,
+        })),
+      });
+
+      // 2. Update order statuses
+      await tx.order.updateMany({
+        where: { id: { in: orderIds } },
+        data: { status: 'ON_HOLD' },
+      });
+
+      // 3. Add orderTracking logs for each order
+      const trackingEntries = orderIds.map((orderId) => ({
+        orderId,
+        status: OrderStatus.ON_HOLD,
+        updatedBy: userId || 'system',
+        notes: `Order placed ON_HOLD. Reason: ${reason}`,
+      }));
+
+      await tx.orderTracking.createMany({ data: trackingEntries });
+
+      return { success: true };
+    });
+  }
+
+  async removeOnHold(orderIds: string[], userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Delete ON_HOLD exceptions
+      await tx.orderException.deleteMany({
+        where: {
+          orderId: { in: orderIds },
+          type: 'ON_HOLD',
+        },
+      });
+
+      // 2. Update statuses back to PENDING
+      await tx.order.updateMany({
+        where: { id: { in: orderIds } },
+        data: { status: 'PENDING' },
+      });
+
+      // 3. Add tracking logs
+      const trackingEntries = orderIds.map((orderId) => ({
+        orderId,
+        status: OrderStatus.PENDING,
+        updatedBy: userId,
+        notes: 'ON_HOLD removed; order moved back to PENDING state.',
+      }));
+
+      await tx.orderTracking.createMany({ data: trackingEntries });
+
+      return { success: true };
+    });
+  }
+
+  async getOnHoldOrders(id: string) {
+    return this.prisma.orderException.findMany({
+      where: {
+        order: {
+          branchId: id,
+        },
+        type: 'ON_HOLD',
+      },
+    });
+  }
+
+  //   async getOrderForSortingByBranch(branchId: string) {
+  //     return this.prisma.order.findMany({
+  //       where: {
+  //         branchId,
+  //         dropoffConfirmed: true,
+  //         status: {
+  //           notIn: ['CANCELED', 'DELIVERED', 'FAILED', 'EXCEPTION', 'REJECTED'],
+  //         },
+  //         batchId: null,
+  //       },
+  //     });
+  //   }
+
+  //   async getOrderForSortingByOfficer(branchId: string) {
+  //     return this.prisma.order.findMany({
+  //       where: {
+  //         pickupDriver: {
+  //           branchId,
+  //         },
+  //         dropoffConfirmed: true,
+  //         status: {
+  //           notIn: ['CANCELED', 'DELIVERED', 'FAILED', 'EXCEPTION', 'REJECTED'],
+  //         },
+  //         batchId: null,
+  //       },
+  //     });
+  //   }
 }
 async function upsertAddress(
   tx: any,

@@ -4,6 +4,7 @@ import { PATTERNS } from '../../contracts';
 import { UserUseCasesImp } from './user.usecase.impl';
 import {
   AddressDto,
+  CreateCustomerDto,
   CreateDriver,
   CustomerCategoryDto,
   NotificationPreferencesDto,
@@ -153,6 +154,36 @@ export class UserMessageController {
       result.models,
       result.pagination,
     );
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('User', PermissionActions.READ, ScopeAction.FULL)
+  @MessagePattern(PATTERNS.USER_CUSTOMER_DETAIL)
+  async getCustomerDetail(
+    @Payload() payload: { query: ListQueryDto; customerId: string },
+  ) {
+    const result = await this.usecases.getCustomerDetail(
+      payload.query,
+      payload.customerId,
+    );
+    return IResponse.success(
+      'Customer Details fetched successfully',
+      result.models,
+      result.pagination,
+    );
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('User', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.USER_CUSTOMER_CREATE)
+  async createCustomer(
+    @Payload() payload: { data: CreateCustomerDto; user: any },
+  ) {
+    const result = await this.usecases.createCustomer(
+      payload.data,
+      payload.user?.sub,
+    );
+    return IResponse.success('Customer Regitered successfully', result);
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
