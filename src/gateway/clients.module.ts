@@ -7,19 +7,18 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
       {
         name: 'AUTH_SERVICE',
         transport: Transport.TCP,
-        options: { host: '127.0.0.1', port: 4001 },
+        options: { host: '127.0.0.1', port: 4008 },
       },
       {
         name: 'USER_SERVICE',
         transport: Transport.TCP,
-        options: { host: '127.0.0.1', port: 4002 },
+        options: { host: '127.0.0.1', port: 4009 },
       },
       {
         name: 'FULFILLMENT_SERVICE',
         transport: Transport.TCP,
-        options: { host: '127.0.0.1', port: 4003 },
+        options: { host: '127.0.0.1', port: 4007 },
       },
-      
     ]),
   ],
   exports: [ClientsModule],
