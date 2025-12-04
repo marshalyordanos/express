@@ -56,20 +56,13 @@ export class PricingUseCasesImpl implements PricingUseCases {
 
     try {
       // ----------------------------------------------------
-      // 1. VALIDATION
+      // 1️⃣ VALIDATION
       // ----------------------------------------------------
 
       if (!data.serviceTypes?.length) {
         throw new RpcException({
           statusCode: 400,
           message: 'serviceTypes must be non-empty',
-        });
-      }
-
-      if (!data.weightBrackets?.length) {
-        throw new RpcException({
-          statusCode: 400,
-          message: 'weightBrackets must be non-empty',
         });
       }
 
@@ -85,48 +78,29 @@ export class PricingUseCasesImpl implements PricingUseCases {
         }
       }
 
-      const currency = (data.currency ?? 'ETB').trim().toUpperCase();
-      const effectiveFrom = new Date(data.effectiveFrom);
-      const effectiveTo = data.effectiveTo ? new Date(data.effectiveTo) : null;
-
-      // Validate weight brackets
-      const sorted = [...data.weightBrackets].sort(
-        (a, b) => a.startKg - b.startKg,
+      // Validate driver commissions and prepare payload
+      const driverCommissionsPayload = (data.driverCommissions || []).map(
+        (dc) => {
+          if (
+            !dc.vehicleTypeId ||
+            (dc.fixed == null && dc.perKm == null && dc.percentage == null)
+          ) {
+            throw new RpcException({
+              statusCode: 400,
+              message: `Invalid driver commission: ${JSON.stringify(dc)}`,
+            });
+          }
+          return {
+            vehicleTypeId: dc.vehicleTypeId,
+            fixed: dc.fixed ?? null,
+            perKm: dc.perKm ?? null,
+            percentage: dc.percentage ?? null,
+          };
+        },
       );
 
-      for (let i = 0; i < sorted.length; i++) {
-        const w = sorted[i];
-
-        if (w.startKg < 0 || w.endKg <= 0 || w.endKg < w.startKg) {
-          throw new RpcException({
-            statusCode: 400,
-            message: `Invalid weight bracket: ${JSON.stringify(w)}`,
-          });
-        }
-
-        if (i > 0 && w.startKg < sorted[i - 1].endKg) {
-          throw new RpcException({
-            statusCode: 400,
-            message: `Overlapping weight bracket: ${JSON.stringify(w)}`,
-          });
-        }
-      }
-
-      // Validate driver commissions
-      (data.driverCommissions || []).forEach((dc) => {
-        if (
-          !dc.vehicleTypeId ||
-          (dc.fixed == null && dc.perKm == null && dc.percentage == null)
-        ) {
-          throw new RpcException({
-            statusCode: 400,
-            message: `Invalid driver commission: ${JSON.stringify(dc)}`,
-          });
-        }
-      });
-
       // ----------------------------------------------------
-      // 2. VALIDATE AIRPORT FEES
+      // 2️⃣ VALIDATE AIRPORT FEES
       // ----------------------------------------------------
       if (data.airportFees?.length) {
         data.airportFees.forEach((af) => {
@@ -144,12 +118,13 @@ export class PricingUseCasesImpl implements PricingUseCases {
             });
           }
 
-          // Bracket validation
           if (af.brackets?.length) {
-            const sortedB = [...af.brackets].sort((a, b) => a.minKg - b.minKg);
+            const sortedBrackets = af.brackets.sort(
+              (a, b) => a.minKg - b.minKg,
+            );
 
-            for (let i = 0; i < sortedB.length; i++) {
-              const b = sortedB[i];
+            for (let i = 0; i < sortedBrackets.length; i++) {
+              const b = sortedBrackets[i];
 
               if (b.minKg < 0 || b.maxKg <= 0 || b.maxKg < b.minKg) {
                 throw new RpcException({
@@ -158,7 +133,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
                 });
               }
 
-              if (i > 0 && b.minKg < sortedB[i - 1].maxKg) {
+              if (i > 0 && b.minKg < sortedBrackets[i - 1].maxKg) {
                 throw new RpcException({
                   statusCode: 400,
                   message: `Overlapping airport fee bracket: ${JSON.stringify(b)}`,
@@ -170,11 +145,9 @@ export class PricingUseCasesImpl implements PricingUseCases {
       }
 
       // ----------------------------------------------------
-      // 3. BUILD PRISMA PAYLOAD
+      // 3️⃣ BUILD PAYLOAD
       // ----------------------------------------------------
-
-      // Build payload for TariffGroup
-      const payload: any = {
+      const payload = {
         name: data.name.trim(),
         shippingScope: data.shippingScope,
         currency: data.currency ?? 'ETB',
@@ -188,73 +161,22 @@ export class PricingUseCasesImpl implements PricingUseCases {
             baseFee: s.baseFee,
           })),
         },
-        weightBuckets: {
-          create: data.weightBrackets.map((w) => ({
-            startKg: w.startKg,
-            endKg: w.endKg,
-            price: w.price,
-          })),
-        },
-        driverCommissions: {
-          create: data.driverCommissions.map((dc) => ({
-            vehicleTypeId: dc.vehicleTypeId,
-            fixed: dc.fixed ?? null,
-            perKm: dc.perKm ?? null,
-            percentage: dc.percentage ?? null,
-          })),
-        },
-        miscCharges: {
-          create:
-            data.additionalCharges?.costPerKm != null
-              ? [
-                  {
-                    name: 'cost_per_km',
-                    costPerKm: data.additionalCharges.costPerKm,
-                  },
-                ]
-              : [],
-        },
+        driverCommissions: { create: driverCommissionsPayload },
         profitMargin:
-          data.additionalCharges?.profitMargin != null
-            ? { create: { percentage: data.additionalCharges.profitMargin } }
+          data.profit != null
+            ? { create: { percentage: data.profit } }
             : undefined,
       };
-      // Remove undefined
-      Object.keys(payload).forEach(
-        (key) => payload[key] === undefined && delete payload[key],
+
+      // ----------------------------------------------------
+      // 4️⃣ CREATE TARIFF AND AIRPORT FEES IN TRANSACTION
+      // ----------------------------------------------------
+      const tariff = await this.pricingRepo.createTariffWithAirportFees(
+        payload,
+        data.airportFees,
       );
-
-      this.logger.verbose(
-        `Tariff creation payload :: ${JSON.stringify(payload)}`,
-      );
-
-      // 1️⃣ Create tariff group
-      const tariff = await this.pricingRepo.createTariffGroup(payload);
-
-      // 2️⃣ Create airport fees
-      if (data.airportFees?.length) {
-        for (const af of data.airportFees) {
-          const serviceType = tariff.serviceTypes.find(
-            (s) => s.serviceType === af.serviceType,
-          );
-          if (!serviceType) continue;
-
-          await this.pricingRepo.createAirportNewFee(
-            serviceType.id,
-            af.flatRatePerKg,
-            af.brackets,
-          );
-        }
-      }
-
-      // // ----------------------------------------------------
-      // // 4. CREATE IN DB (transaction resolves serviceTypeId)
-      // // ----------------------------------------------------
-
-      // const created = await this.pricingRepo.createTariff(payload);
 
       this.logger.log(`Tariff created successfully: ${tariff.id}`);
-
       return tariff;
     } catch (error) {
       this.logger.error(
@@ -295,176 +217,48 @@ export class PricingUseCasesImpl implements PricingUseCases {
   }
 
   async updateTariff(id: string, dto: UpdateTariffDto, userId: string) {
-    // Fetch existing tariff
-    const tariff = await this.pricingRepo.getTariffGroup(id);
-    if (!tariff) {
-      throw new RpcException({ statusCode: 404, message: 'Tariff not found' });
-    }
+    try {
+      // -----------------------------
+      // 1️⃣ Validation
+      // -----------------------------
+      // if (!dto.serviceTypes?.length) {
+      //   throw new RpcException({
+      //     statusCode: 400,
+      //     message: 'serviceTypes must be non-empty',
+      //   });
+      // }
 
-    // -------------------------
-    // Update basic tariff fields
-    // -------------------------
-    const basicData: any = {
-      name: dto.name?.trim(),
-      currency: dto.currency?.toUpperCase(),
-      updatedAt: new Date(),
-    };
-    await this.pricingRepo.updateTariffGroup(id, basicData);
-
-    // -------------------------
-    // Service Types
-    // -------------------------
-    for (const s of dto.serviceTypes ?? []) {
-      console.log('Service type');
-
-      if (s.id) {
-        console.log('Updating exisiting ::: ', s);
-
-        await this.pricingRepo.updateServiceType(s.id, s);
-      } else {
-        console.log('creating new one :::', s);
-
-        await this.pricingRepo.createServiceType({ ...s, tariffGroupId: id });
-      }
-    }
-
-    // -------------------------
-    // Weight Buckets
-    // -------------------------
-    for (const w of dto.weightBrackets ?? []) {
-      if (w.id) {
-        await this.pricingRepo.updateWeightBucket(w.id, w);
-      } else {
-        await this.pricingRepo.createWeightBucket({ ...w, tariffGroupId: id });
-      }
-    }
-
-    // -------------------------
-    // Driver Commissions
-    // -------------------------
-    for (const dc of dto.driverCommissions ?? []) {
-      if (dc.id) {
-        await this.pricingRepo.updateDriverCommission(dc.id, dc);
-      } else {
-        await this.pricingRepo.createDriverCommission({
-          ...dc,
-          tariffGroupId: id,
-        });
-      }
-    }
-
-    // -------------------------
-    // Misc Charges
-    // -------------------------
-    if (dto.additionalCharges?.costPerKm != null) {
-      const existing = tariff.miscCharges?.find(
-        (c) => c.name === 'cost_per_km',
-      );
-      if (existing) {
-        await this.pricingRepo.updateMiscCharge(existing.id, {
-          costPerKm: dto.additionalCharges.costPerKm,
-          name: 'cost_per_km',
-        });
-      } else {
-        await this.pricingRepo.createMiscCharge({
-          costPerKm: dto.additionalCharges.costPerKm,
-          tariffId: id,
-          name: 'cost_per_km',
-        });
-      }
-    }
-
-    // -------------------------
-    // Profit Margin
-    // -------------------------
-    if (dto.additionalCharges?.profitMargin != null) {
-      if (tariff.profitMargin) {
-        await this.pricingRepo.updateProfitMargin(tariff.profitMargin.id, {
-          percentage: dto.additionalCharges.profitMargin,
-        });
-      } else {
-        await this.pricingRepo.createProfitMargin({
-          percentage: dto.additionalCharges.profitMargin,
-          tariffId: id,
-        });
-      }
-    }
-    // -------------------------
-    // Airport fee
-    // -------------------------
-    for (const a of dto.airportFees ?? []) {
-      if (a.id) {
-        // Existing airport fee
-        if (a.flatRatePerKg != null) {
-          // Flat fee: update the main record
-          await this.pricingRepo.updateAirportFee({
-            id: a.id,
-            flatRatePerKg: a.flatRatePerKg,
-            tariffGroupId: id,
-            serviceTypeId: a.serviceTypeId, // must be the related TariffServiceType ID
-          });
-
-          // Remove any existing brackets since flat fee is used
-          await this.pricingRepo.deleteAirportFeeBracketsByFeeId(a.id);
-        } else if (a.brackets?.length) {
-          // Brackets exist: update main record (optional fields)
-          await this.pricingRepo.updateAirportFee({
-            id: a.id,
-            flatRatePerKg: null,
-            tariffGroupId: id,
-            serviceTypeId: a.serviceTypeId,
-          });
-
-          // Handle brackets
-          const bracketIds: string[] = [];
-          for (const b of a.brackets) {
-            let bracket;
-            if (b.id) {
-              // Existing bracket → upsert using id
-              bracket = await this.pricingRepo.upsertAirportFeeBracket(
-                { id: b.id },
-                { ...b, airportFeeId: a.id },
-                { ...b, airportFeeId: a.id },
-              );
-            } else {
-              // New bracket → create
-              bracket = await this.pricingRepo.createAirportFeeBracket({
-                ...b,
-                airportFeeId: a.id,
-              });
-            }
-
-            bracketIds.push(bracket.id);
-          }
-
-          // Delete old brackets not in DTO
-          await this.pricingRepo.deleteAirportFeeBracketsNotIn(
-            a.id,
-            bracketIds,
-          );
-        }
-      } else {
-        // New airport fee
-        const fee = await this.pricingRepo.createAirportFee({
-          flatRatePerKg: a.flatRatePerKg ?? null,
-          // tariffGroupId: id,
-          // serviceType: a.serviceTypeId ?? '',
-          serviceTypeId: a.serviceTypeId ?? '', // must be the related TariffServiceType ID
-        });
-
-        if (a.brackets?.length) {
-          for (const b of a.brackets) {
-            await this.pricingRepo.createAirportFeeBracket({
-              ...b,
-              airportFeeId: fee.id,
+      if (dto.driverCommissions) {
+        dto.driverCommissions.forEach((dc) => {
+          if (!dc.vehicleTypeId && dc.id == null) {
+            throw new RpcException({
+              statusCode: 400,
+              message: `Invalid driver commission: ${JSON.stringify(dc)}`,
             });
           }
-        }
+        });
       }
-    }
 
-    // Return updated tariff
-    return await this.pricingRepo.getTariffGroup(id);
+      if (dto.airportFees) {
+        dto.airportFees.forEach((af) => {
+          if (!af.serviceTypeId && af.id == null) {
+            throw new RpcException({
+              statusCode: 400,
+              message: 'Airport fee must have serviceTypeId or id',
+            });
+          }
+        });
+      }
+
+      // -----------------------------
+      // 2️⃣ Call repository for update
+      // -----------------------------
+      const result = await this.pricingRepo.updateTariff(id, dto, userId);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to update tariff ${id}: ${error.message}`);
+      throw handleCatch(error);
+    }
   }
   async deleteTariff(id: string): Promise<any> {
     this.logger.log(`Deleting tariff: ${id}`);
@@ -683,23 +477,23 @@ export class PricingUseCasesImpl implements PricingUseCases {
     breakdown.baseFee = service.baseFee;
 
     // 4.2 Weight Bucket Fee
-    const bucket = tariff.weightBuckets.find(
-      (b) => weight >= b.startKg && weight <= b.endKg,
-    );
-    if (!bucket)
-      return { result: null, error: 'No weight bucket found in tariff' };
-    breakdown.weightPrice = bucket.price;
+    // const bucket = tariff.weightBuckets.find(
+    //   (b) => weight >= b.startKg && weight <= b.endKg,
+    // );
+    // if (!bucket)
+    //   return { result: null, error: 'No weight bucket found in tariff' };
+    // breakdown.weightPrice = bucket.price;
 
-    // 4.3 Misc Charges
-    let miscTotal = 0;
-    breakdown.miscFees = [];
-    for (const m of tariff.miscCharges) {
-      let amount = 0;
-      if (m.costPerKm) amount += m.costPerKm * distance;
-      if (m.flatFee) amount += m.flatFee;
-      miscTotal += amount;
-      breakdown.miscFees.push({ name: m.name, amount });
-    }
+    // // 4.3 Misc Charges
+    // let miscTotal = 0;
+    // breakdown.miscFees = [];
+    // for (const m of tariff.miscCharges) {
+    //   let amount = 0;
+    //   if (m.costPerKm) amount += m.costPerKm * distance;
+    //   if (m.flatFee) amount += m.flatFee;
+    //   miscTotal += amount;
+    //   breakdown.miscFees.push({ name: m.name, amount });
+    // }
 
     // 4.4 Airport Fee (NEW LOGIC)
     let airportTotal = 0;
@@ -707,11 +501,18 @@ export class PricingUseCasesImpl implements PricingUseCases {
       const airportFee = service.airportFee;
 
       if (airportFee.brackets && airportFee.brackets.length > 0) {
-        // Find the bracket for the weight
-        const bracket = airportFee.brackets.find(
-          (b) => weight >= b.minKg && weight <= b.maxKg,
+        // Find bracket that matches the weight, inclusive of min, exclusive of max
+        let bracket = airportFee.brackets.find(
+          (b) => weight >= b.minKg && weight < b.maxKg,
         );
-        if (bracket) airportTotal = bracket.rate * weight;
+
+        // If no bracket found, pick the next higher bracket (optional)
+        if (!bracket) {
+          bracket = airportFee.brackets.find((b) => weight < b.minKg);
+        }
+
+        if (bracket) airportTotal = bracket.rate;
+        else airportTotal = 0; // fallback if no bracket at all
       } else if (airportFee.flatRatePerKg) {
         airportTotal = airportFee.flatRatePerKg * weight;
       }
@@ -719,8 +520,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
     breakdown.airportFee = { total: airportTotal };
 
     // 4.5 Profit Margin
-    const subtotalBeforeProfit =
-      service.baseFee + bucket.price + miscTotal + airportTotal;
+    const subtotalBeforeProfit = service.baseFee + airportTotal;
     const profitTotal = tariff.profitMargin
       ? (subtotalBeforeProfit * tariff.profitMargin.percentage) / 100
       : 0;
@@ -789,25 +589,25 @@ export class PricingUseCasesImpl implements PricingUseCases {
     // ------------------------------------------------------------
     // 4️⃣ Weight bucket price
     // ------------------------------------------------------------
-    const bucket = tariff.weightBuckets.find(
-      (b) => weight >= b.startKg && weight <= b.endKg,
-    );
-    if (!bucket)
-      return { result: null, error: 'No weight bucket found in tariff' };
-    breakdown.weightPrice = bucket.price;
+    // const bucket = tariff.weightBuckets.find(
+    //   (b) => weight >= b.startKg && weight <= b.endKg,
+    // );
+    // if (!bucket)
+    //   return { result: null, error: 'No weight bucket found in tariff' };
+    // breakdown.weightPrice = bucket.price;
 
-    // ------------------------------------------------------------
-    // 5️⃣ Misc charges
-    // ------------------------------------------------------------
-    let miscTotal = 0;
-    breakdown.miscFees = [];
-    for (const m of tariff.miscCharges) {
-      let amount = 0;
-      if (m.costPerKm) amount += m.costPerKm * distance;
-      if (m.flatFee) amount += m.flatFee;
-      miscTotal += amount;
-      breakdown.miscFees.push({ name: m.name, amount });
-    }
+    // // ------------------------------------------------------------
+    // // 5️⃣ Misc charges
+    // // ------------------------------------------------------------
+    // let miscTotal = 0;
+    // breakdown.miscFees = [];
+    // for (const m of tariff.miscCharges) {
+    //   let amount = 0;
+    //   if (m.costPerKm) amount += m.costPerKm * distance;
+    //   if (m.flatFee) amount += m.flatFee;
+    //   miscTotal += amount;
+    //   breakdown.miscFees.push({ name: m.name, amount });
+    // }
 
     // ------------------------------------------------------------
     // 6️⃣ Airport fee (NEW LOGIC)
@@ -817,11 +617,18 @@ export class PricingUseCasesImpl implements PricingUseCases {
       const airportFee = service.airportFee;
 
       if (airportFee.brackets && airportFee.brackets.length > 0) {
-        // Find bracket that matches the weight
-        const bracket = airportFee.brackets.find(
-          (b) => weight >= b.minKg && weight <= b.maxKg,
+        // Find bracket that matches the weight, inclusive of min, exclusive of max
+        let bracket = airportFee.brackets.find(
+          (b) => weight >= b.minKg && weight < b.maxKg,
         );
-        if (bracket) airportTotal = bracket.rate * weight;
+
+        // If no bracket found, pick the next higher bracket (optional)
+        if (!bracket) {
+          bracket = airportFee.brackets.find((b) => weight < b.minKg);
+        }
+
+        if (bracket) airportTotal = bracket.rate;
+        else airportTotal = 0; // fallback if no bracket at all
       } else if (airportFee.flatRatePerKg) {
         airportTotal = airportFee.flatRatePerKg * weight;
       }
@@ -831,8 +638,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
     // ------------------------------------------------------------
     // 7️⃣ Profit margin
     // ------------------------------------------------------------
-    const subtotalBeforeProfit =
-      service.baseFee + bucket.price + miscTotal + airportTotal;
+    const subtotalBeforeProfit = service.baseFee + airportTotal;
     const profitTotal = tariff.profitMargin
       ? (subtotalBeforeProfit * tariff.profitMargin.percentage) / 100
       : 0;

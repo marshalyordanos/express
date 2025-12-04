@@ -214,11 +214,11 @@ export class TariffDto {
   @IsISO8601()
   effectiveTo?: string;
 
-  @IsNotEmpty()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => WeightBracketDto)
-  weightBrackets?: WeightBracketDto[];
+  // @IsNotEmpty()
+  // @IsArray()
+  // @ValidateNested({ each: true })
+  // @Type(() => WeightBracketDto)
+  // weightBrackets?: WeightBracketDto[];
 
   @IsNotEmpty()
   @IsArray()
@@ -227,9 +227,8 @@ export class TariffDto {
   driverCommissions?: DriverCommissionDto[];
 
   @IsNotEmpty()
-  @ValidateNested()
-  @Type(() => AdditionalChargesDto)
-  additionalCharges?: AdditionalChargesDto;
+  @IsNumber()
+  profit: number;
 
   // --- NEW ---
   @IsOptional()
@@ -266,11 +265,11 @@ export class UpdateTariffDto {
   @Type(() => ServiceTypeValueDto)
   serviceTypes?: ServiceTypeValueDto[];
 
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => WeightBracketDto)
-  weightBrackets?: WeightBracketDto[];
+  // @IsOptional()
+  // @IsArray()
+  // @ValidateNested({ each: true })
+  // @Type(() => WeightBracketDto)
+  // weightBrackets?: WeightBracketDto[];
 
   @IsOptional()
   @IsArray()
@@ -278,10 +277,10 @@ export class UpdateTariffDto {
   @Type(() => DriverCommissionDto)
   driverCommissions?: DriverCommissionDto[];
 
+
   @IsOptional()
-  @ValidateNested()
-  @Type(() => AdditionalChargesDto)
-  additionalCharges?: AdditionalChargesDto;
+  @IsNumber()
+  profit: number;
 
   @IsOptional()
   @IsArray()

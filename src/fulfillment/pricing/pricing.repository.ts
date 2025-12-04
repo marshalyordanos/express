@@ -33,8 +33,8 @@ export class PricingRepository {
         },
         profitMargin: true,
         driverCommissions: true,
-        miscCharges: true,
-        weightBuckets: true,
+        // miscCharges: true,
+        // weightBuckets: true,
       },
     });
   }
@@ -275,15 +275,12 @@ export class PricingRepository {
       data: payload,
       include: {
         serviceTypes: true,
-        weightBuckets: true,
         driverCommissions: true,
-        miscCharges: true,
         profitMargin: true,
       },
     });
   }
 
-  // Create airport fee for a specific service type
   async createAirportNewFee(
     serviceTypeId: string,
     flatRatePerKg: number,
@@ -292,13 +289,7 @@ export class PricingRepository {
     return this.prisma.airportNewFee.create({
       data: {
         flatRatePerKg: flatRatePerKg ?? null,
-
-        // Connect the existing TariffServiceType record
-        serviceType: {
-          connect: { id: serviceTypeId },
-        },
-
-        // Brackets (optional)
+        serviceType: { connect: { id: serviceTypeId } },
         brackets: brackets?.length
           ? {
               create: brackets.map((b) => ({
@@ -309,11 +300,89 @@ export class PricingRepository {
             }
           : undefined,
       },
-      include: {
-        brackets: true,
-      },
+      include: { brackets: true },
     });
   }
+
+  async createTariffWithAirportFees(payload: any, airportFees?: any[]) {
+    return this.prisma.$transaction(async (prisma) => {
+      const tariff = await prisma.tariffGroup.create({
+        data: payload,
+        include: {
+          serviceTypes: {
+            include: { airportFee: { include: { brackets: true } } },
+          },
+          driverCommissions: true,
+          profitMargin: true,
+        },
+      });
+
+      if (airportFees?.length) {
+        const serviceTypeMap = new Map(
+          tariff.serviceTypes.map((s) => [s.serviceType, s]),
+        );
+
+        const airportFeePromises = airportFees.map(async (af) => {
+          const serviceType = serviceTypeMap.get(af.serviceType);
+          if (!serviceType) return;
+
+          await prisma.airportNewFee.create({
+            data: {
+              flatRatePerKg: af.flatRatePerKg ?? null,
+              serviceType: { connect: { id: serviceType.id } },
+              brackets: af.brackets?.length
+                ? {
+                    create: af.brackets.map((b) => ({
+                      minKg: b.minKg,
+                      maxKg: b.maxKg,
+                      rate: b.rate,
+                    })),
+                  }
+                : undefined,
+            },
+          });
+        });
+
+        await Promise.all(airportFeePromises);
+      }
+
+      return tariff;
+    },{
+      timeout: 60000
+    });
+  }
+
+  // Create airport fee for a specific service type
+  // async createAirportNewFee(
+  //   serviceTypeId: string,
+  //   flatRatePerKg: number,
+  //   brackets?: any[],
+  // ) {
+  //   return this.prisma.airportNewFee.create({
+  //     data: {
+  //       flatRatePerKg: flatRatePerKg ?? null,
+
+  //       // Connect the existing TariffServiceType record
+  //       serviceType: {
+  //         connect: { id: serviceTypeId },
+  //       },
+
+  //       // Brackets (optional)
+  //       brackets: brackets?.length
+  //         ? {
+  //             create: brackets.map((b) => ({
+  //               minKg: b.minKg,
+  //               maxKg: b.maxKg,
+  //               rate: b.rate,
+  //             })),
+  //           }
+  //         : undefined,
+  //     },
+  //     include: {
+  //       brackets: true,
+  //     },
+  //   });
+  // }
 
   // Find any tariff that overlaps the given period for that serviceType
   async findOverlappingTariff(
@@ -389,9 +458,9 @@ export class PricingRepository {
           },
           profitMargin: true,
           // airportFee: true,
-          miscCharges: true,
+          // miscCharges: true,
           driverCommissions: true,
-          weightBuckets: true,
+          // weightBuckets: true,
         },
       }),
       this.prisma.tariffGroup.count({ where: query.where || {} }),
@@ -413,9 +482,9 @@ export class PricingRepository {
           include: { airportFee: { include: { brackets: true } } },
         },
         profitMargin: true,
-        miscCharges: true,
+        // miscCharges: true,
         driverCommissions: true,
-        weightBuckets: true,
+        // weightBuckets: true,
       },
       // include: { surcharges: true, discounts: true },
     });
@@ -437,6 +506,155 @@ export class PricingRepository {
   async updateTariffGroup(id: string, data: any) {
     return this.prisma.tariffGroup.update({ where: { id }, data });
   }
+async updateTariff(id: string, dto: UpdateTariffDto, userId: string) {
+  return this.prisma.$transaction(async (tx) => {
+    // Ensure tariff exists
+    const tariff = await tx.tariffGroup.findUnique({
+      where: { id },
+      include: {
+        serviceTypes: {
+          include: { airportFee: { include: { brackets: true } } },
+        },
+        driverCommissions: true,
+        // airportFees: { include: { brackets: true } },
+        profitMargin: true,
+      },
+    });
+
+    if (!tariff) {
+      throw new RpcException({ statusCode: 404, message: 'Tariff not found' });
+    }
+
+    // -----------------------------
+    // 1️⃣ Update base fields (patch only)
+    // -----------------------------
+    const baseData: any = {};
+    if (dto.name !== undefined) baseData.name = dto.name.trim();
+    if (dto.currency !== undefined) baseData.currency = dto.currency.toUpperCase();
+
+    if (Object.keys(baseData).length > 0) {
+      baseData.updatedAt = new Date();
+      await tx.tariffGroup.update({ where: { id }, data: baseData });
+    }
+
+    // -----------------------------
+    // 2️⃣ Service Types (PATCH only)
+    // -----------------------------
+    const serviceOps = (dto.serviceTypes ?? []).map(async (s) => {
+      // update only if ID exists
+      if (s.id) {
+        await tx.tariffServiceType.update({
+          where: { id: s.id },
+          data: s,
+        });
+      }
+      // create only if NEW provided
+      else {
+        await tx.tariffServiceType.create({
+          data: { ...s, tariffId: id },
+        });
+      }
+    });
+
+    // -----------------------------
+    // 3️⃣ Driver Commissions
+    // -----------------------------
+    const commissionOps = (dto.driverCommissions ?? []).map(async (dc) => {
+      if (dc.id) {
+        await tx.tariffVehicleCommission.update({
+          where: { id: dc.id },
+          data: dc,
+        });
+      } else {
+        await tx.tariffVehicleCommission.create({
+          data: { ...dc, tariffId: id },
+        });
+      }
+    });
+
+    // -----------------------------
+    // 4️⃣ Profit Margin (Only update if provided)
+    // -----------------------------
+    let profitOp = null;
+    if (dto.profit !== undefined) {
+      if (tariff.profitMargin) {
+        profitOp = tx.profitNewMargin.update({
+          where: { id: tariff.profitMargin.id },
+          data: { percentage: dto.profit },
+        });
+      } else {
+        profitOp = tx.profitNewMargin.create({
+          data: { percentage: dto.profit, tariffId: id },
+        });
+      }
+    }
+
+    // -----------------------------
+    // 5️⃣ Airport Fees (PATCH ONLY)
+    // -----------------------------
+    const airportOps = (dto.airportFees ?? []).map(async (a) => {
+      if (a.id) {
+        // Partial update airport fee
+        const feePatch: any = {};
+        if (a.flatRatePerKg !== undefined) feePatch.flatRatePerKg = a.flatRatePerKg;
+        if (a.serviceTypeId !== undefined) feePatch.serviceTypeId = a.serviceTypeId;
+
+        if (Object.keys(feePatch).length > 0) {
+          await tx.airportNewFee.update({ where: { id: a.id }, data: feePatch });
+        }
+
+        // Brackets PATCH only if provided
+        if (a.brackets !== undefined) {
+          // Upsert or create only provided brackets — DO NOT delete others
+          await Promise.all(
+            a.brackets.map(async (b) => {
+              if (b.id) {
+                return tx.airportFeeBracket.update({
+                  where: { id: b.id },
+                  data: b,
+                });
+              }
+              return tx.airportFeeBracket.create({
+                data: { ...b, airportFeeId: a.id },
+              });
+            }),
+          );
+        }
+      } else {
+        // Create new
+        const created = await tx.airportNewFee.create({
+          data: { flatRatePerKg: a.flatRatePerKg, serviceType: { connect: { id: a.serviceTypeId } } },
+        });
+
+        if (a.brackets?.length) {
+          await tx.airportFeeBracket.createMany({
+            data: a.brackets.map((b) => ({ ...b, airportFeeId: created.id })),
+          });
+        }
+      }
+    });
+
+    // Execute parallel ops
+    await Promise.all([
+      ...serviceOps,
+      ...commissionOps,
+      ...airportOps,
+      ...(profitOp ? [profitOp] : []),
+    ]);
+
+    return tx.tariffGroup.findUnique({
+      where: { id },
+      include: {
+        serviceTypes: { include: { airportFee: { include: { brackets: true } } } },
+        driverCommissions: true,
+        profitMargin: true,
+      },
+    });
+  },{
+    timeout: 60000
+  });
+}
+
 
   async getTariffGroup(id: string) {
     return this.prisma.tariffGroup.findUnique({
@@ -445,163 +663,106 @@ export class PricingRepository {
         serviceTypes: {
           include: { airportFee: { include: { brackets: true } } },
         },
-        weightBuckets: true,
+        // weightBuckets: true,
         driverCommissions: true,
-        miscCharges: true,
+        // miscCharges: true,
         profitMargin: true,
       },
     });
   }
 
-  // -------------------------
-  // ServiceType
-  // -------------------------
-  async createServiceType(data: any) {
-    return this.prisma.tariffServiceType.create({ data });
-  }
+  // -----------------------------
+  // Tariff Group
+  // -----------------------------
+  // async getTariffGroup(id: string) {
+  //   return this.prisma.tariffGroup.findUnique({
+  //     where: { id },
+  //     include: {
+  //       serviceTypes: {
+  //         include: { airportFee: { include: { brackets: true } } },
+  //       },
+  //       driverCommissions: true,
+  //       profitMargin: true,
+  //     },
+  //   });
+  // }
 
+  // async updateTariffGroup(id: string, data: any) {
+  //   return this.prisma.tariffGroup.update({ where: { id }, data });
+  // }
+
+  // -----------------------------
+  // Service Types
+  // -----------------------------
   async updateServiceType(id: string, data: any) {
     return this.prisma.tariffServiceType.update({ where: { id }, data });
   }
 
-  // -------------------------
-  // AirportFee
-  // -------------------------
-async createAirportFee(data: any) {
-  const { serviceTypeId, ...rest } = data;
+  async createServiceType(data: any) {
+    return this.prisma.tariffServiceType.create({ data });
+  }
 
-  return this.prisma.airportNewFee.create({
-    data: {
-      ...rest,
-      serviceType: serviceTypeId ? { connect: { id: serviceTypeId } } : undefined,
-    },
-  });
-}
+  // -----------------------------
+  // Driver Commissions
+  // -----------------------------
+  async updateDriverCommission(id: string, data: any) {
+    return this.prisma.tariffVehicleCommission.update({ where: { id }, data });
+  }
 
+  async createDriverCommission(data: any) {
+    return this.prisma.tariffVehicleCommission.create({ data });
+  }
 
-  async updateAirportFee(fee: AirportFeesDto & { tariffGroupId?: string }) {
-    if (!fee.id) throw new Error('Fee ID is required for update');
+  // -----------------------------
+  // Profit Margin
+  // -----------------------------
+  async updateProfitMargin(id: string, data: any) {
+    return this.prisma.profitNewMargin.update({ where: { id }, data });
+  }
 
-    // Extract the fields you want to update
-    const updateData: any = {
-      serviceType: fee.serviceType,
-      flatRatePerKg: fee.flatRatePerKg ?? null,
-      // tariffGroupId: fee.tariffGroupId,
-    };
+  async createProfitMargin(data: any) {
+    return this.prisma.profitNewMargin.create({ data });
+  }
 
+  // -----------------------------
+  // Airport Fees
+  // -----------------------------
+  async updateAirportFee(fee: { id: string; flatRatePerKg?: number; serviceTypeId?: string }) {
     return this.prisma.airportNewFee.update({
-      where: { id: fee.id }, // ✅ correct unique identifier
-      data: updateData, // ✅ only update fields, not the whole object
+      where: { id: fee.id },
+      data: {
+        flatRatePerKg: fee.flatRatePerKg ?? null,
+        serviceType: fee.serviceTypeId ? { connect: { id: fee.serviceTypeId } } : undefined,
+      },
     });
   }
 
-  async getAirportFee(id: string) {
-    return this.prisma.airportNewFee.findUnique({
-      where: { id },
-      include: { brackets: true },
-    });
-  }
-
-  // async updateAirportFee(id: string, data: Partial<AirportFeesDto>) {
-  //   return this.prisma.airportNewFee.update({
-  //     where: { id },
-  //     data,
-  //   });
-  // }
-
-  async deleteBrackets(feeId: string) {
-    return this.prisma.airportFeeBracket.deleteMany({
-      where: { airportFeeId: feeId },
-    });
-  }
-
-  async upsertBracket(where: any, update: any, create: any) {
-    return this.prisma.airportFeeBracket.upsert({ where, update, create });
-  }
-  async createAirportFeeBracket(data: {
-    airportFeeId: string;
-    minKg: number;
-    maxKg: number;
-    rate: number;
-  }) {
-    return this.prisma.airportFeeBracket.create({ data });
+  async deleteAirportFeeBracketsByFeeId(airportFeeId: string) {
+    return this.prisma.airportFeeBracket.deleteMany({ where: { airportFeeId } });
   }
 
   async upsertAirportFeeBracket(where: any, update: any, create: any) {
     return this.prisma.airportFeeBracket.upsert({ where, update, create });
   }
-  // 2️⃣ Upsert an airport fee bracket
-  // async upsertAirportFeeBracket(
-  //   where: { id?: string } | { airportFeeId_serviceType: { airportFeeId: string; serviceType: string } },
-  //   update: any,
-  //   create: any
-  // ) {
-  //   return this.prisma.airportFeeBracket.upsert({
-  //     where,
-  //     update,
-  //     create,
-  //   });
-  // }
 
-  // 3️⃣ Delete brackets not in a list (for updating)
+  async createAirportFeeBracket(data: any) {
+    return this.prisma.airportFeeBracket.create({ data });
+  }
+
   async deleteAirportFeeBracketsNotIn(airportFeeId: string, keepIds: string[]) {
     return this.prisma.airportFeeBracket.deleteMany({
-      where: {
-        airportFeeId,
-        id: { notIn: keepIds },
+      where: { airportFeeId, id: { notIn: keepIds } },
+    });
+  }
+
+  async createAirportFee(data: any) {
+    const { serviceTypeId, ...rest } = data;
+    return this.prisma.airportNewFee.create({
+      data: {
+        ...rest,
+        serviceType: serviceTypeId ? { connect: { id: serviceTypeId } } : undefined,
       },
     });
-  }
-
-  // 4️⃣ Delete all brackets for a fee (for flat rate case)
-  async deleteAirportFeeBracketsByFeeId(airportFeeId: string) {
-    return this.prisma.airportFeeBracket.deleteMany({
-      where: { airportFeeId },
-    });
-  }
-
-  // -------------------------
-  // WeightBucket
-  // -------------------------
-  async createWeightBucket(data: any) {
-    return this.prisma.weightBucket.create({ data });
-  }
-
-  async updateWeightBucket(id: string, data: any) {
-    return this.prisma.weightBucket.update({ where: { id }, data });
-  }
-
-  // -------------------------
-  // DriverCommission
-  // -------------------------
-  async createDriverCommission(data: any) {
-    return this.prisma.tariffVehicleCommission.create({ data });
-  }
-
-  async updateDriverCommission(id: string, data: any) {
-    return this.prisma.tariffVehicleCommission.update({ where: { id }, data });
-  }
-
-  // -------------------------
-  // MiscCharge
-  // -------------------------
-  async createMiscCharge(data: any) {
-    return this.prisma.miscCharge.create({ data });
-  }
-
-  async updateMiscCharge(id: string, data: any) {
-    return this.prisma.miscCharge.update({ where: { id }, data });
-  }
-
-  // -------------------------
-  // ProfitMargin
-  // -------------------------
-  async createProfitMargin(data: any) {
-    return this.prisma.profitNewMargin.create({ data });
-  }
-
-  async updateProfitMargin(id: string, data: any) {
-    return this.prisma.profitNewMargin.update({ where: { id }, data });
   }
 
   async deleteTariff(id: string) {
@@ -895,7 +1056,7 @@ async createAirportFee(data: any) {
         isActive: true,
       },
       include: {
-        miscCharges: true,
+        // miscCharges: true,
         // airportFee: true,
         profitMargin: true,
         serviceTypes: {
@@ -907,7 +1068,7 @@ async createAirportFee(data: any) {
             },
           },
         },
-        weightBuckets: true,
+        // weightBuckets: true,
         driverCommissions: {
           select: {
             id: true,
@@ -940,9 +1101,28 @@ async createAirportFee(data: any) {
         ...(customerCategoryId ? { customerCategoryId } : {}), // ✅ Only adds filter if provided
       },
       include: {
-        miscCharges: true,
-        // airportFee: true,
+        serviceTypes: {
+          include: {
+            airportFee: {
+              include: {
+                brackets: true,
+              },
+            },
+          },
+        },
+        driverCommissions: {
+          select: {
+            id: true,
+            vehicleTypeId: true,
+            fixed: true,
+            percentage: true,
+            perKm: true,
+          },
+        },
         profitMargin: true,
+        // miscCharges: true,
+        // airportFee: true,
+        // profitMargin: true,
       },
     });
   }

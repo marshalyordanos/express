@@ -139,6 +139,7 @@ export class DispatchGatewayController {
     @Body() data: BatchHandoverDto,
     @Req() req,
   ): Promise<any> {
+    
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
 
