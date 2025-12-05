@@ -539,9 +539,9 @@ model TariffGroup {
 
   // Relations
   serviceTypes      TariffServiceType[]
-  weightBuckets     WeightBucket[]
+  //weightBuckets     WeightBucket[]
   driverCommissions TariffVehicleCommission[]
-  miscCharges       MiscCharge[]
+  //miscCharges       MiscCharge[]
   profitMargin      ProfitNewMargin?
   orders            Order[]
 }
@@ -568,8 +568,8 @@ model WeightBucket {
   endKg   Float
   price   Float
 
-  tariffId String
-  tariff   TariffGroup @relation(fields: [tariffId], references: [id])
+  //tariffId String
+  //tariff   TariffGroup @relation(fields: [tariffId], references: [id])
 }
 
 model TariffVehicleCommission {
@@ -594,9 +594,8 @@ model MiscCharge {
   name      String
   costPerKm Float?
   flatFee   Float?
-
-  tariffId String
-  tariff   TariffGroup @relation(fields: [tariffId], references: [id])
+  //tariffId   String
+  //tariff     TariffGroup @relation(fields: [tariffId], references: [id])
 }
 
 model AirportNewFee {

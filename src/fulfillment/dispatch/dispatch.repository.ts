@@ -902,8 +902,8 @@ export class DispatchRepository {
             serviceType: dto.serviceType as any,
             category: dto.category,
             isFragile: dto.isFragile ?? false,
-            originId: dto.originId, // use originId directly
-            destinationId: dto.destinationId, // use destinationId directly
+            originBranchId: dto.originId, // use originId directly
+            destinationBranchId: dto.destinationId, // use destinationId directly
             status: 'PENDING',
             notes: dto.notes,
             createdById: userId,
@@ -989,14 +989,13 @@ export class DispatchRepository {
     return this.prisma.$transaction(
       async (tx) => {
         const batchUpdate: any = { ...updateData };
-
         // Connect origin/destination if included in updateData
         if (updateData?.originId) {
-          batchUpdate.origin = { connect: { id: updateData.originId } };
+          batchUpdate.originBranch = { connect: { id: updateData.originId } };
           delete batchUpdate.originId;
         }
         if (updateData?.destinationId) {
-          batchUpdate.destination = {
+          batchUpdate.destinationBranch = {
             connect: { id: updateData.destinationId },
           };
           delete batchUpdate.destinationId;
