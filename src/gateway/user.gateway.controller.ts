@@ -256,6 +256,7 @@ export class UserGatewayController {
     });
   }
 
+  
   @Get('/driver')
   async findDriver(@Query() query: ListQueryDto, @Req() req) {
     const authHeader = req.headers['authorization'] || null;

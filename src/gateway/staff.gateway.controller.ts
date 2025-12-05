@@ -251,10 +251,6 @@ export class StaffGatewayController {
   @Post('/driver')
   @UseInterceptors(FilesInterceptor('licenseImages', 2))
   async createDriver(
-    // @UploadedFiles() files: Express.Multer.File[],
-    // @UploadedFiles() files: File[],
-    // @UploadedFiles() files: Express.Multer.File[],
-    // @UploadedFiles() files: MulterFile[],
     @UploadedFiles() files: any[],
     @Body() body: any,
     @Req() req,
@@ -262,6 +258,8 @@ export class StaffGatewayController {
     // const authHeader = req.headers['authorization'] || null;
     // const token = authHeader?.replace('Bearer ', '');
     // const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
+console.log("Driver data :: ", body);
+
 
     // Attach files (as buffer/base64)
     // Attach file buffers

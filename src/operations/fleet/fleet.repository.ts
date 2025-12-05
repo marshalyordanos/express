@@ -18,12 +18,13 @@ export class VehicleRepository {
 
   // ---------------- Vehicle Management ----------------
   async createVehicle(data: CreateVehicleDto): Promise<Vehicle> {
-    const { driverId, status, ...vehicleData } = data;
+    const { driverId,vehicleTypeId, status, ...vehicleData } = data;
     console.log('vehicleData: ', vehicleData);
 
     return this.prisma.vehicle.create({
       data: {
         ...vehicleData,
+        vehicleType: vehicleTypeId ? { connect: { id: vehicleTypeId } } : undefined,
         status: status || 'ACTIVE',
         driver: driverId ? { connect: { id: driverId } } : undefined,
       },

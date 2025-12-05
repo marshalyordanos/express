@@ -515,7 +515,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
     //     message: 'Vehicle ID and Role ID are required.',
     //   });
     // }
-    if (!data.role) {
+    if (!data.roleId) {
       throw new RpcException({
         statusCode: 400,
         message: 'Role ID are required.',
@@ -525,7 +525,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
     // 🔎 DB validation
     const [role, user] = await Promise.all([
       // this.staffRepo.findVehicleById(data.vehicleId),
-      this.staffRepo.findRoleById(data.role),
+      this.staffRepo.findRoleById(data.roleId),
       this.staffRepo.findStaffByEmailAndPhone(data.email, data.phone),
     ]);
 
@@ -635,7 +635,7 @@ export class StaffUseCasesImpl implements StaffUsecase {
       isActive: true,
       customId,
       // branchId: data.type === 'INTERNAL' ? data.branchId : null,
-      roleId: data.role,
+      roleId: data.roleId,
       emergencyContactName: data.emergencyContactName,
       emergencyContactPhone: data.emergencyContactPhone,
     };
