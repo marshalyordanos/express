@@ -254,6 +254,51 @@ export class OrderGatewayController {
     });
   }
 
+  @Get('/manifest')
+  async getOrderManifest(@Req() req, @Query() query: ListQueryDto) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+
+    return this.orderClient.send(PATTERNS.ORDER_MANIFEST, {
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+      query,
+    });
+  }
+
+  @Get('/ongoing-delivery')
+  async getOngoingAndDeliveredOrders(@Req() req, @Query() query: ListQueryDto) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.orderClient.send(PATTERNS.ORDER_ONGOING_AND_DELIVERED, {
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+      query,
+    });
+  }
+
   @Get('/onhold')
   async getOnHoldOrders(@Req() req) {
     const authHeader = req.headers['authorization'] || null;

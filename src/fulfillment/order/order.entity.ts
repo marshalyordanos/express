@@ -62,6 +62,11 @@ export class AddressDto {
   @Transform(({ value }) => sanitize(value))
   postalCode?: string;
 
+  @IsString({ message: 'Land Mark must be a string' })
+  @IsOptional()
+  @Transform(({ value }) => sanitize(value))
+  landMark?: string
+
   @IsLatitude({ message: 'Latitude must be a valid number' })
   @IsNotEmpty({ message: 'Latitude is required' })
   lat: string;

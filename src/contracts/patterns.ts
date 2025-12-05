@@ -144,6 +144,8 @@ export const PATTERNS = {
   ORDER_ADD_ON_HOLD: 'order.addOnHold',
   ORDER_REMOVE_ON_HOLD: 'order.removeOnHold',
   ORDER_FIND_ON_HOLD: 'order.findOnHold',
+  ORDER_ONGOING_AND_DELIVERED: 'order.ongoingAndDelivered',
+  ORDER_MANIFEST: 'order.manifest',
 
   //Dispatch Management System
   DISPATCH_CREATE: 'dispatch.create',

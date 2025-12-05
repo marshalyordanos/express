@@ -19,6 +19,20 @@ import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class DispatchRepository {
+  confirmBatchdHandoverAutomatic(
+    handedById: string,
+    method: string,
+    reference: string,
+    notes: string,
+    podImages: {
+      url: string;
+      publicId?: string;
+      fileName?: string;
+      fileType?: string;
+    }[],
+  ) {
+    throw new Error('Method not implemented.');
+  }
   async findOrderUnique(orderId: string) {
     return await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -519,6 +533,9 @@ export class DispatchRepository {
       method?: string;
       reference?: string;
       notes?: string;
+      flightNumber?: string;
+      flightDate?: Date;
+      destinationTime?: Date;
       location: string;
     },
     podImages?: {
@@ -528,6 +545,8 @@ export class DispatchRepository {
       fileType?: string;
     }[],
   ) {
+    console.log('THTHTHT :::', handedById);
+
     return this.prisma.$transaction(
       async (tx) => {
         // 1. Update batch status
@@ -541,6 +560,9 @@ export class DispatchRepository {
           data: {
             handedById,
             method: options?.method,
+            flightNumber: options?.flightNumber,
+            flightDate: options?.flightDate,
+            destinationTime: options?.destinationTime,
             reference: options?.reference,
             notes: options?.notes,
             batches: {
@@ -557,8 +579,8 @@ export class DispatchRepository {
                 orderId: null,
                 url: img.url,
                 publicId: img.publicId,
-                fileName: img.fileName,
-                fileType: img.fileType,
+                fileName: img.fileName || 'unknown.png', // avoid undefined
+                fileType: img.fileType || 'image/png', // avoid undefined
               },
             });
           }
@@ -1347,69 +1369,103 @@ export class DispatchRepository {
     handoverMethod?: string,
     reference?: string,
     notes?: string,
+    podImages?: {
+      url: string;
+      publicId?: string;
+      fileName?: string;
+      fileType?: string;
+    }[],
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      // 1. Find all batches where this officer is collecting from airport and status is IN_TRANSIT
-      const batches = await tx.batchDispatch.findMany({
-        where: {
+    return this.prisma.$transaction(
+      async (tx) => {
+        // 1. Find all batches under this officer still in transit
+        const batches = await tx.batchDispatch.findMany({
+          where: { officerId, status: 'IN_TRANSIT' },
+        });
+
+        if (!batches.length)
+          throw new Error('No batches available for confirmation');
+
+        const batchIds = batches.map((b) => b.id);
+
+        // 2. Find valid scanned orders linked to those batches
+        const validOrders = await tx.orderScan.findMany({
+          where: {
+            scannedBy: officerId,
+            valid: true,
+            order: {
+              batchId: { in: batchIds },
+            },
+          },
+          select: { orderId: true, batchId: true },
+        });
+
+        if (!validOrders.length)
+          throw new Error('No valid scanned orders found');
+
+        const orderIds = validOrders.map((o) => o.orderId);
+
+        // 3. Update orders to VALIDATED
+        await tx.order.updateMany({
+          where: { id: { in: orderIds } },
+          data: { status: 'VALIDATED' },
+        });
+
+        // 4. Update all batches to ARRIVED_AT_DESTINATION
+        await tx.batchDispatch.updateMany({
+          where: { id: { in: batchIds } },
+          data: { status: 'ARRIVED_AT_DESTINATION' },
+        });
+
+        await this.logBatchOrdersStatus(
+          tx,
+          batchIds,
+          'VALIDATED',
+          'At airport',
           officerId,
-          status: 'IN_TRANSIT',
-        },
-      });
-
-      if (batches.length === 0)
-        throw new Error('No batches available for confirmation');
-
-      const batchIds = batches.map((b) => b.id);
-
-      // 2. Find all valid scanned orders for these batches
-      const validOrders = await tx.orderScan.findMany({
-        where: {
-          scannedBy: officerId,
-          valid: true,
-          order: {
-            batchId: { in: batchIds },
-          },
-        },
-        select: { orderId: true, batchId: true },
-      });
-
-      // 3. Update order statuses
-      await tx.order.updateMany({
-        where: { id: { in: validOrders.map((o) => o.orderId) } },
-        data: { status: 'VALIDATED' },
-      });
-
-      // 4. Update batch statuses
-      await tx.batchDispatch.updateMany({
-        where: { id: { in: batchIds } },
-        data: { status: 'ARRIVED_AT_DESTINATION' },
-      });
-
-      await this.logBatchOrdersStatus(
-        tx,
-        batchIds,
-        'VALIDATED',
-        'At airport',
-        officerId,
-        notes,
-      );
-
-      // 5. Create handover record
-      const handover = await tx.batchHandover.create({
-        data: {
-          handedById: officerId,
-          method: handoverMethod,
-          reference,
           notes,
-          batches: {
-            connect: batchIds.map((id) => ({ id })),
-          },
-        },
-      });
+        );
 
-      return { handover, confirmedOrders: validOrders.map((o) => o.orderId) };
-    });
+        // 5. Create handover record
+        const handover = await tx.batchHandover.create({
+          data: {
+            handedById: officerId,
+            method: handoverMethod,
+            reference,
+            notes,
+            batches: {
+              connect: batchIds.map((id) => ({ id })),
+            },
+          },
+        });
+
+        // 6. Save POD images per order
+        if (podImages?.length) {
+          const podRecords = orderIds.flatMap((orderId) =>
+            podImages.map((img) => ({
+              orderId,
+              driverId: officerId,
+              url: img.url,
+              publicId: img.publicId,
+              fileName: img.fileName,
+              fileType: img.fileType,
+            })),
+          );
+
+          await tx.podImage.createMany({ data: podRecords });
+        }
+
+        return {
+          handover,
+          confirmedOrders: orderIds,
+          totalOrders: orderIds.length,
+          imagesAttached: podImages?.length || 0,
+        };
+      },
+      {
+        timeout: 60000,
+      },
+    );
   }
 
   async createDriver(data: CreateDriver) {

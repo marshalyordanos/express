@@ -104,6 +104,7 @@ model Address {
   postalCode  String?
   lat         String?
   long        String?
+  landMark    String?
   purpose     AddressPurpose
   userId      String?
   createdAt   DateTime       @default(now())
@@ -353,8 +354,8 @@ model Order {
 
 model PodImage {
   id         String   @id @default(cuid())
-  driverId   String
-  orderId    String
+  driverId   String?
+  orderId    String?
   url        String // Cloudinary or S3 URL
   publicId   String? // Optional: Cloudinary public ID for deletion
   fileName   String? // Original file name
@@ -362,8 +363,8 @@ model PodImage {
   uploadedAt DateTime @default(now())
 
   // Relations (optional)
-  driver User  @relation(fields: [driverId], references: [id])
-  order  Order @relation(fields: [orderId], references: [id])
+  driver User?  @relation(fields: [driverId], references: [id])
+  order  Order? @relation(fields: [orderId], references: [id])
 
   @@index([driverId])
   @@index([orderId])
@@ -473,6 +474,9 @@ model BatchHandover {
   reference  String? // optional: receipt number or photo URL
   notes      String?
   createdBy  String?
+  flightNumber String?
+  flightDate   DateTime?
+  destinationTime  DateTime?
 
   // Relations
   batches BatchDispatch[] @relation("HandoverBatches")

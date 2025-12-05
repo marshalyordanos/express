@@ -172,6 +172,21 @@ export class BatchHandoverDto {
   @IsOptional()
   @IsString()
   @Transform(({ value }) => escape(value?.trim()))
+  flightNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => escape(value?.trim()))
+  flightDate?: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => escape(value?.trim()))
+  destinationTime?: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => escape(value?.trim()))
   notes?: string; // additional notes or comments
 
   @IsOptional()

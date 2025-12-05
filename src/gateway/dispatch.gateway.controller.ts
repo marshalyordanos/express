@@ -139,7 +139,6 @@ export class DispatchGatewayController {
     @Body() data: BatchHandoverDto,
     @Req() req,
   ): Promise<any> {
-    
     const authHeader = req.headers['authorization'] || null;
     let token = req.headers['authorization']?.replace('Bearer ', '') || null;
 
@@ -247,7 +246,6 @@ export class DispatchGatewayController {
     });
   }
 
-
   @Patch('/compare/:officerId')
   async compareOrders(
     @Param('officerId') officerId: string,
@@ -274,7 +272,9 @@ export class DispatchGatewayController {
   }
 
   @Post('/confirm-arrival-and-handover')
+  @UseInterceptors(FilesInterceptor('podImages'))
   async confirmArrivalAndHandover(
+    @UploadedFiles() files: any[],
     @Body() data: ConfirmBatchHandoverDto,
     @Req() req,
   ): Promise<any> {
@@ -289,6 +289,39 @@ export class DispatchGatewayController {
       // decodedUser = this.jwtService.verify(token);
     } catch (err) {
       throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+
+    let uploadedImages = [];
+
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0'); // month is 0-indexed
+    const dd = String(today.getDate()).padStart(2, '0');
+    const dateFolder = `${yyyy}-${mm}-${dd}`;
+
+    // ✅ Upload only if files exist and are valid
+    if (files && files.length > 0) {
+      try {
+        const fileStreamsOrBuffers = files.map(
+          (file) => file.stream || file.buffer,
+        );
+        uploadedImages = await this.cloudinaryUploader.uploadFiles(
+          fileStreamsOrBuffers,
+          `pod_images/arrival/${data.handedById}/date/${dateFolder}`,
+        );
+
+        data.podImages = uploadedImages;
+        console.log('Proof of delivery images uploaded successfully.');
+      } catch (error) {
+        console.error('Cloudinary upload failed:', error);
+        throw new HttpException(
+          'Failed to upload proof of delivery images',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    } else {
+      console.log('No files provided — skipping upload.');
+      data.podImages = []; // keep consistent structure
     }
 
     return this.dispatchClient.send(

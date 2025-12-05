@@ -49,6 +49,26 @@ export class OrderUseCasesImpl implements OrderUseCases {
     this.logger.setContext('FulfillmentService', 'OrderUsecaseImpl');
   }
 
+  async getOrderManifest(query: ListQueryDto,userId: string) {
+    try {
+      const branch = await this.orderRepo.findBranchByUser(userId);
+      return this.orderRepo.getOrderManifest(query,userId, branch.id);
+    } catch (err) {
+      this.logger.error(err);
+      throw handleCatch(err);
+    }
+  }
+
+  async getOngoingAndDeliveredOrders(query: ListQueryDto,userId: string) {
+    try {
+      const branch = await this.orderRepo.findBranchByUser(userId);
+      return this.orderRepo.getOngoingAndDeliveredOrders(query,userId, branch.id);
+    } catch (err) {
+      this.logger.error(err);
+      throw handleCatch(err);
+    }
+  }
+
   // async createOrderSummary(data: CreateOrderDto) {}
   //Customer order creating API: For customer to create for it self and staff/Admin to create for customer
   async createOrder(data: any, userId: string): Promise<Order> {
@@ -64,17 +84,36 @@ export class OrderUseCasesImpl implements OrderUseCases {
       console.log(
         `Order creation for customer ${customer}, and receiver ${receiver}`,
       );
+            let pickupAddress: any = null;
+      if (data.fulfillmentType === 'PICKUP') {
+        pickupAddress = await this.mapsService.reverseGeocode(
+          data.pickupAddress.lat,
+          data.pickupAddress.long,
+        );
+        // this.logger.verbose('Pickup address resolved ::: ', pickupAddress);
+      }
+
+      const deliveryAddress = await this.mapsService.reverseGeocode(
+        data.deliveryAddress.lat,
+        data.deliveryAddress.long,
+      );
+      // this.logger.verbose(
+      //   'Delivery address resolved ::: ',
+      //   deliveryAddress as string,
+      // );
 
       // 2️⃣ Create order inside small transaction
-      const order = await this.orderRepo.createOrderWithAddressess(
+      const order = await this.orderRepo.createOrderWithAddresses(
         data,
         customer.id,
         receiver.id,
         this.generateTrackingCode(customer.name.substring(0, 3)),
+        pickupAddress,
+        deliveryAddress,
         userId,
       );
 
-      console.log(`Order created one ::: ${order}`);
+      // console.log(`Order created one ::: ${order}`);
 
       await this.publisher.publish('order_created', {
         orderId: order.id,
@@ -318,17 +357,17 @@ export class OrderUseCasesImpl implements OrderUseCases {
           data.pickupAddress.lat,
           data.pickupAddress.long,
         );
-        this.logger.verbose('Pickup address resolved ::: ', pickupAddress);
+        // this.logger.verbose('Pickup address resolved ::: ', pickupAddress);
       }
 
       const deliveryAddress = await this.mapsService.reverseGeocode(
         data.deliveryAddress.lat,
         data.deliveryAddress.long,
       );
-      this.logger.verbose(
-        'Delivery address resolved ::: ',
-        deliveryAddress as string,
-      );
+      // this.logger.verbose(
+      //   'Delivery address resolved ::: ',
+      //   deliveryAddress as string,
+      // );
 
       // 🔹 Create order with addresses
       const order = await this.orderRepo.createOrderWithAddresses(
@@ -358,7 +397,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
         lon: Number(order.deliveryAddress.long),
       };
 
-      console.log('before calculating : ', origin, destination);
+      // console.log('before calculating : ', origin, destination);
 
       // Emit WebSocket or background job for async processing
       // this.calculateDistanceAndPrice(order.id, origin, destination);

@@ -343,6 +343,9 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
           method: data.method,
           reference: data.reference,
           notes: data.notes,
+          flightNumber: data.flightNumber,
+          flightDate:  new Date(data.flightDate),
+          destinationTime: new Date(data.destinationTime),
           location: 'At Airport',
         },
         data?.podImages,
@@ -1400,7 +1403,8 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         dto.handedById,
         dto.method,
         dto.reference,
-        dto.notes
+        dto.notes,
+        dto.podImages
       );
 
       this.logger.log(`Handover confirmed by officer ${dto.handedById}`);

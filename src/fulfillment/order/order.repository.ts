@@ -7,6 +7,7 @@ import {
   Order,
   ApprovalStatus,
   OrderRouteSegment,
+  DispatchStatus,
 } from '@prisma/client'; // assuming you use Prisma enums
 import { ListQueryDto } from '../../common/query/query.dto';
 import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
@@ -15,163 +16,8 @@ import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class OrderRepository {
-  //       //       lat: data.pickupAddress.lat,
-  //       //       long: data.pickupAddress.long,
-  //       //       purpose: 'ORDER_PICKUP',
-  //       //       userId: customerId,
-  //       //     },
-  //       //   });
-  //       //   console.log("Pickup address for creating address inside repo .... ::", pickupAddress);
-  //       //   // If not found, create a new one
-  //       //   if (!pickupAddressRecord) {
-  //       //     pickupAddressRecord = await tx.address.create({
-  //       //       data: {
-  //       //         addressLine: pickupAddress.addressLine ?? 'Unknown',
-  //       //         label: pickupAddress.label ?? 'Unknown Home or Office',
-  //       //         lat: data.pickupAddress.lat,
-  //       //         long: data.pickupAddress.long,
-  //       //         city: pickupAddress.city ?? 'Unknown',
-  //       //         state: pickupAddress.state ?? 'Unknown',
-  //       //         country: pickupAddress.country ?? 'Unknown',
-  //       //         postalCode: pickupAddress.postalCode ?? 'Unknown',
-  //       //         purpose: 'ORDER_PICKUP',
-  //       //         user: { connect: { id: customerId } },
-  //       //         createdBy: userId ?? customerId,
-  //       //       },
-  //       //     });
-  //       //   }
-  //       // }
-  //       // console.log('Pickup address ready:', pickupAddressRecord);
-  //       // // Delivery address (similar logic)
-  //       // let deliveryAddressRecord: Address | null = null;
-  //       // if (data.deliveryAddress) {
-  //       //   deliveryAddressRecord = await tx.address.findFirst({
-  //       //     where: {
-  //       //       lat: data.deliveryAddress.lat,
-  //       //       long: data.deliveryAddress.long,
-  //       //       purpose: 'ORDER_DELIVERY',
-  //       //       userId: customerId,
-  //       //     },
-  //       //   });
-  //       //   console.log("Delivery address for creating address inside repo .... ::", deliveryAddress);
-  //       //   if (!deliveryAddressRecord) {
-  //       //     deliveryAddressRecord = await tx.address.create({
-  //       //       data: {
-  //       //         addressLine: deliveryAddress.addressLine ?? 'Unknown',
-  //       //         label: deliveryAddress.label ?? 'Unknown Home or Office',
-  //       //         lat: data.deliveryAddress.lat,
-  //       //         long: data.deliveryAddress.long,
-  //       //         city: deliveryAddress.city ?? 'Unknown',
-  //       //         state: deliveryAddress.state ?? 'Unknown',
-  //       //         country: deliveryAddress.country ?? 'Unknown',
-  //       //         postalCode: deliveryAddress.postalCode ?? 'Unknown',
-  //       //         purpose: 'ORDER_DELIVERY',
-  //       //         user: { connect: { id: customerId } },
-  //       //         createdBy: userId ?? customerId,
-  //       //       },
-  //       //     });
-  //       //   }
-  //       // }
-  //       const pickupAddressRecord = await upsertAddress(
-  //         tx,
-  //         customerId,
-  //         userId,
-  //         data.pickupAddress,
-  //         'ORDER_PICKUP',
-  //       );
-  //       const deliveryAddressRecord = await upsertAddress(
-  //         tx,
-  //         customerId,
-  //         userId,
-  //         data.deliveryAddress,
-  //         'ORDER_DELIVERY',
-  //       );
-  //       console.log('Pickup address ready:', pickupAddressRecord);
-  //       console.log('Delivery address ready:', deliveryAddressRecord);
-  //       console.log('Delivery created:: ');
-  //       // Prepare order data
-  //       const orderData: any = {
-  //         trackingCode: trackingCode,
-  //         status: OrderStatus.CREATED,
-  //         serviceType: data.serviceType,
-  //         fulfillmentType: data.fulfillmentType,
-  //         weight: data.weight,
-  //         height: data.height,
-  //         width: data.width,
-  //         length: data.length,
-  //         category: data.category,
-  //         isFragile: data.isFragile,
-  //         shipmentType: data.shipmentType,
-  //         shippingScope: data.shippingScope,
-  //         pickupDate: data.pickupDate ? new Date(data.pickupDate) : null,
-  //         deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
-  //         createdBy: userId ?? customerId,
-  //         cost: data.cost,
-  //         customerId: customerId,
-  //         receiverId: receiverId,
-  //         quantity: data.quantity,
-  //         // customer: { connect: { id: customerId } },
-  //         branchId: data.branchId ? data.branchId : null,
-  //         // branch: data.branchId ? { connect: { id: data.branchId } } : undefined,
-  //         pickupAddressId: pickupAddressRecord?.id ?? null,
-  //         // pickupAddress: pickupAddress ? { connect: { id: pickupAddress.id } } : undefined,
-  //         deliveryAddressId: deliveryAddressRecord.id,
-  //         // deliveryAddress: { connect: { id: deliveryAddress.id } },
-  //       };
-  //       // Create order
-  //       const order = await tx.order.create({
-  //         data: orderData,
-  //         include: { pickupAddress: true, deliveryAddress: true },
-  //       });
-  //       console.log('Order created:: ');
-  //       // Create order tracking record
-  //       await tx.orderTracking.create({
-  //         data: {
-  //           orderId: order.id,
-  //           status: 'CREATED',
-  //           location: pickupAddress?.addressLine ?? 'Customer Home',
-  //           updatedBy: userId ?? customerId,
-  //           notes: 'Order Created.',
-  //         },
-  //       });
-  //       console.log('Log created:: ');
-  //       return order;
-  //     },
-  //     { timeout: 60000 },
-  //   );
-  //   // 2️⃣ Trigger async distance & pricing calculation outside transaction
-  //   // let origin: { lat: number; lon: number };
-  //   // if (order.pickupAddress) {
-  //   //   origin = {
-  //   //     lat: Number(order.pickupAddress.lat),
-  //   //     lon: Number(order.pickupAddress.long),
-  //   //   };
-  //   // } else {
-  //   //   origin = (await this.getBranchCoordinates(data.branchId)) as any;
-  //   // }
-  //   // const destination = {
-  //   //   lat: Number(order.deliveryAddress.lat),
-  //   //   lon: Number(order.deliveryAddress.long),
-  //   // };
-  //   // console.log('before calculating : ', origin, destination);
-  //   // console.log('before calculating second : ', this.websocketService);
-  //   // console.log(
-  //   //   '🧩 websocketService:',
-  //   //   this.websocketService?.constructor?.name,
-  //   // );
-  //   // if (!this.websocketService) {
-  //   //   throw new Error('🚨 websocketService is not injected!');
-  //   // }
-  //   // // Emit WebSocket or background job for async processing
-  //   // this.websocketService.emitOrderDistanceCalculation(
-  //   //   order.id,
-  //   //   origin,
-  //   //   destination,
-  //   // );
-  //   // console.log('Distance and price calculated:: ');
-  //   // 3️⃣ Return immediately, transaction is complete
-  //   return order;
-  // }
+  constructor(private prisma: PrismaService) {}
+
   async getOrderCoordinates(orderId: string) {
     return this.prisma.order.findUnique({
       where: { id: orderId },
@@ -204,7 +50,229 @@ export class OrderRepository {
       },
     });
   }
-  constructor(private prisma: PrismaService) {}
+
+  async getOrderManifest(
+    payload: ListQueryDto,
+    userId: string,
+    branchId: string,
+  ) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['type', 'reason'],
+    });
+    const query = feature.getQuery();
+
+    const [orders, total] = await Promise.all([
+      this.prisma.batchDispatch.findMany({
+        ...query,
+        where: {
+          ...query.where,
+          officerId: userId,
+          status: 'IN_TRANSIT',
+          destinationBranchId: branchId,
+        },
+        select: {
+          awbNumber: true,
+          status: true,
+          orders: {
+            select: {
+              trackingCode: true,
+              serviceType: true,
+              fulfillmentType: true,
+              status: true,
+              weight: true,
+              length: true,
+              width: true,
+              height: true,
+              category: true,
+              isFragile: true,
+              shipmentType: true,
+              shippingScope: true,
+              isUnusual: true,
+              unusualReason: true,
+              receiver: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                },
+              },
+              deliveryAddress: {
+                select: {
+                  id: true,
+                  landMark: true,
+                  label: true,
+                  addressLine: true,
+                  country: true,
+                  state: true,
+                  city: true,
+                  postalCode: true,
+                  lat: true,
+                  long: true,
+                },
+              },
+              branchId: true,
+            },
+          },
+        },
+      }),
+      this.prisma.batchDispatch.count({
+        where: {
+          ...query.where,
+          officerId: userId,
+          status: 'IN_TRANSIT',
+          destinationBranchId: branchId,
+        },
+      }),
+    ]);
+
+    return { orders, pagination: feature.getPagination(total) };
+  }
+
+  async getOngoingAndDeliveredOrders(
+    payload: ListQueryDto,
+    userId: string,
+    branchId: string,
+  ) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: ['type', 'reason'],
+    });
+    const query = feature.getQuery();
+
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        ...query,
+        where: {
+          status: { notIn: ['CANCELED', 'FAILED', 'EXCEPTION', 'REJECTED'] },
+          OR: [
+            // Case 1: branch is destination
+            {
+              batch: {
+                destinationBranchId: branchId,
+                status: {
+                  in: [DispatchStatus.COMPLETED, DispatchStatus.CLOSED],
+                },
+              },
+            },
+            // Case 2: branch is not destination
+            {
+              batch: {
+                destinationBranchId: { not: branchId },
+                officerId: userId,
+                status: { notIn: [DispatchStatus.CANCELLED] },
+              },
+            },
+          ],
+        },
+        select: {
+          id: true,
+          trackingCode: true,
+          status: true,
+          serviceType: true,
+          fulfillmentType: true,
+          shipmentType: true,
+          shippingScope: true,
+          weight: true,
+          width: true,
+          height: true,
+          length: true,
+          isFragile: true,
+          category: true,
+          isUnusual: true,
+          unusualReason: true,
+          receiver: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+          deliveryAddress: {
+            select: {
+              label: true,
+              landMark: true,
+              addressLine: true,
+              country: true,
+              state: true,
+              city: true,
+              postalCode: true,
+              lat: true,
+              long: true,
+            },
+          },
+        },
+      }),
+      this.prisma.order.count({
+        where: {
+          status: { notIn: ['CANCELED', 'FAILED', 'EXCEPTION', 'REJECTED'] },
+          OR: [
+            // Case 1: branch is destination
+            {
+              batch: {
+                destinationBranchId: branchId,
+                status: {
+                  in: [DispatchStatus.COMPLETED, DispatchStatus.CLOSED],
+                },
+              },
+            },
+            // Case 2: branch is not destination
+            {
+              batch: {
+                destinationBranchId: { not: branchId },
+                officerId: userId,
+                status: { notIn: [DispatchStatus.CANCELLED] },
+              },
+            },
+          ],
+        },
+      }),
+    ]);
+    console.log('FEtched orders :: ', orders);
+
+    // --- Split simply by order.status ---
+    const delivered = orders.filter((o) => o.status === 'DELIVERED');
+    const ongoing = orders.filter((o) => o.status !== 'DELIVERED');
+
+    return {
+      delivered,
+      ongoing,
+      pagination: feature.getPagination(total),
+    };
+  }
+
+  async findBranchByUser(userId: string) {
+    return this.prisma.branch.findFirst({
+      where: {
+        staff: {
+          some: {
+            id: userId,
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+  }
   async trackOrder(orderId: string) {
     return this.prisma.orderTracking.findMany({
       where: { orderId },
@@ -552,91 +620,24 @@ export class OrderRepository {
     // 1️⃣ Create addresses and order in a short Prisma transaction
     const order = await this.prisma.$transaction(
       async (tx) => {
-        console.log('Pickup address is :::::: ', data.pickupAddress);
-
-        // Create pickup address if provided
-        // let pickupAddressRecord: Address | null = null;
-        // if (data.pickupAddress) {
-        //   // Try to find an existing address with the same lat & long
-        //   pickupAddressRecord = await tx.address.findFirst({
-        //     where: {
-        //       lat: data.pickupAddress.lat,
-        //       long: data.pickupAddress.long,
-        //       purpose: 'ORDER_PICKUP',
-        //       userId: customerId,
-        //     },
-        //   });
-
-        //   console.log("Pickup address for creating address inside repo .... ::", pickupAddress);
-
-        //   // If not found, create a new one
-        //   if (!pickupAddressRecord) {
-        //     pickupAddressRecord = await tx.address.create({
-        //       data: {
-        //         addressLine: pickupAddress.addressLine ?? 'Unknown',
-        //         label: pickupAddress.label ?? 'Unknown Home or Office',
-        //         lat: data.pickupAddress.lat,
-        //         long: data.pickupAddress.long,
-        //         city: pickupAddress.city ?? 'Unknown',
-        //         state: pickupAddress.state ?? 'Unknown',
-        //         country: pickupAddress.country ?? 'Unknown',
-        //         postalCode: pickupAddress.postalCode ?? 'Unknown',
-        //         purpose: 'ORDER_PICKUP',
-        //         user: { connect: { id: customerId } },
-        //         createdBy: userId ?? customerId,
-        //       },
-        //     });
-        //   }
-        // }
-
-        // console.log('Pickup address ready:', pickupAddressRecord);
-
-        // // Delivery address (similar logic)
-        // let deliveryAddressRecord: Address | null = null;
-        // if (data.deliveryAddress) {
-        //   deliveryAddressRecord = await tx.address.findFirst({
-        //     where: {
-        //       lat: data.deliveryAddress.lat,
-        //       long: data.deliveryAddress.long,
-        //       purpose: 'ORDER_DELIVERY',
-        //       userId: customerId,
-        //     },
-        //   });
-        //   console.log("Delivery address for creating address inside repo .... ::", deliveryAddress);
-
-        //   if (!deliveryAddressRecord) {
-        //     deliveryAddressRecord = await tx.address.create({
-        //       data: {
-        //         addressLine: deliveryAddress.addressLine ?? 'Unknown',
-        //         label: deliveryAddress.label ?? 'Unknown Home or Office',
-        //         lat: data.deliveryAddress.lat,
-        //         long: data.deliveryAddress.long,
-        //         city: deliveryAddress.city ?? 'Unknown',
-        //         state: deliveryAddress.state ?? 'Unknown',
-        //         country: deliveryAddress.country ?? 'Unknown',
-        //         postalCode: deliveryAddress.postalCode ?? 'Unknown',
-        //         purpose: 'ORDER_DELIVERY',
-        //         user: { connect: { id: customerId } },
-        //         createdBy: userId ?? customerId,
-        //       },
-        //     });
-        //   }
-        // }
+        console.log('Pickup address is :::::: ', pickupAddress);
 
         const pickupAddressRecord = await upsertAddress(
           tx,
           customerId,
           userId,
-          data.pickupAddress,
+          pickupAddress,
           'ORDER_PICKUP',
+          data.pickupAddress.landMark,
         );
 
         const deliveryAddressRecord = await upsertAddress(
           tx,
           customerId,
           userId,
-          data.deliveryAddress,
+          deliveryAddress,
           'ORDER_DELIVERY',
+          data.deliveryAddress.landMark,
         );
         console.log('Pickup address ready:', pickupAddressRecord);
         console.log('Delivery address ready:', deliveryAddressRecord);
@@ -753,6 +754,7 @@ export class OrderRepository {
           userId,
           data.pickupAddress,
           'ORDER_PICKUP',
+          data.pickupAddress.landMark,
         );
 
         const delivery = await upsertAddress(
@@ -761,6 +763,7 @@ export class OrderRepository {
           userId,
           data.deliveryAddress,
           'ORDER_DELIVERY',
+          data.deliveryAddress.landMark,
         );
 
         const order = await tx.order.create({
@@ -1759,54 +1762,86 @@ async function upsertAddress(
   userId: string | null,
   addressData: any,
   purpose: 'ORDER_PICKUP' | 'ORDER_DELIVERY',
+  landMark?: string,
 ) {
   if (!addressData) return null;
 
-  const existing = await tx.address.findFirst({
-    where: {
-      lat: addressData.lat,
-      long: addressData.long,
-      purpose,
-      userId: customerId,
-    },
-  });
+  // Allowed fields (must match Prisma schema)
+  const allowedFields = [
+    'addressLine',
+    'label',
+    'lat',
+    'long',
+    'city',
+    'state',
+    'country',
+    'postalCode',
+    'landMark',
+  ];
 
-  const dataToApply = {
-    addressLine: addressData.addressLine ?? 'Unknown',
-    label: addressData.label ?? 'Unknown Home or Office',
-    lat: addressData.lat,
-    long: addressData.long,
-    city: addressData.city ?? 'Unknown',
-    state: addressData.state ?? 'Unknown',
-    country: addressData.country ?? 'Unknown',
-    postalCode: addressData.postalCode ?? 'Unknown',
-    purpose,
-    user: { connect: { id: customerId } },
-    createdBy: userId ?? customerId,
+  // Normalize incoming data first
+  const cleanedData = {
+    addressLine: addressData.addressLine || addressData.address || null,
+    label: addressData.label || addressData.name || null,
+    lat: addressData.lat ?? null,
+    long: addressData.long ?? null,
+    city: addressData.city ?? null,
+    state: addressData.state ?? null,
+    country: addressData.country ?? null,
+    postalCode: addressData.postalCode ?? null,
+    landMark: addressData.landMark || landMark || null,
   };
 
-  if (existing) {
-    // Prepare update only with non-null fields that have changed
-    const updates: Record<string, any> = {};
+  // Check if record already exists
+  const existing = await tx.address.findFirst({
+    where: { purpose, userId: customerId },
+  });
 
-    for (const [key, value] of Object.entries(addressData)) {
-      if (value !== null && value !== undefined && existing[key] !== value) {
-        updates[key] = value;
-      }
-    }
+  const fallback = (v: any, backup: string) =>
+    v && v !== 'Unknown' ? v : backup;
 
-    if (Object.keys(updates).length > 0) {
-      console.log(`Updating existing ${purpose} address...`);
-      return tx.address.update({
-        where: { id: existing.id },
-        data: updates,
-      });
-    }
-
-    console.log(`No updates required for ${purpose} address.`);
-    return existing;
+  if (!existing) {
+    // Create new record
+    return tx.address.create({
+      data: {
+        addressLine: fallback(cleanedData.addressLine, 'Unknown'),
+        label: fallback(cleanedData.label, 'Unknown Home or Office'),
+        city: fallback(cleanedData.city, 'Unknown'),
+        state: fallback(cleanedData.state, 'Unknown'),
+        country: fallback(cleanedData.country, 'Unknown'),
+        postalCode: fallback(cleanedData.postalCode, 'Unknown'),
+        lat: cleanedData.lat,
+        long: cleanedData.long,
+        landMark: fallback(cleanedData.landMark, 'Unknown'),
+        purpose,
+        user: { connect: { id: customerId } },
+        createdBy: userId ?? customerId,
+      },
+    });
   }
 
-  console.log(`Creating new ${purpose} address...`);
-  return tx.address.create({ data: dataToApply });
+  // Prepare update only for new / improved values
+  const updates: Record<string, any> = {};
+
+  for (const field of allowedFields) {
+    const newValue = cleanedData[field];
+    const oldValue = existing[field];
+
+    if (!newValue || newValue === 'Unknown') continue;
+
+    if (!oldValue || oldValue === 'Unknown' || oldValue !== newValue) {
+      updates[field] = newValue;
+    }
+  }
+
+  if (Object.keys(updates).length > 0) {
+    console.log(`Updating existing ${purpose} address:`, updates);
+
+    return tx.address.update({
+      where: { id: existing.id },
+      data: updates,
+    });
+  }
+
+  return existing;
 }
