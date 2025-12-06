@@ -24,8 +24,9 @@ import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
 import { NotificationModule } from '../notification/notification.module'; //temporary fix only
-import Redis from 'ioredis';
 import { RedisModule } from '../redis/redis.module';
+import { NotificationMessageController } from 'src/communication/notification/notification.controller';
+import { NotificationGatewayController } from './Notification.gateway.controller';
 
 
 @Module({
@@ -78,6 +79,7 @@ import { RedisModule } from '../redis/redis.module';
     PricingGatewayController,
     MapGatewayController,
     ReportGatewayController,
+    NotificationGatewayController
   ],
   exports: [AppLogger, SanitizePipe]
 })

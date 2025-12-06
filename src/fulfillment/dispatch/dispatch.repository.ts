@@ -234,6 +234,20 @@ export class DispatchRepository {
         pickupDriverId: true,
         pickupDate: true,
         pickupAddress: { select: { lat: true, long: true, addressLine: true } },
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+          },
+        },
+        pickupDriver: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+          },
+        },
       },
     });
   }
@@ -646,6 +660,22 @@ export class DispatchRepository {
     return this.prisma.order.update({
       where: { id: data.orderId },
       data: { deliveryDriverId: data.driverId, status: 'OUT_FOR_DELIVERY' },
+      include: {
+        receiver: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+          },
+        },
+        deliveryDriver: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+          },
+        },
+      },
     });
   }
   // 1. Assign order to driver (no pickup yet)
@@ -660,7 +690,23 @@ export class DispatchRepository {
           deliveryAssignedAt: new Date(),
           deliveryAssignedBy: userId,
         },
-        include: { batch: true }, // include to get batch info
+        include: {
+          batch: true,
+          receiver: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+          },
+          deliveryDriver: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+          },
+        }, // include to get batch info
       });
 
       console.log('batches for order :', updatedOrder);
@@ -708,6 +754,22 @@ export class DispatchRepository {
       const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: { status: 'OUT_FOR_DELIVERY' },
+        include: {
+          receiver: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+          },
+          deliveryDriver: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+          },
+        },
       });
 
       await tx.orderTracking.create({
@@ -842,6 +904,20 @@ export class DispatchRepository {
         data: { status: 'DELIVERED', deliveryDate: new Date(), notes },
         include: {
           deliveryAddress: true,
+          deliveryDriver: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+          },
+          receiver: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+          },
         },
       });
 
@@ -899,6 +975,22 @@ export class DispatchRepository {
     return this.prisma.order.update({
       where: { id: orderId },
       data: { deliveryDriverId: driverId },
+      include: {
+        deliveryDriver: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+          },
+        },
+        receiver: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+          },
+        },
+      },
     });
   }
 
@@ -907,6 +999,7 @@ export class DispatchRepository {
       where: { id: { in: orderIds } },
       include: { deliveryAddress: true, pickupAddress: true },
     });
+    
   }
 
   async createBatchDispatch(
@@ -953,6 +1046,7 @@ export class DispatchRepository {
                 deliveryAddress: {
                   select: { addressLine: true, city: true },
                 },
+                customerId: true,
               },
             },
             createdBy: {

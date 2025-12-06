@@ -255,12 +255,10 @@ export class StaffGatewayController {
     @Body() body: any,
     @Req() req,
   ) {
+    
     // const authHeader = req.headers['authorization'] || null;
     // const token = authHeader?.replace('Bearer ', '');
     // const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
-console.log("Driver data :: ", body);
-
-
     // Attach files (as buffer/base64)
     // Attach file buffers
     if (files?.length > 0) {

@@ -286,4 +286,9 @@ export const PATTERNS = {
   REPORT_PERFORMANCE_TOP_BRANCHES: 'report.performanceTopBranches',
   REPORT_PERFORMANCE_TOP_DRIVERS: 'report.performanceTopDrivers',
   REPORT_PERFORMANCE_TOP_SHIPMENTS: 'report.performanceTopShipments',
+
+
+
+  NOTIFICATION_GET_USER_NOTIFICATIONS: 'notification.getUserNotifications',
+  NOTIFICATION_MARK_AS_READ:  'notification.markAsRead',
 } as const;

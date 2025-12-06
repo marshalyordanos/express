@@ -32,7 +32,6 @@ import {
 } from '../fulfillment/order/order.entity';
 import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
-import { SanitizePipe } from '../common/sanitize.pipe';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
 
@@ -65,6 +64,7 @@ export class OrderGatewayController {
       ip,
     });
   }
+  
 
   @Post('/user/create')
   async orderCreateValidate(@Body() data: CreateOrderDto, @Req() req) {

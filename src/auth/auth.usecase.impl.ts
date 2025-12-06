@@ -175,9 +175,10 @@ export class AuthUseCaseImpl implements AuthUseCase {
         `Login failed for ${data.email}: ${error.message}`,
         error.stack,
       );
-      throw error instanceof RpcException
-        ? error
-        : new RpcException('Login process failed. Please try again.');
+      // throw error instanceof RpcException
+      //   ? error
+      //   : new RpcException('Login process failed. Please try again.');
+      handleCatch(error);
     }
   }
 
@@ -232,9 +233,10 @@ export class AuthUseCaseImpl implements AuthUseCase {
         `Mobile login failed for ${data.phone}: ${error.message}`,
         // error.stack,
       );
-      throw error instanceof RpcException
-        ? error
-        : new RpcException('Mobile login process failed. Please try again.');
+      // throw error instanceof RpcException
+      //   ? error
+      //   : new RpcException('Mobile login process failed. Please try again.');
+      handleCatch(error);
     }
   }
 
@@ -287,9 +289,10 @@ export class AuthUseCaseImpl implements AuthUseCase {
         `Mobile login failed for ${data.phone}: ${error.message}`,
         // error.stack,
       );
-      throw error instanceof RpcException
-        ? error
-        : new RpcException('Mobile login process failed. Please try again.');
+      // throw error instanceof RpcException
+      //   ? error
+      //   : new RpcException('Mobile login process failed. Please try again.');
+      handleCatch(error);
     }
   }
   async logout(userId: string, sessionId?: string): Promise<void> {
@@ -362,12 +365,14 @@ export class AuthUseCaseImpl implements AuthUseCase {
         `Token refresh failed for user: ${userId} → ${error.message}`,
         error.stack,
       );
-      throw error instanceof RpcException
-        ? error
-        : new RpcException({
-            statusCode: 500,
-            message: 'Token refresh failed. Please try again later.',
-          });
+      // throw error instanceof RpcException
+      //   ? error
+      //   : new RpcException({
+      //       statusCode: 500,
+      //       message: 'Token refresh failed. Please try again later.',
+      //     });
+
+      handleCatch(error);
     }
   }
 
@@ -428,17 +433,18 @@ export class AuthUseCaseImpl implements AuthUseCase {
         // error.stack,
       );
 
-      if (
-        error instanceof RpcException ||
-        error instanceof BadRequestException
-      ) {
-        throw error;
-      }
+      // if (
+      //   error instanceof RpcException ||
+      //   error instanceof BadRequestException
+      // ) {
+      //   handleCatch(error); // throw error;
+      // }
 
-      throw new RpcException({
-        statusCode: 500,
-        message: 'Internal server error while changing password',
-      });
+      handleCatch(error);
+      // throw new RpcException({
+      //   statusCode: 500,
+      //   message: 'Internal server error while changing password',
+      // });
     }
   }
   async forgotPassword(
@@ -482,11 +488,12 @@ export class AuthUseCaseImpl implements AuthUseCase {
         // error.stack,
       );
 
-      throw new RpcException({
-        statusCode: 500,
-        message:
-          'Internal server error while processing forgot password request.',
-      });
+      // throw new RpcException({
+      //   statusCode: 500,
+      //   message:
+      //     'Internal server error while processing forgot password request.',
+      // });
+      handleCatch(error);
     }
   }
   async getAuthenticatedUser(sub: string) {
@@ -504,10 +511,11 @@ export class AuthUseCaseImpl implements AuthUseCase {
         `Error fetching authenticated user ${sub}: ${error.message}`,
         // error.stack,
       );
-      throw new RpcException({
-        statusCode: 500,
-        message: 'Failed to retrieve authenticated user',
-      });
+      // throw new RpcException({
+      //   statusCode: 500,
+      //   message: 'Failed to retrieve authenticated user',
+      // });
+      handleCatch(error);
     }
   }
 
@@ -549,10 +557,12 @@ export class AuthUseCaseImpl implements AuthUseCase {
         // error.stack,
       );
 
-      throw new RpcException({
-        statusCode: 500,
-        message: 'Internal server error while resetting password',
-      });
+      // throw new RpcException({
+      //   statusCode: 500,
+      //   message: 'Internal server error while resetting password',
+      // });
+
+      handleCatch(error);
     }
   }
 
@@ -583,10 +593,12 @@ export class AuthUseCaseImpl implements AuthUseCase {
         `❗Failed email verification with token: ${data.token} | Reason: ${error.message}`,
         // error.stack,
       );
-      throw new RpcException({
-        statusCode: 500,
-        message: 'Internal server error while verifying email',
-      });
+      // throw new RpcException({
+      //   statusCode: 500,
+      //   message: 'Internal server error while verifying email',
+      // });
+
+      handleCatch(error);
     }
   }
   async resendVerification(
@@ -620,10 +632,12 @@ export class AuthUseCaseImpl implements AuthUseCase {
         `❗Failed to resend verification for email: ${email} | Reason: ${error.message}`,
         // error.stack,
       );
-      throw new RpcException({
-        statusCode: 500,
-        message: 'Internal server error while resending verification email',
-      });
+      // throw new RpcException({
+      //   statusCode: 500,
+      //   message: 'Internal server error while resending verification email',
+      // });
+
+      handleCatch(error);
     }
   }
 
@@ -644,10 +658,12 @@ export class AuthUseCaseImpl implements AuthUseCase {
         `❗Failed to generate tokens for userId: ${user.id} | Reason: ${error.message}`,
         // error.stack,
       );
-      throw new RpcException({
-        statusCode: 500,
-        message: 'Failed to generate authentication tokens',
-      });
+      // throw new RpcException({
+      //   statusCode: 500,
+      //   message: 'Failed to generate authentication tokens',
+      // });
+
+      handleCatch(error);
     }
   }
 
