@@ -10,6 +10,7 @@ import { ConfigModule } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { NotificationRepository } from './notification.repository';
 import { RedisModule } from '../redis/redis.module';
+import { PushNotificationService } from './push.service';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { RedisModule } from '../redis/redis.module';
     NotificationRepository,
     EmailService,
     EventsGateway,
+    PushNotificationService,
   ],
   exports: [NotificationService],
 })

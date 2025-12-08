@@ -1,14 +1,14 @@
 import { Queue, Worker } from 'bullmq';
 import { Expo } from 'expo-server-sdk';
 
-const redisConfig = {
+const redisConnection = {
   host: process.env.REDIS_HOST,
   port: parseInt(process.env.REDIS_PORT, 10),
   username: process.env.REDIS_USERNAME,
   password: process.env.REDIS_PASSWORD,
 };
 
-export const pushQueue = new Queue('pushQueue', { connection: redisConfig });
+export const pushQueue = new Queue('pushQueue', { connection: redisConnection });
 
 new Worker(
   'pushQueue',
@@ -27,5 +27,5 @@ new Worker(
       console.error('Push notification error:', err);
     }
   },
-  { connection: redisConfig }
+  { connection: redisConnection }
 );

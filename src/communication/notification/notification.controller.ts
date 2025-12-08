@@ -52,7 +52,7 @@ export class NotificationMessageController {
       payload.data,
     );
     return IResponse.success(
-      'Notification Marked successfully as read.',
+      'Push notification token stored successfully.',
       result,
     );
   }
