@@ -291,4 +291,17 @@ export const PATTERNS = {
 
   NOTIFICATION_GET_USER_NOTIFICATIONS: 'notification.getUserNotifications',
   NOTIFICATION_MARK_AS_READ:  'notification.markAsRead',
+  NOTIFICATION_STORE_PUSH_TOKEN: 'notification.storePushToken',
+
+
+  CHAT_START_CONVERSATION: 'chat.startConversation',
+  CHAT_GET_CONVERSATION: 'chat.getConversations',
+  CHAT_GET_USER_CONVERSATIONS: 'chat.getUserConversations',
+  CHAT_MARK_AS_READ: 'chat.markAsRead',
+  CHAT_START_MESSAGE: 'chat.startMessage',
+  CHAT_SEND_MESSAGE: 'chat.sendMessage',
+  CHAT_REPLY_MESSAGE: 'chat.replyMessage',
+  CHAT_SEND_FILE: 'chat.sendFile',
+  CHAT_GET_MESSAGES: 'chat.getMessages',
+  
 } as const;

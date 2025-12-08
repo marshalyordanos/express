@@ -9,6 +9,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { RedisModule } from '../redis/redis.module';
 import { AppLogger } from '../common/app-logger.service';
+import { ChatMessageController } from './chat/chat.controller';
+import { ChatRepository } from './chat/chat.repository';
+import { ChatUseCaseImpl } from './chat/chat.usecase.impl';
+import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
 
 @Module({
   imports: [
@@ -20,8 +24,17 @@ import { AppLogger } from '../common/app-logger.service';
       signOptions: { expiresIn: '15m' },
     }),
   ],
-  controllers: [NotificationMessageController],
-  providers: [NotificationUseCasesImpl, NotificationRepository, PrismaService, RedisService, AppLogger],
-  exports: [NotificationUseCasesImpl, PrismaService],
+  controllers: [NotificationMessageController, ChatMessageController],
+  providers: [
+    NotificationUseCasesImpl,
+    NotificationRepository,
+    PrismaService,
+    // RedisService,
+    AppLogger,
+    ChatRepository,
+    CloudinaryUploaderService,
+    ChatUseCaseImpl,
+  ],
+  exports: [NotificationUseCasesImpl, PrismaService, ChatUseCaseImpl],
 })
 export class CommunicationModule {}

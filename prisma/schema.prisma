@@ -30,6 +30,7 @@ model User {
   bookmarks             Bookmark[]
   managedBranch         Branch?            @relation("BranchManager")
   emialVarifiCation     EmailVerification?
+  expoPushToken         String? 
   mfa                   Mfa?
   notifications         Notification[]
   orders                Order[]            @relation("CustomerOrders")
@@ -63,6 +64,12 @@ model User {
   corporateInfo CorporateInfo?
   driver        Driver?
   orderSegments OrderRouteSegment[] @relation("DriverSegments")
+
+    conversationMember ConversationMember[]
+    conversation  Conversation[]
+  messages      Message[]
+  messageStatus MessageStatus[]
+  reactions     Reaction[]
 
   createdBy String?
 
@@ -1325,3 +1332,99 @@ model VehicleType {
   vehicles    Vehicle[]
   commissions TariffVehicleCommission[]
 }
+
+model Conversation {
+  id            String                @id @default(cuid())
+  type          ConversationType
+  title         String?               // null for 1-to-1 chats
+  createdById   String?
+  createdBy     User?                 @relation(fields: [createdById], references: [id])
+  members       ConversationMember[]
+  messages      Message[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+model ConversationMember {
+  id              String     @id @default(cuid())
+  conversationId  String
+  userId          String
+  role            MemberRole @default(MEMBER)
+  joinedAt        DateTime   @default(now())
+
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum MemberRole {
+  ADMIN
+  MEMBER
+}
+
+model Message {
+  id                  String       @id @default(cuid())
+  conversationId      String
+  senderId            String
+  type                MessageType  @default(TEXT)
+  content             String?
+  mediaUrl            String?        // for file/image/video
+  mediaMimeType       String?
+  mediaSize           Int?
+  replyToMessageId    String? 
+  isEdited            Boolean       @default(false)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  deletedAt           DateTime?
+
+  conversation        Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender              User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyToMessage      Message?     @relation("ReplyThread", fields: [replyToMessageId], references: [id])
+  replies             Message[]    @relation("ReplyThread")
+  statuses            MessageStatus[]
+  reactions           Reaction[]
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  AUDIO
+  VIDEO
+  SYSTEM
+}
+
+model MessageStatus {
+  id          String     @id @default(cuid())
+  messageId   String
+  userId      String
+  status      DeliveryStatus
+  timestamp   DateTime   @default(now())
+
+  message     Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([messageId, userId])
+}
+
+enum DeliveryStatus {
+  DELIVERED
+  SEEN
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji]) // prevent duplicate reactions
+}
+

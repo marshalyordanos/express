@@ -6,6 +6,7 @@ import { EmailService } from './email.service';
 import { EventsGateway } from './events.gateway';
 import { JwtService } from '@nestjs/jwt';
 import { log } from 'node:console';
+import { PushNotificationService } from './push.service';
 
 interface UserNotificationPreferences {
   email: boolean;
@@ -21,6 +22,7 @@ export class NotificationService implements OnModuleInit {
     private readonly emailService: EmailService,
     private readonly eventsGateway: EventsGateway,
     private readonly jwtService: JwtService,
+    private readonly pushNotificationService: PushNotificationService,
   ) {}
 
   async onModuleInit() {
@@ -235,7 +237,16 @@ export class NotificationService implements OnModuleInit {
     // Push Notification (Optional)
     // -------------------------
     if (usePrefs.push) {
-      // Add your FCM / APNs push logic here
+      const userToken = await this.notificationRepository.getExpoPushTokens(userId); // You must store mobile push tokens in DB
+      const token=[userToken.expoPushToken]
+      if (token) {
+        await this.pushNotificationService.sendPushWithRetry(
+          token,
+          subject,
+          finalMessage,
+          payload,
+        );
+      }
     }
 
     console.log(`✅ Notification processed for user ${userId}`);

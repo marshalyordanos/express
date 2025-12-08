@@ -25,8 +25,8 @@ import { memoryStorage } from 'multer';
 import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
 import { NotificationModule } from '../notification/notification.module'; //temporary fix only
 import { RedisModule } from '../redis/redis.module';
-import { NotificationMessageController } from 'src/communication/notification/notification.controller';
 import { NotificationGatewayController } from './Notification.gateway.controller';
+import { ChatGatewayController } from './chat.gateway.controller';
 
 
 @Module({
@@ -79,7 +79,8 @@ import { NotificationGatewayController } from './Notification.gateway.controller
     PricingGatewayController,
     MapGatewayController,
     ReportGatewayController,
-    NotificationGatewayController
+    NotificationGatewayController,
+    ChatGatewayController
   ],
   exports: [AppLogger, SanitizePipe]
 })

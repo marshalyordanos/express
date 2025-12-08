@@ -6,7 +6,13 @@ import { PrismaQueryFeature } from '../../common/query/prisma-query-feature';
 @Injectable()
 export class NotificationRepository {
   constructor(private readonly prisma: PrismaService) {}
-
+  
+  async storePushToken(userId: string, data: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { expoPushToken: data },
+    })
+  }
   async markAsRead(notificationId: string) {
     return this.prisma.notification.update({
       where: { id: notificationId },
@@ -16,7 +22,7 @@ export class NotificationRepository {
 
   async getUserNotifications(
     userId: string,
-    unreadOnly = false,
+    // unreadOnly = false,
     payload: ListQueryDto = {},
   ) {
     const feature = new PrismaQueryFeature({
@@ -30,10 +36,11 @@ export class NotificationRepository {
 
     const query = feature.getQuery();
 
-    const whereCondition = unreadOnly
-      ? { userId, read: false, ...query.where }
-      : { userId, ...query.where };
+    // const whereCondition = unreadOnly
+    //   ? { userId, read: false, ...query.where }
+    //   : { userId, ...query.where };
 
+    const whereCondition = { userId, ...query.where };
     const [notifications, total] = await Promise.all([
       this.prisma.notification.findMany({
         ...query,

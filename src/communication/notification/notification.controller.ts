@@ -16,9 +16,14 @@ export class NotificationMessageController {
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Notification', PermissionActions.READ)
   @MessagePattern(PATTERNS.NOTIFICATION_GET_USER_NOTIFICATIONS)
-  async getNotification(@Payload() payload: { user: any, query: ListQueryDto }) {
+  async getNotification(
+    @Payload() payload: { user: any; query: ListQueryDto },
+  ) {
     const userId = payload.user.sub;
-    const result = await this.notificationService.getNotification(userId, payload.query);
+    const result = await this.notificationService.getNotification(
+      userId,
+      payload.query,
+    );
     return IResponse.success('Notification Fetched successfully', result);
   }
 
@@ -31,6 +36,24 @@ export class NotificationMessageController {
       userId,
       payload.id,
     );
-    return IResponse.success('Notification Marked successfully as read.', result);
+    return IResponse.success(
+      'Notification Marked successfully as read.',
+      result,
+    );
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Notification', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.NOTIFICATION_STORE_PUSH_TOKEN)
+  async storePushToken(@Payload() payload: { user: any; data: string }) {
+    const userId = payload.user.sub;
+    const result = await this.notificationService.storePushToken(
+      userId,
+      payload.data,
+    );
+    return IResponse.success(
+      'Notification Marked successfully as read.',
+      result,
+    );
   }
 }
