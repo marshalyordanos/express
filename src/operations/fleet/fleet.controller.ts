@@ -31,27 +31,24 @@ export class FleetMessageController {
     return IResponse.success('Vehicles created successfully', data, null);
   }
 
-
-    @UseGuards(PermissionGuard, RateLimitGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Fleet', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.FLEET_CREATE_VEHICLE_TYPE)
-  async createVehicleType(@Payload() payload: { data: CreateVehicleTypeDto , user: any}) {
-    const userId = payload.user?.sub
+  async createVehicleType(
+    @Payload() payload: { data: CreateVehicleTypeDto; user: any },
+  ) {
+    const userId = payload.user?.sub;
     const data = await this.usecases.createVehicleType(payload.data, userId);
     return IResponse.success('Vehicles Type created successfully', data, null);
-
-
   }
 
-    @UseGuards(PermissionGuard, RateLimitGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Fleet', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.FLEET_GET_ALL_VEHICLES_TYPE)
-  async getVehicleType(@Payload() payload: { query: ListQueryDto;  user: any}) {
-    const userId = payload.user?.sub
+  async getVehicleType(@Payload() payload: { query: ListQueryDto; user: any }) {
+    const userId = payload.user?.sub;
     const data = await this.usecases.getVehicleTypes(payload.query);
     return IResponse.success('Vehicles Type fetched successfully', data, null);
-
-
   }
   // Get all vehicles (with pagination)
   @UseGuards(PermissionGuard, RateLimitGuard)

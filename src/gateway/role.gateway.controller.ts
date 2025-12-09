@@ -18,7 +18,6 @@ import { PATTERNS } from '../contracts';
 import { RoleCreateDto, RoleUpdateDto } from '../operations/role/role.entity';
 import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
-import { SanitizePipe } from '../common/sanitize.pipe';
 
 
 @Controller('roles')

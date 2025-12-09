@@ -101,8 +101,30 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       userId,
     );
 
-    // 2️⃣ Fire & forget → create segment asynchronously
-    // this.createRouteSegmentAsync(data.driverId, false, order, null);
+    // 2️⃣ Fire & forget → Notification
+    this.retryNotification('pickup.driver.assignment', {
+      type: 'pickup.driver.assigned',
+      userId: data.driverId,
+      message: `You have a new pickup order assignment.`,
+      payload: {
+        orderId: data.orderId,
+        trackingCode: updatedOrder.trackingCode,
+        customerName: updatedOrder.customer.name,
+        customerPhone: updatedOrder.customer.phone,
+      },
+    });
+
+    this.retryNotification('pickup.driver.assigned', {
+      type: 'pickup.driver.assigned',
+      userId: data.driverId,
+      message: `Pickup driver assigned for your order : ${updatedOrder.trackingCode}.`,
+      payload: {
+        orderId: data.orderId,
+        trackingCode: updatedOrder.trackingCode,
+        driverName: updatedOrder.pickupDriver.name,
+        driverPhone: updatedOrder.pickupDriver.phone,
+      },
+    });
 
     return {
       statusCode: 200,
@@ -178,6 +200,18 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         data.batchId,
         data.officerId,
       );
+
+      this.retryNotification('batch.assign.officer', {
+        type: 'batch.assigned.officer',
+        userId: data.officerId,
+        message: `You have been assigned for new batches.`,
+        payload: {
+          batches: batches.map((b) => ({
+            id: b.id,
+            batchCode: b.batchCode,
+          })),
+        },
+      });
 
       this.logger.verbose(
         `Officer ${officer.name ?? officer.id} successfully assigned to ${data.batchId.length} batches.`,
@@ -261,6 +295,55 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         `Officer ${officer.name ?? officer.id} successfully collected all assigned batches.`,
       );
 
+      this.retryNotification('batch.assign.collect', {
+        type: 'batch.assigned.collected',
+        userId: data.officerId,
+        message: `You have collected your new ${batches.length} batches.`,
+        payload: {
+          batches: batches.map((b) => ({
+            id: b.id,
+            batchCode: b.batchCode,
+          })),
+        },
+      });
+
+      const adminIds = [...new Set(batches.map((b) => b.createdById))]; // remove duplicates
+
+      // If only one admin → send once
+      if (adminIds.length === 1) {
+        this.retryNotification('batch.collect.officer', {
+          type: 'batch.collected.officer',
+          userId: adminIds[0],
+          message: `Officer ${officer.name ?? officer.id} has collected new ${batches.length} batches.`,
+          payload: {
+            batches: batches.map((b) => ({
+              id: b.id,
+              batchCode: b.batchCode,
+            })),
+          },
+        });
+      } else {
+        // Otherwise send notification to each admin separately
+        for (const adminId of adminIds) {
+          // Filter only the batches belonging to this admin
+          const relatedBatches = batches.filter(
+            (b) => b.createdById === adminId,
+          );
+
+          this.retryNotification('batch.collect.officer', {
+            type: 'batch.collected.officer',
+            userId: adminId,
+            message: `Officer ${officer.name ?? officer.id} has collected new ${relatedBatches.length} batches.`,
+            payload: {
+              batches: relatedBatches.map((b) => ({
+                id: b.id,
+                batchCode: b.batchCode,
+              })),
+            },
+          });
+        }
+      }
+
       return {
         success: true,
         message: `Batches are collected by the cargo officer.`,
@@ -343,6 +426,9 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
           method: data.method,
           reference: data.reference,
           notes: data.notes,
+          flightNumber: data.flightNumber,
+          flightDate: new Date(data.flightDate),
+          destinationTime: new Date(data.destinationTime),
           location: 'At Airport',
         },
         data?.podImages,
@@ -351,6 +437,55 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       this.logger.verbose(
         `Successfully handed over ${batches.length} batches to the airport by officer ${officer.name ?? officer.id}.`,
       );
+      this.retryNotification('batch.deliver.airport', {
+        type: 'batch.delivered.airport',
+        userId,
+        message: `You have successfully delivered ${batches.length} batches to the airport.`,
+        // message: `${batches.length} batches delivered to the airport by officer ${officer.name ?? officer.id} .`,
+        payload: {
+          batches: batches.map((b) => ({
+            id: b.id,
+            batchCode: b.batchCode,
+          })),
+        },
+      });
+
+      const adminIds = [...new Set(batches.map((b) => b.createdById))]; // remove duplicates
+
+      // If only one admin → send once
+      if (adminIds.length === 1) {
+        this.retryNotification('batch.collect.officer', {
+          type: 'batch.collected.officer',
+          userId: adminIds[0],
+          message: `${batches.length} batches delivered to the airport by officer ${officer.name ?? officer.id} .`,
+          payload: {
+            batches: batches.map((b) => ({
+              id: b.id,
+              batchCode: b.batchCode,
+            })),
+          },
+        });
+      } else {
+        // Otherwise send notification to each admin separately
+        for (const adminId of adminIds) {
+          // Filter only the batches belonging to this admin
+          const relatedBatches = batches.filter(
+            (b) => b.createdById === adminId,
+          );
+
+          this.retryNotification('batch.collect.officer', {
+            type: 'batch.collected.officer',
+            message: `${batches.length} batches delivered to the airport by officer ${officer.name ?? officer.id} .`,
+            userId: adminId,
+            payload: {
+              batches: relatedBatches.map((b) => ({
+                id: b.id,
+                batchCode: b.batchCode,
+              })),
+            },
+          });
+        }
+      }
 
       return {
         success: true,
@@ -375,6 +510,50 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       this.logger.verbose(
         `Driver ${data.driverId} successfully assigned for delivery (order: ${data.orderId}).`,
       );
+
+      this.retryNotification('assign.driver.delivery', {
+        type: 'assigned.driver.delivery',
+        userId: data.driverId,
+        message: `You have new delivery assigned order.`,
+        payload: {
+          orderid: data.orderId,
+          trackingCode: result.trackingCode,
+          deliveryCustomer: {
+            id: result.receiver.id,
+            name: result.receiver.name,
+            phone: result.receiver.phone,
+          },
+        },
+      });
+
+      this.retryNotification('assign.driver.delivery', {
+        type: 'assigned.driver.delivery',
+        userId: result.customerId,
+        message: `Your orders has been assigned a delivery driver.`,
+        payload: {
+          orderid: data.orderId,
+          trackingCode: result.trackingCode,
+          driver: {
+            id: result.deliveryDriver.id,
+            name: result.deliveryDriver.name,
+            phone: result.deliveryDriver.phone,
+          },
+        },
+      });
+      this.retryNotification('assign.driver.delivery', {
+        type: 'assigned.driver.delivery',
+        userId: result.receiverId,
+        message: `Your orders has been assigned a delivery driver.`,
+        payload: {
+          orderid: data.orderId,
+          trackingCode: result.trackingCode,
+          driver: {
+            id: result.deliveryDriver.id,
+            name: result.deliveryDriver.name,
+            phone: result.deliveryDriver.phone,
+          },
+        },
+      });
       return result;
     } catch (error) {
       this.logger.error(
@@ -453,6 +632,49 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         `Driver ${driver.name ?? driverId} successfully assigned to order ${orderId}`,
       );
 
+      this.retryNotification('assign.driver.delivery', {
+        type: 'assigned.driver.delivery',
+        userId: data.driverId,
+        message: `You have new delivery assigned order.`,
+        payload: {
+          orderid: data.orderId,
+          trackingCode: result.trackingCode,
+          deliveryCustomer: {
+            id: result.receiver.id,
+            name: result.receiver.name,
+            phone: result.receiver.phone,
+          },
+        },
+      });
+
+      this.retryNotification('assign.driver.delivery', {
+        type: 'assigned.driver.delivery',
+        userId: result.customerId,
+        message: `Your orders has been assigned a delivery driver.`,
+        payload: {
+          orderid: data.orderId,
+          trackingCode: result.trackingCode,
+          driver: {
+            id: result.deliveryDriver.id,
+            name: result.deliveryDriver.name,
+            phone: result.deliveryDriver.phone,
+          },
+        },
+      });
+      this.retryNotification('assign.driver.delivery', {
+        type: 'assigned.driver.delivery',
+        userId: result.receiverId,
+        message: `Your orders has been assigned a delivery driver.`,
+        payload: {
+          orderid: data.orderId,
+          trackingCode: result.trackingCode,
+          driver: {
+            id: result.deliveryDriver.id,
+            name: result.deliveryDriver.name,
+            phone: result.deliveryDriver.phone,
+          },
+        },
+      });
       return { success: true, message: 'Driver assigned for delivery', result };
     } catch (error) {
       this.logger.error(
@@ -531,7 +753,49 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       this.logger.verbose(
         `Driver ${driverId} successfully started last mile delivery for order ${orderId}`,
       );
+      this.retryNotification('last.mile.delivery', {
+        type: 'last.mile.delivery',
+        userId: driverId,
+        message: `You have started last mile delivery for order.`,
+        payload: {
+          orderid: orderId,
+          trackingCode: result.trackingCode,
+          deliveryCustomer: {
+            id: result.receiver.id,
+            name: result.receiver.name,
+            phone: result.receiver.phone,
+          },
+        },
+      });
 
+      this.retryNotification('last.mile.delivery', {
+        type: 'last.mile.delivery',
+        userId: result.customerId,
+        message: `Your order started last mile delivery.`,
+        payload: {
+          orderid: orderId,
+          trackingCode: result.trackingCode,
+          driver: {
+            id: result.deliveryDriver.id,
+            name: result.deliveryDriver.name,
+            phone: result.deliveryDriver.phone,
+          },
+        },
+      });
+      this.retryNotification('last.mile.delivery', {
+        type: 'last.mile.delivery',
+        userId: result.receiverId,
+        message: `Your order started last mile delivery.`,
+        payload: {
+          orderid: orderId,
+          trackingCode: result.trackingCode,
+          driver: {
+            id: result.deliveryDriver.id,
+            name: result.deliveryDriver.name,
+            phone: result.deliveryDriver.phone,
+          },
+        },
+      });
       return {
         success: true,
         message: 'Order picked up for last mile delivery by driver',
@@ -564,6 +828,50 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         podImages,
       );
       this.segmentHelper.proceedToNextSegment(driverId, 'complete', orderId);
+
+      this.retryNotification('last.mile.delivery.complete', {
+        type: 'last.mile.delivery.completed',
+        userId: driverId,
+        message: `You have completed last mile delivery successfully for order ${result.trackingCode}.`,
+        payload: {
+          orderid: orderId,
+          trackingCode: result.trackingCode,
+          deliveryCustomer: {
+            id: result.receiver.id,
+            name: result.receiver.name,
+            phone: result.receiver.phone,
+          },
+        },
+      });
+
+      this.retryNotification('last.mile.delivery.complete', {
+        type: 'last.mile.delivery.completed',
+        userId: result.customerId,
+        message: `Your order have been delivered successfully to the recipient.`,
+        payload: {
+          orderid: orderId,
+          trackingCode: result.trackingCode,
+          driver: {
+            id: result.deliveryDriver.id,
+            name: result.deliveryDriver.name,
+            phone: result.deliveryDriver.phone,
+          },
+        },
+      });
+      this.retryNotification('last.mile.delivery.complete', {
+        type: 'last.mile.delivery.completed',
+        userId: result.receiverId,
+        message: `Your order have been delivered successfully.`,
+        payload: {
+          orderid: orderId,
+          trackingCode: result.trackingCode,
+          driver: {
+            id: result.deliveryDriver.id,
+            name: result.deliveryDriver.name,
+            phone: result.deliveryDriver.phone,
+          },
+        },
+      });
       return result;
     } catch (err) {
       this.logger.error(`Delivery failed: ${err.message}`);
@@ -648,6 +956,37 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       const result = await this.dispatchRepo.removeDriverFromOrder(orderId);
       this.logger.verbose(`Driver removed successfully from order ${orderId}`);
 
+      if (order.deliveryDriverId) {
+        this.retryNotification('delivery.driver.cancel', {
+          type: 'delivery.driver.canceled',
+          userId: order.deliveryDriverId,
+          message: `You have been removed from order ${result.trackingCode} or you have been canceled from delivery.`,
+          payload: {
+            orderid: orderId,
+            trackingCode: result.trackingCode,
+          },
+        });
+      }
+
+      this.retryNotification('delivery.driver.cancel', {
+        type: 'delivery.driver.canceled',
+        userId: result.customerId,
+        message: `Your delivery driver has been removed from order ${result.trackingCode}.`,
+        payload: {
+          orderid: orderId,
+          trackingCode: result.trackingCode,
+        },
+      });
+      this.retryNotification('delivery.driver.cancel', {
+        type: 'delivery.driver.canceled',
+        userId: result.receiverId,
+        message: `Your delivery driver has been removed from order ${result.trackingCode}.`,
+        payload: {
+          orderid: orderId,
+          trackingCode: result.trackingCode,
+        },
+      });
+
       return {
         success: true,
         message: `Driver removed successfully from order ${orderId}.`,
@@ -716,6 +1055,60 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       this.logger.verbose(
         `Driver for order ${orderId} changed successfully to driver ${driverId}`,
       );
+
+      this.retryNotification('delivery.driver.change', {
+        type: 'delivery.driver.changed',
+        userId: order.deliveryDriverId,
+        message: `You have been removed from order you no longer deliver order ${result.trackingCode}.`,
+        payload: {
+          orderid: orderId,
+          trackingCode: result.trackingCode,
+        },
+      });
+
+      this.retryNotification('delivery.driver.change', {
+        type: 'delivery.driver.changed',
+        userId: result.deliveryDriverId,
+        message: `You have been assingned to order ${result.trackingCode} for delivery.`,
+        payload: {
+          orderid: orderId,
+          trackingCode: result.trackingCode,
+          deliveryCustomer: {
+            id: result.receiver.id,
+            name: result.receiver.name,
+            phone: result.receiver.phone,
+          },
+        },
+      });
+
+      this.retryNotification('delivery.driver.change', {
+        type: 'delivery.driver.changed',
+        userId: result.customerId,
+        message: `Your delivery driver has been removed from order ${result.trackingCode}.`,
+        payload: {
+          orderid: orderId,
+          trackingCode: result.trackingCode,
+          driver: {
+            id: result.deliveryDriver.id,
+            name: result.deliveryDriver.name,
+            phone: result.deliveryDriver.phone,
+          },
+        },
+      });
+      this.retryNotification('delivery.driver.change', {
+        type: 'delivery.driver.changed',
+        userId: result.receiverId,
+        message: `Your delivery driver has been removed from order ${result.trackingCode}.`,
+        payload: {
+          orderid: orderId,
+          trackingCode: result.trackingCode,
+          driver: {
+            id: result.deliveryDriver.id,
+            name: result.deliveryDriver.name,
+            phone: result.deliveryDriver.phone,
+          },
+        },
+      });
 
       return {
         success: true,
@@ -822,6 +1215,32 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         userId,
       );
       this.logger.verbose(`Batch created successfully with Code: ${batchCode}`);
+
+      const ordersToSend = batch.batch.orders;
+
+      // Group orders by customerId
+      const customerMap = new Map();
+
+      for (const order of ordersToSend) {
+        if (!customerMap.has(order.customerId)) {
+          customerMap.set(order.customerId, []);
+        }
+        customerMap.get(order.customerId)!.push(order);
+      }
+
+      for (const [customerId, customerOrders] of customerMap) {
+        this.retryNotification('delivery.driver.change', {
+          type: 'delivery.driver.changed',
+          userId: customerId,
+          message: `Your orders have been dispatched.`,
+          payload: {
+            orders: customerOrders.map((o) => ({
+              id: o.id,
+              trackingCode: o.trackingCode,
+            })),
+          },
+        });
+      }
 
       return batch;
     } catch (error) {
@@ -1187,8 +1606,7 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
     return result;
   }
 
-
-    async scanBatches(scannedToken: string, userId: string) {
+  async scanBatches(scannedToken: string, userId: string) {
     this.logger.log(`Scan request received by officer ${userId}`);
 
     let payload: OrderQRCodeData;
@@ -1400,7 +1818,8 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         dto.handedById,
         dto.method,
         dto.reference,
-        dto.notes
+        dto.notes,
+        dto.podImages,
       );
 
       this.logger.log(`Handover confirmed by officer ${dto.handedById}`);
@@ -1783,9 +2202,9 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
           driverBranchId: driver.user.branchId,
           customerId: order.customerId,
           cancelledDriver: {
-           isPickupDriver: order.pickupDriverId === userId,
-           isDeliveryDriver: order.deliveryDriverId === userId,
-          }
+            isPickupDriver: order.pickupDriverId === userId,
+            isDeliveryDriver: order.deliveryDriverId === userId,
+          },
         },
       });
 

@@ -680,7 +680,7 @@ export class PricingUseCasesImpl implements PricingUseCases {
       appliedRate,
       surcharges: [], // implement if needed
       discounts: [], // implement if needed
-      miscFees: breakdown.miscFees,
+      miscFees: [],
       profit: { total: profitTotal },
       airportFee: { total: airportTotal },
       finalPrice,

@@ -32,7 +32,6 @@ import {
 } from '../fulfillment/order/order.entity';
 import { ListQueryDto } from '../common/query/query.dto';
 import * as jwt from 'jsonwebtoken';
-import { SanitizePipe } from '../common/sanitize.pipe';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { CloudinaryUploaderService } from '../common/cloudinary/cloudinary-uploader.service';
 
@@ -65,6 +64,7 @@ export class OrderGatewayController {
       ip,
     });
   }
+  
 
   @Post('/user/create')
   async orderCreateValidate(@Body() data: CreateOrderDto, @Req() req) {
@@ -251,6 +251,51 @@ export class OrderGatewayController {
       headers: { authorization: authHeader },
       user: decodedUser, // ✅ send user info
       ip,
+    });
+  }
+
+  @Get('/manifest')
+  async getOrderManifest(@Req() req, @Query() query: ListQueryDto) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+
+    return this.orderClient.send(PATTERNS.ORDER_MANIFEST, {
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+      query,
+    });
+  }
+
+  @Get('/ongoing-delivery')
+  async getOngoingAndDeliveredOrders(@Req() req, @Query() query: ListQueryDto) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return this.orderClient.send(PATTERNS.ORDER_ONGOING_AND_DELIVERED, {
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+      query,
     });
   }
 

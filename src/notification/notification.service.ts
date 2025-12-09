@@ -6,6 +6,7 @@ import { EmailService } from './email.service';
 import { EventsGateway } from './events.gateway';
 import { JwtService } from '@nestjs/jwt';
 import { log } from 'node:console';
+import { PushNotificationService } from './push.service';
 
 interface UserNotificationPreferences {
   email: boolean;
@@ -21,6 +22,7 @@ export class NotificationService implements OnModuleInit {
     private readonly emailService: EmailService,
     private readonly eventsGateway: EventsGateway,
     private readonly jwtService: JwtService,
+    private readonly pushNotificationService: PushNotificationService,
   ) {}
 
   async onModuleInit() {
@@ -37,6 +39,15 @@ export class NotificationService implements OnModuleInit {
       switch (channel) {
         case 'user.registration':
           await this.sendEmailVerification(eventData);
+          break;
+        case 'assignment.requested':
+          await this.handleDriverNotification(eventData);
+          break;
+        case 'assignment.accepted':
+          await this.handleDriverNotification(eventData);
+          break;
+        case 'assignment.expired':
+          await this.handleDriverNotification(eventData);
           break;
         case 'notify.staff.order.canceled':
           await this.notifyStaffOrAdmins(eventData, channel);
@@ -226,12 +237,77 @@ export class NotificationService implements OnModuleInit {
     // Push Notification (Optional)
     // -------------------------
     if (usePrefs.push) {
-      // Add your FCM / APNs push logic here
+      const userToken = await this.notificationRepository.getExpoPushTokens(userId); // You must store mobile push tokens in DB
+      const token=[userToken.expoPushToken]
+      if (token) {
+        await this.pushNotificationService.sendPushWithRetry(
+          token,
+          subject,
+          finalMessage,
+          payload,
+        );
+      }
     }
 
     console.log(`✅ Notification processed for user ${userId}`);
   }
 
+  private async handleDriverNotification(event: any, channel?: string) {
+    const {
+      userId,
+      userEmail,
+      type = channel || 'general',
+      message,
+      subject,
+      payload = {},
+    } = event;
+
+    if (!userId) return;
+
+    // -------------------------
+    // Get user notification preferences
+    // -------------------------
+    const prefs: UserNotificationPreferences | null =
+      await this.notificationRepository.getUserPrefs(userId);
+
+    // If no prefs found, default to email + in-app
+    const usePrefs = prefs || { email: true, inApp: true, push: false };
+
+    // Final message
+    const finalMessage = message || `You have a new notification: ${type}`;
+
+    // -------------------------
+    // Save In-App Notification
+    // -------------------------
+    if (usePrefs.inApp) {
+      const notification = await this.notificationRepository.createNotification(
+        {
+          userId,
+          type,
+          message: finalMessage,
+          payload,
+        },
+      );
+
+      console.log('emmiting to driver :: ', userId);
+
+      // Emit via WebSocket
+      this.eventsGateway.sendToDriver(userId, {
+        id: notification.id,
+        type,
+        message: finalMessage,
+        payload,
+        createdAt: notification.createdAt,
+      });
+      // this.eventsGateway.broadcast({
+      //   id: notification.id,
+      //   type,
+      //   message: finalMessage,
+      //   payload,
+      //   createdAt: notification.createdAt,
+      // });
+    }
+  }
   async notifyStaffOrAdmins(event: any, channel: string) {
     console.log(
       'Event recieved to send to staff or notify the event for event ',
@@ -289,6 +365,13 @@ export class NotificationService implements OnModuleInit {
         });
       }
     }
+  }
+
+  async getNotification(userId: string) {
+    return this.notificationRepository.getUserNotifications(userId, true);
+  }
+  async markNotificationAsRead(userId: string, notificationId: string) {
+    return this.notificationRepository.markAsRead(notificationId);
   }
 
   /**

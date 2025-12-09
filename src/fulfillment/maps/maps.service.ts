@@ -19,8 +19,8 @@ export class MapsService {
     lat: number,
     lon: number,
   ): Promise<{
-    name?: string;
-    address?: string;
+    label?: string;
+    landMark?: string;
     city?: string;
     country?: string;
     postalCode?: string;
@@ -38,32 +38,32 @@ export class MapsService {
       const data = response.data || {};
       const address = data.address || {};
 
-      console.log(
-        'Data for address to be created inside mapservice for data:::::',
-        data,
-      );
-      console.log(
-        'Data for address to be created inside mapservice for address:::::',
-        address,
-      );
+      // console.log(
+      //   'Data for address to be created inside mapservice for data:::::',
+      //   data,
+      // );
+      // console.log(
+      //   'Data for address to be created inside mapservice for address:::::',
+      //   address,
+      // );
 
       // Use the best available fields
       return {
-        name: data.name || address.road || undefined,
-        address:
+        label: data.name || address.road || undefined || address.amenity || data.display_name || address.neighbourhood,
+        landMark:
           [address.house_number, address.road, address.suburb]
             .filter(Boolean)
-            .join(', ') || undefined,
+            .join(', ') || address.road || address.suburb || undefined,
         city:
           address.city ||
           address.town ||
           address.village ||
           address.county ||
           undefined,
-        country: address.country || undefined,
-        postalCode: address.postcode || undefined,
-        addressLine: address.road || undefined,
-        state: address.state || undefined,
+        country: address.country || address.country_code || undefined,
+        postalCode: address.postcode  || undefined,
+        addressLine: address.road || address.neighbourhood || address.suburb || undefined,
+        state: address.state || address.state_district || undefined,
       };
     } catch (err) {
       this.logger.warn(

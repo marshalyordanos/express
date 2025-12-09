@@ -25,6 +25,7 @@ import {
 } from '../../contracts/permission-actions.enum';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
 import { Public } from '../../common/decorator/public.decorator';
+import { query } from 'express';
 
 @Controller()
 export class OrderMessageController {
@@ -40,7 +41,6 @@ export class OrderMessageController {
     return IResponse.success('Order created successfully', result);
   }
 
-
   @Public()
   @MessagePattern(PATTERNS.ORDER_CREATE_NOT_LOGGED_IN_CUSTOMER)
   async createUserOrder(@Payload() payload: { data: CreateOrderDto }) {
@@ -48,13 +48,36 @@ export class OrderMessageController {
     return IResponse.success('Order created successfully.', result);
   }
 
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Order', PermissionActions.READ)
+  @MessagePattern(PATTERNS.ORDER_MANIFEST)
+  async getOrderManifest(
+    @Payload() payload: { user: any; query: ListQueryDto },
+  ) {
+    const userId = payload.user?.sub;
+    const result = await this.orderUseCases.getOrderManifest(
+      payload.query,
+      userId,
+    );
+    return IResponse.success('Order Manifest Fetched successfully.', result);
+  }
 
-  // @Public()
-  // @MessagePattern(PATTERNS.ORDER_CREATE_NOT_LOGGED_IN_CUSTOMER)
-  // async getOrderSummary(@Payload() payload: { data: CreateOrderDto }) {
-  //   const result = await this.orderUseCases.createOrderSummary(payload.data);
-  //   return IResponse.success('Order Summary created successfully.', result);
-  // }
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Order', PermissionActions.READ)
+  @MessagePattern(PATTERNS.ORDER_ONGOING_AND_DELIVERED)
+  async getOngoingAndDeliveredOrders(
+    @Payload() payload: { user: any; query: ListQueryDto },
+  ) {
+    const userId = payload.user?.sub;
+    const result = await this.orderUseCases.getOngoingAndDeliveredOrders(
+      payload.query,
+      userId,
+    );
+    return IResponse.success(
+      'Order Ongoing and Delivered Fetched successfully.',
+      result,
+    );
+  }
 
   //COMPLETED
   @UseGuards(PermissionGuard, RateLimitGuard)
@@ -161,7 +184,6 @@ export class OrderMessageController {
     return IResponse.success(`Order fetched for sorting.`, result);
   }
 
-  
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Order', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.ORDER_CANCEL)

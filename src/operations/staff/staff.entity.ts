@@ -100,15 +100,15 @@ export class CreateDriver {
   @IsString()
   password: string;
 
-  @IsNotEmpty()
+  @IsString()
   @IsOptional()
   roleId?: string; // SUPER_ADMIN, CUSTOMER, DRIVER etc.
 
-  @IsNotEmpty()
+  @IsString()
   @IsOptional()
   branchId?: string;
 
-  @IsNotEmpty()
+  @IsString()
   @IsOptional()
   phone?: string;
 

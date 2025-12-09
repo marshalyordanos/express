@@ -6,6 +6,15 @@ import { PrismaQueryFeature } from '../common/query/prisma-query-feature';
 @Injectable()
 export class NotificationRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+ async getExpoPushTokens(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        expoPushToken: true,
+      },
+    })
+  }
   async findOrderById(orderId: any) {
     return this.prisma.order.findUnique({
       where: { id: orderId },

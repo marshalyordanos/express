@@ -144,6 +144,8 @@ export const PATTERNS = {
   ORDER_ADD_ON_HOLD: 'order.addOnHold',
   ORDER_REMOVE_ON_HOLD: 'order.removeOnHold',
   ORDER_FIND_ON_HOLD: 'order.findOnHold',
+  ORDER_ONGOING_AND_DELIVERED: 'order.ongoingAndDelivered',
+  ORDER_MANIFEST: 'order.manifest',
 
   //Dispatch Management System
   DISPATCH_CREATE: 'dispatch.create',
@@ -284,4 +286,22 @@ export const PATTERNS = {
   REPORT_PERFORMANCE_TOP_BRANCHES: 'report.performanceTopBranches',
   REPORT_PERFORMANCE_TOP_DRIVERS: 'report.performanceTopDrivers',
   REPORT_PERFORMANCE_TOP_SHIPMENTS: 'report.performanceTopShipments',
+
+
+
+  NOTIFICATION_GET_USER_NOTIFICATIONS: 'notification.getUserNotifications',
+  NOTIFICATION_MARK_AS_READ:  'notification.markAsRead',
+  NOTIFICATION_STORE_PUSH_TOKEN: 'notification.storePushToken',
+
+
+  CHAT_START_CONVERSATION: 'chat.startConversation',
+  CHAT_GET_CONVERSATION: 'chat.getConversations',
+  CHAT_GET_USER_CONVERSATIONS: 'chat.getUserConversations',
+  CHAT_MARK_AS_READ: 'chat.markAsRead',
+  CHAT_START_MESSAGE: 'chat.startMessage',
+  CHAT_SEND_MESSAGE: 'chat.sendMessage',
+  CHAT_REPLY_MESSAGE: 'chat.replyMessage',
+  CHAT_SEND_FILE: 'chat.sendFile',
+  CHAT_GET_MESSAGES: 'chat.getMessages',
+  
 } as const;

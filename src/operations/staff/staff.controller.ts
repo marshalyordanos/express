@@ -151,7 +151,11 @@ export class StaffMessageController {
   @Public()
   @MessagePattern(PATTERNS.STAFF_CREATE_DRIVER)
   async createDriver(@Payload() payload: { data: CreateDriver; user: any }) {
+    console.log("INCONTROLLER :: ", payload.data);
+    
     const userId = payload?.user?.sub;
+    console.log("user is :: ", userId);
+    
     const result = await this.usecases.createDriver(payload.data, userId);
     return IResponse.success(
       `Driver with email ${payload.data.email} created successfully`,
