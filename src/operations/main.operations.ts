@@ -3,7 +3,7 @@ import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { OperationsModule } from './operations.module';
 import { ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { JwtAuthGuard } from '../common/auth.guard'; 
+import { JwtAuthGuard } from '../common/auth.guard';
 import { NestSystemLogger } from '../common/nest-system-logger.util'; // temporary fix
 
 async function bootstrap() {
@@ -14,7 +14,7 @@ async function bootstrap() {
       transport: Transport.TCP,
       options: {
         host: '0.0.0.0',
-        port: Number(process.env.USER_PORT ?? 4002),
+        port: Number(process.env.USER_PORT ?? 4009),
       },
     },
   );
@@ -34,7 +34,7 @@ async function bootstrap() {
   await app.listen();
   console.log(
     'User microservice running on TCP port',
-    process.env.USER_PORT ?? 4002,
+    process.env.USER_PORT ?? 4009,
   );
 }
 bootstrap();

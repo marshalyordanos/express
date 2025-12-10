@@ -14,12 +14,11 @@ async function bootstrap() {
       transport: Transport.TCP,
       options: {
         host: '0.0.0.0',
-        port: Number(process.env.FULFILLMENT_PORT ?? 4003),
+        port: Number(process.env.FULFILLMENT_PORT ?? 4007),
       },
     },
   );
-  
-  
+
   const jwtService = app.get(JwtService);
   const reflector = app.get(Reflector);
   app.useGlobalGuards(new JwtAuthGuard(jwtService, reflector));
@@ -44,7 +43,7 @@ async function bootstrap() {
   //   await seeder.seed(); // 🌍 seed sample driver data
   console.log(
     'Fulfillment microservice running on TCP port',
-    process.env.FULFILLMENT_PORT ?? 4003,
+    process.env.FULFILLMENT_PORT ?? 4007,
   );
 }
 bootstrap();

@@ -10,13 +10,13 @@ import { NestSystemLogger } from '../common/nest-system-logger.util'; // tempora
 async function bootstrap() {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     AuthModule,
-    
+
     {
       logger: new NestSystemLogger('AuthService', 'System'), /// temporary fix
       transport: Transport.TCP,
       options: {
         host: process.env.AUTH_HOST ?? '0.0.0.0',
-        port: Number(process.env.AUTH_PORT ?? 4001),
+        port: Number(process.env.AUTH_PORT ?? 4008),
       },
     },
   );
@@ -32,7 +32,7 @@ async function bootstrap() {
   await app.listen();
   console.log(
     'Auth microservice running on TCP port',
-    process.env.AUTH_PORT ?? 4001,
+    process.env.AUTH_PORT ?? 4008,
   );
 }
 bootstrap();

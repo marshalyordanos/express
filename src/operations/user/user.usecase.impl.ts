@@ -811,6 +811,18 @@ export class UserUseCasesImp implements UserUsecase {
       throw new RpcException(error.message);
     }
   }
+  async findCargoOfficer(query: ListQueryDto) {
+    this.logger.log(`Finding drivers with query: ${JSON.stringify(query)}`);
+
+    try {
+      const cargoOfficers = await this.userRepo.findCargoOfficer(query);
+      this.logger.verbose(`Found ${cargoOfficers.pagination.total} drivers`);
+      return cargoOfficers;
+    } catch (error) {
+      this.logger.error(`Find driver failed: ${error.message}`, error.stack);
+      throw new RpcException(error.message);
+    }
+  }
 
   private async generateCustomId(roleName: string): Promise<string> {
     const prefix = 'LN';

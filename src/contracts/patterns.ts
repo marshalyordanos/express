@@ -20,6 +20,8 @@ export const PATTERNS = {
   USER_UPDATE_NOTIFICATION_PREFERENCE: 'user.updateNotificationPreference',
   CUSTOMER_ORDERS: 'customer.orders',
   USER_FIND_DRIVER: 'user.findDrivers',
+  USER_FIND_CargoOfficer: 'user.USER_FIND_CargoOfficer',
+
   USER_CREATE_DRIVER: 'user.createDriver',
   USER_CUSTOMER_DETAIL: 'user.customerDetail',
   USER_CUSTOMER_CREATE: 'user.customerCreate',
@@ -288,12 +290,9 @@ export const PATTERNS = {
   REPORT_PERFORMANCE_TOP_DRIVERS: 'report.performanceTopDrivers',
   REPORT_PERFORMANCE_TOP_SHIPMENTS: 'report.performanceTopShipments',
 
-
-
   NOTIFICATION_GET_USER_NOTIFICATIONS: 'notification.getUserNotifications',
-  NOTIFICATION_MARK_AS_READ:  'notification.markAsRead',
+  NOTIFICATION_MARK_AS_READ: 'notification.markAsRead',
   NOTIFICATION_STORE_PUSH_TOKEN: 'notification.storePushToken',
-
 
   CHAT_START_CONVERSATION: 'chat.startConversation',
   CHAT_GET_CONVERSATION: 'chat.getConversations',
@@ -304,5 +303,4 @@ export const PATTERNS = {
   CHAT_REPLY_MESSAGE: 'chat.replyMessage',
   CHAT_SEND_FILE: 'chat.sendFile',
   CHAT_GET_MESSAGES: 'chat.getMessages',
-  
 } as const;

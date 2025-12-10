@@ -9,7 +9,6 @@ import * as fs from 'fs';
 import { SanitizePipe } from '../common/sanitize.pipe';
 import { NestSystemLogger } from '../common/nest-system-logger.util'; // temporary fix
 
-
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(GatewayModule, {
     bufferLogs: true,
@@ -19,7 +18,6 @@ async function bootstrap() {
   // const sanitizePipe = app.get(SanitizePipe);
   const sanitizePipe = await app.resolve(SanitizePipe);
 
-  
   app.useGlobalPipes(
     sanitizePipe, // Use the DI instance
     new ValidationPipe({
@@ -33,10 +31,9 @@ async function bootstrap() {
 
   //  app.useLogger(false); // temporary fix
 
-
   // const bootstrapper = app.get(PermissionBootstrapper);
   // await bootstrapper.run();
-  
+
   // --- Swagger Setup ---
   const config = new DocumentBuilder()
     .setTitle('Gateway API')
@@ -57,7 +54,8 @@ async function bootstrap() {
   fs.writeFileSync('./openapi.json', JSON.stringify(document));
   // ----------------------
 
-  const port = Number(process.env.PORT ?? 24612);
+  const port = 10000;
+  //
   await app.listen(port, '0.0.0.0');
   console.log(`Gateway listening on port ${port}`);
 }
