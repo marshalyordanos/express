@@ -999,7 +999,6 @@ export class DispatchRepository {
       where: { id: { in: orderIds } },
       include: { deliveryAddress: true, pickupAddress: true },
     });
-    
   }
 
   async createBatchDispatch(
@@ -1136,6 +1135,8 @@ export class DispatchRepository {
                 isFragile: true,
                 shipmentType: true,
                 shippingScope: true,
+                customerId: true,
+                receiverId: true,
                 deliveryAddress: {
                   select: { addressLine: true, city: true },
                 },
@@ -1475,6 +1476,17 @@ export class DispatchRepository {
         // 1. Find all batches under this officer still in transit
         const batches = await tx.batchDispatch.findMany({
           where: { officerId, status: 'IN_TRANSIT' },
+          select: {
+            id: true,
+            orders: {
+              select: {
+                id: true,
+                trackingCode: true,
+                customerId: true,
+                receiverId: true,
+              },
+            },
+          },
         });
 
         if (!batches.length)
@@ -1554,6 +1566,7 @@ export class DispatchRepository {
           confirmedOrders: orderIds,
           totalOrders: orderIds.length,
           imagesAttached: podImages?.length || 0,
+          batches,
         };
       },
       {

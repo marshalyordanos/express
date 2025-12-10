@@ -43,8 +43,6 @@ export class DispatchGatewayController {
     private readonly cloudinaryUploader: CloudinaryUploaderService,
   ) {}
 
-  @Post()
-  async createDispatch() {}
 
   // Controller used for assigning driver for the pick up of the package from the customer
   @Post('/assign-pickup')

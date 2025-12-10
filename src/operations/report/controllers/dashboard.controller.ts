@@ -13,7 +13,7 @@ export class DashboardReportMessageController {
   constructor(private readonly reportsService: DashboardReportService) {}
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_OVERVIEW)
   async getOverview(
     @Payload() payload: { headers: { authorization: string } },
@@ -28,7 +28,7 @@ export class DashboardReportMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_SHIPMENT_PERFORMANCE)
   async getShipmentPerformance(
     @Payload() payload: { headers: { authorization: string } },
@@ -41,7 +41,7 @@ export class DashboardReportMessageController {
     );
   }
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_REVENUE_TRENDS)
   async getRevenueTrends(
     @Payload() payload: { headers: { authorization: string }; period: string },
@@ -59,7 +59,7 @@ export class DashboardReportMessageController {
     );
   }
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_BRANCH_PERFORMANCE)
   async getBranchPerformance(
     @Payload() payload: { headers: { authorization: string }; metric: string },
@@ -73,7 +73,7 @@ export class DashboardReportMessageController {
     );
   }
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_DRIVER_PERFORMANCE)
   async getDriverPerformance(
     @Payload()
@@ -92,7 +92,7 @@ export class DashboardReportMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_BRANCH_SUMMARY)
   async getBranchDashboardSummary(
     @Payload()
@@ -109,7 +109,7 @@ export class DashboardReportMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_STAFF_SUMMARY)
   async getStaffDashboardSummary(
     @Payload()
@@ -125,7 +125,7 @@ export class DashboardReportMessageController {
     );
   }
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_ORDER_SUMMARY)
   async getOrderDashboardSummary(
     @Payload()
@@ -142,7 +142,7 @@ export class DashboardReportMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_CUSTOMER_SUMMARY)
   async getCustomerDashboardSummary(
     @Payload()
@@ -158,7 +158,7 @@ export class DashboardReportMessageController {
     );
   }
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_REVENUE_SUMMARY)
   async getReportOverview(
     @Payload()
@@ -175,7 +175,7 @@ export class DashboardReportMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_FLEET_SUMMARY)
   async getFleetSummary(
     @Payload()
@@ -192,7 +192,7 @@ export class DashboardReportMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_DISPATCH_SUMMARY)
   async getDispatchSummary(
     @Payload()
@@ -209,7 +209,7 @@ export class DashboardReportMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_DRIVER)
   async getDriverDashboard(
     @Payload()
@@ -223,7 +223,7 @@ export class DashboardReportMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_DRIVER_DELIVERY)
   async getDriverDashboardDelivery(
     @Payload()
@@ -241,7 +241,7 @@ export class DashboardReportMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_CARGO_OFFICER)
   async getCargoOfficerDashboard(
     @Payload()
@@ -259,7 +259,7 @@ export class DashboardReportMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dashboard-Report', PermissionActions.READ)
+  @CheckPermission('DashboardReport', PermissionActions.READ)
   @MessagePattern(PATTERNS.REPORT_DASHBOARD_FIND_SORTED_ORDER)
   async getSortedOrders(
     @Payload()

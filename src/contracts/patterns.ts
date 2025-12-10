@@ -146,6 +146,7 @@ export const PATTERNS = {
   ORDER_FIND_ON_HOLD: 'order.findOnHold',
   ORDER_ONGOING_AND_DELIVERED: 'order.ongoingAndDelivered',
   ORDER_MANIFEST: 'order.manifest',
+  ORDER_REQUEST_APPROVAL: 'order.requestApproval',
 
   //Dispatch Management System
   DISPATCH_CREATE: 'dispatch.create',
