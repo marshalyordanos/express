@@ -347,6 +347,13 @@ export class UserMessageController {
     const result = await this.usecases.findDriver(payload.query);
     return IResponse.success('Officer created successfully', result);
   }
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('User', PermissionActions.READ)
+  @MessagePattern(PATTERNS.USER_FIND_CargoOfficer)
+  async findCargoOfficer(@Payload() payload: { query: ListQueryDto }) {
+    const result = await this.usecases.findCargoOfficer(payload.query);
+    return IResponse.success('Officer created successfully', result);
+  }
 }
 
 // import { Controller, Get, Post, Put, Param, Body } from '@nestjs/common';

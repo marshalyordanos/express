@@ -649,6 +649,51 @@ export class UserRepository {
     };
   }
 
+  async findCargoOfficer(payload: ListQueryDto) {
+    const feature = new PrismaQueryFeature({
+      search: payload.search,
+      filter: payload.filter,
+      sort: payload.sort,
+      page: payload.page,
+      pageSize: payload.pageSize,
+      searchableFields: [
+        'name',
+        'email',
+        'phone',
+        // 'driver.vehicles.plateNumber',
+        // 'driver.vehicles.model',
+      ],
+      hasNotDate: true,
+    });
+
+    // Construct Prisma query
+    const query = feature.getQuery();
+    const where = {
+      AND: [
+        ...(query.where?.AND || []),
+        { roleId: 'cmhx9dziz0000d63m6k3j1akn' },
+      ],
+    };
+    console.log('quest1: ', query);
+
+    const results = await Promise.all([
+      this.prisma.user.findMany({
+        ...query,
+
+        where,
+        include: { driver: { include: { vehicles: true } } },
+      }),
+      this.prisma.user.count({ where: query.where || {} }),
+    ]);
+
+    const cargoOfficers = results[0] || [];
+    const total = results[1] || 0;
+
+    return {
+      cargoOfficers,
+      pagination: feature.getPagination(total),
+    };
+  }
   async getLastCustomId(prefix: string, roleAbbr: string) {
     const lastUser = await this.prisma.user.findFirst({
       where: { customId: { startsWith: `${prefix}-${roleAbbr}-` } },
