@@ -18,8 +18,7 @@ import { ListQueryDto } from '../../common/query/query.dto';
 import { CheckPermission } from '../../common/decorator/check-permission.decorator';
 import { PermissionGuard } from '../../common/permission.guard';
 import {
-  PermissionActions,
-  ScopeAction,
+  PermissionActions
 } from '../../contracts/permission-actions.enum';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
 
@@ -36,7 +35,7 @@ export class UserMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('User', PermissionActions.READ, ScopeAction.FULL)
+  @CheckPermission('User', PermissionActions.READ)
   @MessagePattern(PATTERNS.USER_FIND_ALL)
   async findAll(@Payload() payload: { query: ListQueryDto }) {
     const result = await this.usecases.getAllUsers(payload.query);
@@ -74,7 +73,7 @@ export class UserMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('User', PermissionActions.CREATE)
+  @CheckPermission('Address', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.ADDRESS_CREATE)
   async addAddress(@Payload() payload: { data: AddressDto }) {
     const address = await this.usecases.addAddress(payload.data);
@@ -82,7 +81,7 @@ export class UserMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('User', PermissionActions.READ)
+  @CheckPermission('Address', PermissionActions.READ)
   @MessagePattern(PATTERNS.ADDRESS_LIST)
   async listAddresses(@Payload() data: any) {
     const user = data.user;
@@ -91,7 +90,7 @@ export class UserMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('User', PermissionActions.UPDATE)
+  @CheckPermission('Address', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.ADDRESS_UPDATE)
   async updateAddress(
     @Payload() payload: { id: string; data: any; user: any },
@@ -106,7 +105,7 @@ export class UserMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('User', PermissionActions.DELETE)
+  @CheckPermission('Address', PermissionActions.DELETE)
   @MessagePattern(PATTERNS.ADDRESS_DELETE)
   async deleteAddress(@Payload() payload: { id: string }) {
     const address = await this.usecases.deleteAddress(payload.id);
@@ -114,7 +113,7 @@ export class UserMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('User', PermissionActions.UPDATE)
+  @CheckPermission('Preference', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.PREFERENCES_UPDATE)
   async updatePreferences(
     @Payload() payload: { userId: string; data: PreferencesDto; user: any },
@@ -145,7 +144,7 @@ export class UserMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('User', PermissionActions.READ, ScopeAction.FULL)
+  @CheckPermission('User', PermissionActions.READ)
   @MessagePattern(PATTERNS.USER_ALL_CUSTOMERS)
   async findAllCustomers(@Payload() payload: { query: ListQueryDto }) {
     const result = await this.usecases.getAllCustomer(payload.query);
@@ -157,7 +156,7 @@ export class UserMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('User', PermissionActions.READ, ScopeAction.FULL)
+  @CheckPermission('User', PermissionActions.READ)
   @MessagePattern(PATTERNS.USER_CUSTOMER_DETAIL)
   async getCustomerDetail(
     @Payload() payload: { query: ListQueryDto; customerId: string },
@@ -251,13 +250,13 @@ export class UserMessageController {
     return IResponse.success('Category deleted successfully', category);
   }
 
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('CustomerCategory', PermissionActions.READ)
-  @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_ASSIGN_USER)
-  async findCategoryByName(@Payload() payload: { name: string }) {
-    const category = await this.usecases.findCategoryByName(payload.name);
-    return IResponse.success('Category fetched successfully', category);
-  }
+  // @UseGuards(PermissionGuard, RateLimitGuard)
+  // @CheckPermission('CustomerCategory', PermissionActions.READ)
+  // @MessagePattern(PATTERNS.CUSTOMER_CATEGORY_ASSIGN_USER)
+  // async findCategoryByName(@Payload() payload: { name: string }) {
+  //   const category = await this.usecases.findCategoryByName(payload.name);
+  //   return IResponse.success('Category fetched successfully', category);
+  // }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('CustomerCategory', PermissionActions.CREATE)
@@ -330,7 +329,7 @@ export class UserMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('User', PermissionActions.CREATE, ScopeAction.APPROVE)
+  @CheckPermission('User', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.USER_CREATE_DRIVER)
   async createDriver(@Payload() payload: { data: CreateDriver; user: any }) {
     const userId = payload.user.sub;

@@ -177,22 +177,14 @@ export class BranchGatewayController {
     });
   }
 
-    @Get("alls")
+  @Get('alls')
   async findAllBranchFrees(@Req() req, @Query() query: ListQueryDto) {
     // const authHeader = req.headers['authorization'] || null;
     // let token = req.headers['authorization']?.replace('Bearer ', '') || null;
     try {
-      
-          const forwarded = (req.headers['x-forwarded-for'] as string) || '';
-          const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
-          let decodedUser = null;
-          // try {
-          //   decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
-          //   // decodedUser = this.jwtService.verify(token);
-          // } catch (err) {
-          //   throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
-          // }
-      
+      const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+      const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+      let decodedUser = null;
       return this.branchClient.send(PATTERNS.BRANCH_FIND_ALL_FREE, {
         // headers: { authorization: authHeader },
         user: decodedUser, // ✅ send user info
@@ -200,12 +192,12 @@ export class BranchGatewayController {
         query,
       });
     } catch (err) {
-            console.error('Microservice error for original:', err);
+      console.error('Microservice error for original:', err);
       throw err;
     }
   }
 
-    @Get('all')
+  @Get('all')
   async findAllBranchFree(@Req() req, @Query() query: ListQueryDto) {
     try {
       const forwarded = (req.headers['x-forwarded-for'] as string) || '';
@@ -224,7 +216,10 @@ export class BranchGatewayController {
       console.log('--- Gateway sending payload to microservice ---');
       console.log(JSON.stringify(payload, null, 2));
 
-      const observable = this.branchClient.send(PATTERNS.BRANCH_FIND_ALL_FREE_SECOND , payload);
+      const observable = this.branchClient.send(
+        PATTERNS.BRANCH_FIND_ALL_FREE_SECOND,
+        payload,
+      );
 
       // Convert Observable to Promise safely
       const result = await lastValueFrom(observable);
@@ -234,7 +229,10 @@ export class BranchGatewayController {
 
       return result;
     } catch (err) {
-      console.error('--- Gateway ERROR receiving from microservice --- ::: ', err);
+      console.error(
+        '--- Gateway ERROR receiving from microservice --- ::: ',
+        err,
+      );
       console.error(err.stack);
       throw err;
     }

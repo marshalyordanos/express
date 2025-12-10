@@ -52,7 +52,12 @@ export class NotificationService implements OnModuleInit {
         case 'notify.staff.order.canceled':
           await this.notifyStaffOrAdmins(eventData, channel);
           break;
-
+        case 'order.validated.staff':
+          await this.notifyStaffOrAdmins(eventData, channel);
+          break;
+        case 'order.exception.action':
+          await this.notifyStaffOrAdmins(eventData, channel);
+          break;
         // more cases can be added as needed
         default:
           await this.handleNotification(eventData, channel);
@@ -61,7 +66,6 @@ export class NotificationService implements OnModuleInit {
 
     console.log('✅ Notification Service subscribed to Redis channels');
   }
-
   // -------------------------
   // Email verification handler
   // -------------------------
@@ -237,8 +241,9 @@ export class NotificationService implements OnModuleInit {
     // Push Notification (Optional)
     // -------------------------
     if (usePrefs.push) {
-      const userToken = await this.notificationRepository.getExpoPushTokens(userId); // You must store mobile push tokens in DB
-      const token=[userToken.expoPushToken]
+      const userToken =
+        await this.notificationRepository.getExpoPushTokens(userId); // You must store mobile push tokens in DB
+      const token = [userToken.expoPushToken];
       if (token) {
         await this.pushNotificationService.sendPushWithRetry(
           token,
@@ -307,6 +312,23 @@ export class NotificationService implements OnModuleInit {
       //   createdAt: notification.createdAt,
       // });
     }
+
+    // -------------------------
+    // Push Notification (Optional)
+    // -------------------------
+    if (usePrefs.push) {
+      const userToken =
+        await this.notificationRepository.getExpoPushTokens(userId); // You must store mobile push tokens in DB
+      const token = [userToken.expoPushToken];
+      if (token) {
+        await this.pushNotificationService.sendPushWithRetry(
+          token,
+          subject,
+          finalMessage,
+          payload,
+        );
+      }
+    }
   }
   async notifyStaffOrAdmins(event: any, channel: string) {
     console.log(
@@ -328,6 +350,132 @@ export class NotificationService implements OnModuleInit {
         payload.driverId +
         '. Reason : ' +
         payload.reason;
+      // 2. If branch targeting required → fetch order
+      let order = null;
+      if (payload?.orderId) {
+        order = await this.notificationRepository.findOrderById(
+          payload.orderId,
+        );
+      }
+      // 3. Determine finalBranchId
+      //    - If order has branch → use it
+      //    - Else fallback to driver’s branch (payload.driverBranchId)
+      const finalBranchId = order?.branchId || payload?.driverBranchId || null; // last fallback = send to all if null
+
+      // 3. Loop through staff and send notifications
+      for (const staff of staffList) {
+        // If branch filtering is enabled
+        // Skip if branch does not match (only when branch exists)
+        // if (finalBranchId && staff.branchId !== finalBranchId) continue;
+
+        // Create notification for this staff
+        const notification =
+          await this.notificationRepository.createNotification({
+            userId: staff.id,
+            type,
+            message,
+            payload,
+          });
+
+        // Send WebSocket
+        this.eventsGateway.sendToUser(staff.id, {
+          id: notification.id,
+          type,
+          message,
+          payload,
+          createdAt: notification.createdAt,
+        });
+      }
+    }
+
+    if (type === 'order.validated.staff') {
+      const message =
+        'Order :' +
+        payload.trackingCode +
+        ' Validated by customer officer needs Approval : ';
+      // 2. If branch targeting required → fetch order
+      let order = null;
+      if (payload?.orderId) {
+        order = await this.notificationRepository.findOrderById(
+          payload.orderId,
+        );
+      }
+      // 3. Determine finalBranchId
+      //    - If order has branch → use it
+      //    - Else fallback to driver’s branch (payload.driverBranchId)
+      const finalBranchId = order?.branchId || payload?.driverBranchId || null; // last fallback = send to all if null
+
+      // 3. Loop through staff and send notifications
+      for (const staff of staffList) {
+        // If branch filtering is enabled
+        // Skip if branch does not match (only when branch exists)
+        // if (finalBranchId && staff.branchId !== finalBranchId) continue;
+
+        // Create notification for this staff
+        const notification =
+          await this.notificationRepository.createNotification({
+            userId: staff.id,
+            type,
+            message,
+            payload,
+          });
+
+        // Send WebSocket
+        this.eventsGateway.sendToUser(staff.id, {
+          id: notification.id,
+          type,
+          message,
+          payload,
+          createdAt: notification.createdAt,
+        });
+      }
+    }
+
+    if (type === 'order.exception.action') {
+      const message =
+        'Order :' +
+        payload.trackingCode +
+        ' Added to Exception It need immediate attention to solve it.';
+      // 2. If branch targeting required → fetch order
+      let order = null;
+      if (payload?.orderId) {
+        order = await this.notificationRepository.findOrderById(
+          payload.orderId,
+        );
+      }
+      // 3. Determine finalBranchId
+      //    - If order has branch → use it
+      //    - Else fallback to driver’s branch (payload.driverBranchId)
+      const finalBranchId = order?.branchId || payload?.driverBranchId || null; // last fallback = send to all if null
+
+      // 3. Loop through staff and send notifications
+      for (const staff of staffList) {
+        // If branch filtering is enabled
+        // Skip if branch does not match (only when branch exists)
+        // if (finalBranchId && staff.branchId !== finalBranchId) continue;
+
+        // Create notification for this staff
+        const notification =
+          await this.notificationRepository.createNotification({
+            userId: staff.id,
+            type,
+            message,
+            payload,
+          });
+
+        // Send WebSocket
+        this.eventsGateway.sendToUser(staff.id, {
+          id: notification.id,
+          type,
+          message,
+          payload,
+          createdAt: notification.createdAt,
+        });
+      }
+    }
+
+    if (type === 'order.requested.admin.approval') {
+      const message = 'You have new approva request for orders.';
       // 2. If branch targeting required → fetch order
       let order = null;
       if (payload?.orderId) {

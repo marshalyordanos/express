@@ -1,6 +1,10 @@
 import { Injectable, forwardRef, Inject } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ConfirmPickUpOrderDto, UpdateOrderDto } from './order.entity';
+import {
+  ConfirmPickUpOrderDto,
+  UpdateOrderDto,
+  ValidateOrderDto,
+} from './order.entity';
 import {
   OrderStatus,
   Address,
@@ -972,6 +976,106 @@ export class OrderRepository {
     return result;
   }
 
+  //   async validateOrders(orderIds: string[], officerId: string, location: string, data: ValidateOrderDto) {
+  //   return await this.prisma.$transaction(async (tx) => {
+
+  //     // Update all orders in single batch
+  //     await tx.order.updateMany({
+  //       where: { id: { in: orderIds } },
+  //       data: {
+  //         ...data,
+  //         status: 'PENDING_APPROVAL',
+  //         validatedBy: officerId,
+  //         validatedAt: new Date(),
+  //         updatedAt: new Date(),
+  //       },
+  //     });
+
+  //     // Create approval rows for each order
+  //     await tx.parcelApproval.createMany({
+  //       data: orderIds.map(orderId => ({
+  //         orderId,
+  //         status: 'PENDING',
+  //         reason: data.validatedNotes ?? "Order validated by customer officer.",
+  //         decisionBy: officerId,
+  //         decidedAt: new Date(),
+  //         createdBy: officerId,
+  //         createdAt: new Date(),
+  //       })),
+  //     });
+
+  //     // Create logs per order
+  //     await Promise.all(
+  //       orderIds.map(orderId =>
+  //         this.logOrderStatus(
+  //           tx,
+  //           orderId,
+  //           'PENDING_APPROVAL',
+  //           location,
+  //           officerId,
+  //           `Order validated, pending approval`,
+  //         )
+  //       )
+  //     );
+
+  //     return {
+  //       success: true,
+  //       count: orderIds.length,
+  //     };
+  //   });
+  // }
+async requestApproval(orderIds: string[], userId: string) {
+  return await this.prisma.$transaction(async (tx) => {
+    // 1. Update orders status
+    const orders = await tx.order.updateMany({
+      where: { id: { in: orderIds } },
+      data: {
+        status: 'PENDING_APPROVAL',
+        updatedAt: new Date(),
+      },
+    });
+
+    // 2. UPSERT parcel approval entries
+    await Promise.all(
+      orderIds.map((orderId) =>
+        tx.parcelApproval.upsert({
+          where: { orderId }, // must be unique in schema
+          update: {
+            status: 'PENDING',
+            reason: 'Driver assignment request for order',
+            decisionBy: userId,
+            decidedAt: new Date(),
+            updatedAt: new Date(),
+          },
+          create: {
+            orderId,
+            status: 'PENDING',
+            reason: 'Driver assignment request for order',
+            decisionBy: userId,
+            decidedAt: new Date(),
+            createdBy: userId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        })
+      )
+    );
+
+    return {
+      updatedOrders: orders,
+      totalOrders: orderIds.length,
+    };
+  });
+}
+
+  async findOrdersByIds(orderIds: string[]) {
+    console.log('INSIDE REPO :: ', orderIds);
+
+    return this.prisma.order.findMany({
+      where: { id: { in: orderIds } },
+    });
+  }
+
   async markUnusualOrder(orderId: string, data: any) {
     return this.prisma.order.update({
       where: { id: orderId },
@@ -1464,6 +1568,13 @@ export class OrderRepository {
       const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: { status: 'EXCEPTION' },
+        // include:{
+        //   customer:{
+        //     select:{
+        //       id: true
+        //     }
+        //   }
+        // }
       });
 
       // Step 3: Add order tracking

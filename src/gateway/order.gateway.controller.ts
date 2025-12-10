@@ -64,7 +64,30 @@ export class OrderGatewayController {
       ip,
     });
   }
-  
+
+  @Post('/request/approval')
+  async requestApproval(@Body() orderIds: string[], @Req() req) {
+    const authHeader = req.headers['authorization'] || null;
+    let token = req.headers['authorization']?.replace('Bearer ', '') || null;
+
+    const forwarded = (req.headers['x-forwarded-for'] as string) || '';
+    const ip = forwarded.split(',')[0] || req.ip || req.socket.remoteAddress;
+    let decodedUser = null;
+    try {
+      decodedUser = jwt.verify(token, process.env.JWT_SECRET || 'yourSecret');
+      // decodedUser = this.jwtService.verify(token);
+    } catch (err) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    console.log("SENINFINSDNJG :: ", orderIds);
+    
+    return this.orderClient.send(PATTERNS.ORDER_REQUEST_APPROVAL, {
+      orderIds,
+      headers: { authorization: authHeader },
+      user: decodedUser, // ✅ send user info
+      ip,
+    });
+  }
 
   @Post('/user/create')
   async orderCreateValidate(@Body() data: CreateOrderDto, @Req() req) {

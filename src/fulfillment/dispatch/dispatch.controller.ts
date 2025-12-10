@@ -31,8 +31,9 @@ import { RateLimitGuard } from '../../common/rate-limit.guard';
 export class DispatchMessageController {
   constructor(private readonly usecases: DispatchUseCasesImpl) {}
 
+  //Assignment permissions
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.CREATE, ScopeAction.ASSIGN)
+  @CheckPermission('DispatchAssign', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.DISPATCH_ASSIGN_DRIVER_FOR_PICKUP)
   async assignDriverForPickup(
     @Payload() payoad: { data: AssignDriverForPickup; user: any },
@@ -41,6 +42,60 @@ export class DispatchMessageController {
     return this.usecases.assignDriverForPickup(payoad.data, userId);
   }
 
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchAssign', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.DISPATCH_ASSIGN_OFFICER_TO_BATCH)
+  async assignOfficerToBatch(
+    @Payload() payload: { data: AssignOfficerForBatch; user: any },
+  ): Promise<any> {
+    const userId = payload.user?.sub;
+    return this.usecases.confirmDispatch(payload.data, userId);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchAssign', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.DISPATCH_ASSIGN_DRIVER_FOR_DELIVERY)
+  async assignDriverForDelivery(
+    @Payload() payload: { data: AssignDriverForPickup; user: any },
+  ): Promise<any> {
+    const userId = payload.user?.sub;
+    return this.usecases.assignDriverToOrder(payload.data, userId);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchAssign', PermissionActions.DELETE)
+  @MessagePattern(PATTERNS.DISPATCH_REMOVE_DRIVER_FROM_ORDER)
+  async removeDriverFromOrder(
+    @Payload() payload: { orderId: string },
+  ): Promise<any> {
+    const result = await this.usecases.removeDriverFromOrder(payload.orderId);
+    return IResponse.success('Driver removed successfully', result);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchAssign', PermissionActions.UPDATE)
+  @MessagePattern(PATTERNS.DISPATCH_CHANGE_DRIVER_FOR_ORDER)
+  async changeDriverForOrder(
+    @Payload() payload: { data: AssignDriverForPickup },
+  ): Promise<any> {
+    const result = await this.usecases.changeDriverForOrder(payload.data);
+    return IResponse.success('Driver changed successfully', result);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchAssign', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.DISPATCH_CREATE_ASSIGNEMENT_REQUEST)
+  async createDriverAssignmentRequests(
+    @Payload() payload: { data: CreateAssignmentRequestsDto; user: any },
+  ) {
+    const userId = payload.user?.sub;
+    await this.usecases.createDriverAssignmentRequests(payload.data, userId);
+    return IResponse.success(
+      `Driver assignment requests created successfully for order ${payload.data.orderId} and notification sent to drivers`,
+    );
+  }
+
+  // Dispatch permissions
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Dispatch', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.DISPATCH_APPROVE_CATEGORIZATION)
@@ -66,7 +121,7 @@ export class DispatchMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.UPDATE)
+  @CheckPermission('Dispatch', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.DISPATCH_ADD_ORDERS_TO_BATCH)
   async addOrdersToBatch(
     @Payload()
@@ -82,223 +137,6 @@ export class DispatchMessageController {
     return this.usecases.addOrdersToBatch(batchId, newOrderIds, userId, data);
   }
 
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.CREATE, ScopeAction.ASSIGN)
-  @MessagePattern(PATTERNS.DISPATCH_ASSIGN_OFFICER_TO_BATCH)
-  async assignOfficerToBatch(
-    @Payload() payload: { data: AssignOfficerForBatch; user: any },
-  ): Promise<any> {
-    const userId = payload.user?.sub;
-    return this.usecases.confirmDispatch(payload.data, userId);
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.UPDATE)
-  @MessagePattern(PATTERNS.DISPATCH_COLLECT_BATCH_BY_CARGO_OFFICER)
-  async collectBatchByCargoOfficer(
-    @Payload() payload: { data: AssignOfficerForBatch; user: any },
-  ): Promise<any> {
-    const userId = payload.user?.sub;
-    return this.usecases.collectBatchByCargoOfficer(payload.data, userId);
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.UPDATE)
-  @MessagePattern(PATTERNS.DISPATCH_HAND_OVER_BATCHES_TO_AIRPORT)
-  async handoverBatchesToAirport(
-    @Payload() payload: { data: BatchHandoverDto; user: any },
-  ): Promise<any> {
-    const userId = payload.user?.sub;
-    return this.usecases.deliverBatchToAirport(payload.data, userId);
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.UPDATE)
-  @MessagePattern(PATTERNS.DISPATCH_COLLECT_FROM_AIRPORT)
-  async collectFromAirport(
-    @Payload() payload: { data: OrderScanTokenDto; user: any },
-  ): Promise<any> {
-    const userId = payload.user?.sub;
-    return this.usecases.scanOrder(
-      payload.data.token,
-      userId,
-    );
-  }
-
-   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.UPDATE)
-  @MessagePattern(PATTERNS.DISPATCH_COLLECT_FROM_AIRPORT)
-  async collectBachesForPickup(
-    @Payload() payload: { data: BatchesScanTokenDto; user: any },
-  ): Promise<any> {
-    const userId = payload.user?.sub;
-    return this.usecases.scanOrder(
-      payload.data.token,
-      userId,
-    );
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.UPDATE)
-  @MessagePattern(PATTERNS.DISPATCH_COMPARE_SCANNED_ORDERS)
-  async comapreOrders(
-    @Payload() payload: { officerId: string; user: any },
-  ): Promise<any> {
-    const userId = payload.user?.sub;
-    return this.usecases.compareOrders(payload.officerId, userId);
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.UPDATE)
-  @MessagePattern(PATTERNS.DISPATCH_CONFIRM_ARRIVAL_AND_HANDOVER)
-  async arriveAndInbound(
-    @Payload() payload: { data: ConfirmBatchHandoverDto, user: any },
-  ): Promise<any> {
-    return this.usecases.confirmHandover(payload.data);
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.READ)
-  @MessagePattern(PATTERNS.DISPATCH_FIND_DELIVERED_AND_ONGOING)
-  async getDeliveredAndOnGoingDispatches(
-    @Payload() payload: { user: any },
-  ): Promise<any> {
-    const userId = payload.user?.sub;
-    return this.usecases.getDeliveredAndOnGoingDispatches(userId);
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.CREATE, ScopeAction.ASSIGN)
-  @MessagePattern(PATTERNS.DISPATCH_ASSIGN_DRIVER_FOR_DELIVERY)
-  async assignDriverForDelivery(
-    @Payload() payload: { data: AssignDriverForPickup; user: any },
-  ): Promise<any> {
-    const userId = payload.user?.sub;
-    return this.usecases.assignDriverToOrder(payload.data, userId);
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.CREATE, ScopeAction.DELIVERY)
-  @MessagePattern(PATTERNS.DISPATCH_ACCEPT_LAST_MILE_DELIVERY)
-  async lastMileDelivery(
-    @Payload() payload: { data: LastMileDeliveryDto; user: any },
-  ): Promise<any> {
-    const userId = payload.user?.sub;
-    return this.usecases.lastMileDelivery(
-      payload.data.orderId,
-      payload.data.driverId,
-      userId,
-      payload.data.notes,
-    );
-  }
-
-  
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.CREATE, ScopeAction.DELIVERY)
-  @MessagePattern(PATTERNS.DISPATCH_COMPLETE_DELIVERY)
-  async completeDelivery(
-    @Payload() payload: { data: CompleteDeliveryDto; user: any },
-  ): Promise<any> {
-    const userId = payload.user?.sub;
-    const result = await this.usecases.completeDelivery(payload.data, userId);
-    return IResponse.success('Delivery completed successfully', result);
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.DELETE)
-  @MessagePattern(PATTERNS.DISPATCH_REMOVE_DRIVER_FROM_ORDER)
-  async removeDriverFromOrder(
-    @Payload() payload: { orderId: string },
-  ): Promise<any> {
-    const result = await this.usecases.removeDriverFromOrder(payload.orderId);
-    return IResponse.success('Driver removed successfully', result);
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.UPDATE, ScopeAction.APPROVE)
-  @MessagePattern(PATTERNS.DISPATCH_CHANGE_DRIVER_FOR_ORDER)
-  async changeDriverForOrder(
-    @Payload() payload: { data: AssignDriverForPickup },
-  ): Promise<any> {
-    const result = await this.usecases.changeDriverForOrder(payload.data);
-    return IResponse.success('Driver changed successfully', result);
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.CREATE)
-  @MessagePattern(PATTERNS.DISPATCH_GENERATE_QR_CODE)
-  async generateQrCode(@Payload() payload: { data: GenerateQrDto }) {
-    const result = await this.usecases.prepareQRCodes(payload.data);
-    return IResponse.success('Qr code generated successfully', result);
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.CREATE, ScopeAction.APPROVE)
-  @MessagePattern(PATTERNS.DISPATCH_CREATE_DRIVER)
-  async createDriver(@Payload() payload: { data: CreateDriver }) {
-    const result = await this.usecases.createDriver(payload.data);
-    return IResponse.success(
-      'Driver with id [' +
-        payload.data.userId +
-        '] is successfully created for vehicle with id [' +
-        payload.data.vehicleId +
-        '].',
-      result,
-    );
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.READ)
-  @MessagePattern(PATTERNS.DISPATCH_FIND_DRIVER)
-  async findDriver(@Payload() payload: { query: ListQueryDto }) {
-    const result = await this.usecases.findDriver(payload.query);
-    return IResponse.success('Officer created successfully', result);
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.CREATE)
-  @MessagePattern(PATTERNS.DISPATCH_CREATE_ASSIGNEMENT_REQUEST)
-  async createDriverAssignmentRequests(
-    @Payload() payload: { data: CreateAssignmentRequestsDto; user: any },
-  ) {
-    const userId = payload.user?.sub;
-    await this.usecases.createDriverAssignmentRequests(payload.data, userId);
-    return IResponse.success(
-      `Driver assignment requests created successfully for order ${payload.data.orderId} and notification sent to drivers`,
-    );
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.UPDATE)
-  @MessagePattern(PATTERNS.DISPATCH_ACCEPT_ASSIGNEMENT_REQUEST)
-  async driverAccept(@Payload() payload: { orderId: string; user: any }) {
-    const userId = payload.user?.sub;
-    const result = await this.usecases.driverAccept(payload.orderId, userId);
-    return IResponse.success(
-      'Successfully driver is assigned to order',
-      result,
-    );
-  }
-
-  @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Dispatch', PermissionActions.UPDATE)
-  @MessagePattern(PATTERNS.DISPATCH_DRIVER_CANCEL_ORDER)
-  async driverCancelOrder(
-    @Payload() payload: { data: DriverCancelOrder; user: any },
-  ) {
-    const { reason, orderId } = payload.data;
-    const userId = payload.user?.sub;
-    const result = await this.usecases.driverOrderCancellation(
-      orderId,
-      reason,
-      userId,
-    );
-    return IResponse.success(
-      'You have Successfully cancelled your drive for order',
-      result,
-    );
-  }
   @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Dispatch', PermissionActions.READ)
   @MessagePattern(PATTERNS.DISPATCH_FIND_CANCELLED_ORDERS_BY_DRIVER)
@@ -316,4 +154,167 @@ export class DispatchMessageController {
       result,
     );
   }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('Dispatch', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.DISPATCH_GENERATE_QR_CODE)
+  async generateQrCode(@Payload() payload: { data: GenerateQrDto }) {
+    const result = await this.usecases.prepareQRCodes(payload.data);
+    return IResponse.success('Qr code generated successfully', result);
+  }
+
+  // Dispatch Operational permissions
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchOperational', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.DISPATCH_COLLECT_BATCH_BY_CARGO_OFFICER)
+  async collectBatchByCargoOfficer(
+    @Payload() payload: { data: AssignOfficerForBatch; user: any },
+  ): Promise<any> {
+    const userId = payload.user?.sub;
+    return this.usecases.collectBatchByCargoOfficer(payload.data, userId);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchOperational', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.DISPATCH_HAND_OVER_BATCHES_TO_AIRPORT)
+  async handoverBatchesToAirport(
+    @Payload() payload: { data: BatchHandoverDto; user: any },
+  ): Promise<any> {
+    const userId = payload.user?.sub;
+    return this.usecases.deliverBatchToAirport(payload.data, userId);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchOperational', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.DISPATCH_COLLECT_FROM_AIRPORT)
+  async collectFromAirport(
+    @Payload() payload: { data: OrderScanTokenDto; user: any },
+  ): Promise<any> {
+    const userId = payload.user?.sub;
+    return this.usecases.scanOrder(payload.data.token, userId);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchOperational', PermissionActions.UPDATE)
+  @MessagePattern(PATTERNS.DISPATCH_COLLECT_FROM_AIRPORT)
+  async collectBachesForPickup(
+    @Payload() payload: { data: BatchesScanTokenDto; user: any },
+  ): Promise<any> {
+    const userId = payload.user?.sub;
+    return this.usecases.scanOrder(payload.data.token, userId);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchOperational', PermissionActions.UPDATE)
+  @MessagePattern(PATTERNS.DISPATCH_COMPARE_SCANNED_ORDERS)
+  async comapreOrders(
+    @Payload() payload: { officerId: string; user: any },
+  ): Promise<any> {
+    const userId = payload.user?.sub;
+    return this.usecases.compareOrders(payload.officerId, userId);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchOperational', PermissionActions.UPDATE)
+  @MessagePattern(PATTERNS.DISPATCH_CONFIRM_ARRIVAL_AND_HANDOVER)
+  async arriveAndInbound(
+    @Payload() payload: { data: ConfirmBatchHandoverDto; user: any },
+  ): Promise<any> {
+    return this.usecases.confirmHandover(payload.data);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchOperational', PermissionActions.READ)
+  @MessagePattern(PATTERNS.DISPATCH_FIND_DELIVERED_AND_ONGOING)
+  async getDeliveredAndOnGoingDispatches(
+    @Payload() payload: { user: any },
+  ): Promise<any> {
+    const userId = payload.user?.sub;
+    return this.usecases.getDeliveredAndOnGoingDispatches(userId);
+  }
+
+  //Delivery permissions
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchDelivery', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.DISPATCH_ACCEPT_LAST_MILE_DELIVERY)
+  async lastMileDelivery(
+    @Payload() payload: { data: LastMileDeliveryDto; user: any },
+  ): Promise<any> {
+    const userId = payload.user?.sub;
+    return this.usecases.lastMileDelivery(
+      payload.data.orderId,
+      payload.data.driverId,
+      userId,
+      payload.data.notes,
+    );
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchDelivery', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.DISPATCH_COMPLETE_DELIVERY)
+  async completeDelivery(
+    @Payload() payload: { data: CompleteDeliveryDto; user: any },
+  ): Promise<any> {
+    const userId = payload.user?.sub;
+    const result = await this.usecases.completeDelivery(payload.data, userId);
+    return IResponse.success('Delivery completed successfully', result);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchDelivery', PermissionActions.CREATE)
+  @MessagePattern(PATTERNS.DISPATCH_CREATE_DRIVER)
+  async createDriver(@Payload() payload: { data: CreateDriver }) {
+    const result = await this.usecases.createDriver(payload.data);
+    return IResponse.success(
+      'Driver with id [' +
+        payload.data.userId +
+        '] is successfully created for vehicle with id [' +
+        payload.data.vehicleId +
+        '].',
+      result,
+    );
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchDelivery', PermissionActions.READ)
+  @MessagePattern(PATTERNS.DISPATCH_FIND_DRIVER)
+  async findDriver(@Payload() payload: { query: ListQueryDto }) {
+    const result = await this.usecases.findDriver(payload.query);
+    return IResponse.success('Driver fetched successfully', result);
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchDelivery', PermissionActions.UPDATE)
+  @MessagePattern(PATTERNS.DISPATCH_ACCEPT_ASSIGNEMENT_REQUEST)
+  async driverAccept(@Payload() payload: { orderId: string; user: any }) {
+    const userId = payload.user?.sub;
+    const result = await this.usecases.driverAccept(payload.orderId, userId);
+    return IResponse.success(
+      'Successfully driver is assigned to order',
+      result,
+    );
+  }
+
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @CheckPermission('DispatchDelivery', PermissionActions.UPDATE)
+  @MessagePattern(PATTERNS.DISPATCH_DRIVER_CANCEL_ORDER)
+  async driverCancelOrder(
+    @Payload() payload: { data: DriverCancelOrder; user: any },
+  ) {
+    const { reason, orderId } = payload.data;
+    const userId = payload.user?.sub;
+    const result = await this.usecases.driverOrderCancellation(
+      orderId,
+      reason,
+      userId,
+    );
+    return IResponse.success(
+      'You have Successfully cancelled your drive for order',
+      result,
+    );
+  }
+
+
+  
 }

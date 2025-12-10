@@ -15,8 +15,7 @@ import { ListQueryDto } from '../../common/query/query.dto';
 import { CheckPermission } from '../../common/decorator/check-permission.decorator';
 import { PermissionGuard } from '../../common/permission.guard';
 import {
-  PermissionActions,
-  ScopeAction,
+  PermissionActions
 } from '../../contracts/permission-actions.enum';
 import { RateLimitGuard } from '../../common/rate-limit.guard';
 import { Public } from '../../common/decorator/public.decorator';
@@ -79,7 +78,7 @@ export class StaffMessageController {
 
   //Completed as marshal wanted
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Staff', PermissionActions.UPDATE)
+  @CheckPermission('Staff', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.USER_CHANGE_ROLE)
   async changeUserRole(@Payload() payload: { data: ChangeRoleDto }) {
     const result = await this.usecases.changeUserRole(payload.data);
@@ -147,14 +146,12 @@ export class StaffMessageController {
   }
 
   // @UseGuards(PermissionGuard, RateLimitGuard)
-  // @CheckPermission('User', PermissionActions.CREATE, ScopeAction.APPROVE)
+  // @CheckPermission('Staff', PermissionActions.CREATE)
   @Public()
   @MessagePattern(PATTERNS.STAFF_CREATE_DRIVER)
   async createDriver(@Payload() payload: { data: CreateDriver; user: any }) {
-    console.log("INCONTROLLER :: ", payload.data);
     
     const userId = payload?.user?.sub;
-    console.log("user is :: ", userId);
     
     const result = await this.usecases.createDriver(payload.data, userId);
     return IResponse.success(
@@ -163,13 +160,12 @@ export class StaffMessageController {
     );
   }
   // @UseGuards(PermissionGuard, RateLimitGuard)
-  // @CheckPermission('User', PermissionActions.READ)
+  // @CheckPermission('Staff', PermissionActions.READ)
   @Public()
   @MessagePattern(PATTERNS.STAFF_FIND_DRIVER)
   async findDriver(@Payload() payload: { query: ListQueryDto }) {
-    console.log('=======================================11111');
 
     const result = await this.usecases.findDriver(payload.query);
-    return IResponse.success('Officer created successfully', result);
+    return IResponse.success('Driver Fetched successfully', result);
   }
 }

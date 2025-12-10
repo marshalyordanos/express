@@ -43,7 +43,7 @@ export class FleetMessageController {
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Fleet', PermissionActions.CREATE)
+  @CheckPermission('Fleet', PermissionActions.READ)
   @MessagePattern(PATTERNS.FLEET_GET_ALL_VEHICLES_TYPE)
   async getVehicleType(@Payload() payload: { query: ListQueryDto; user: any }) {
     const userId = payload.user?.sub;
@@ -65,7 +65,7 @@ export class FleetMessageController {
 
   // Get a vehicle by ID
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Fleet', PermissionActions.CREATE)
+  @CheckPermission('Fleet', PermissionActions.READ)
   @MessagePattern(PATTERNS.FLEET_GET_VEHICLE_BY_ID)
   async getVehicleById(@Payload() payload: { id: string }) {
     const data = await this.usecases.getVehicleById(payload.id);

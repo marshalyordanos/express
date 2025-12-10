@@ -1229,8 +1229,8 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
       }
 
       for (const [customerId, customerOrders] of customerMap) {
-        this.retryNotification('delivery.driver.change', {
-          type: 'delivery.driver.changed',
+        this.retryNotification('order.dispatched', {
+          type: 'order.dispatched',
           userId: customerId,
           message: `Your orders have been dispatched.`,
           payload: {
@@ -1388,6 +1388,33 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         newOrderIds,
         updateData,
       );
+
+      //  const ordersToSend = batch.batch.orders;
+      const ordersToSend = updatedBatch.batch.orders;
+
+      // Group orders by customerId
+      const customerMap = new Map();
+
+      for (const order of ordersToSend) {
+        if (!customerMap.has(order.customerId)) {
+          customerMap.set(order.customerId, []);
+        }
+        customerMap.get(order.customerId)!.push(order);
+      }
+
+      for (const [customerId, customerOrders] of customerMap) {
+        this.retryNotification('order.dispatched', {
+          type: 'order.dispatched',
+          userId: customerId,
+          message: `Your orders have been dispatched.`,
+          payload: {
+            orders: customerOrders.map((o) => ({
+              id: o.id,
+              trackingCode: o.trackingCode,
+            })),
+          },
+        });
+      }
       this.logger.verbose(`Orders added successfully to batch ${batchId}`);
 
       return IResponse.success(
@@ -1821,6 +1848,34 @@ export class DispatchUseCasesImpl implements DispatchUseCases {
         dto.notes,
         dto.podImages,
       );
+
+      // Flatten orders from all batches
+      const ordersToSend = result.batches.flatMap((b) => b.orders);
+
+      // Group orders by customerId
+      const customerMap = new Map<string, typeof ordersToSend>();
+
+      for (const order of ordersToSend) {
+        if (!customerMap.has(order.customerId)) {
+          customerMap.set(order.customerId, []);
+        }
+        customerMap.get(order.customerId)!.push(order);
+      }
+
+      // Send notifications per customer
+      for (const [customerId, customerOrders] of customerMap) {
+        this.retryNotification('order.recieved.destination.branch', {
+          type: 'order.recieved.destination.branch',
+          userId: customerId,
+          message: `Your Order arrived at destination branch.`,
+          payload: {
+            orders: customerOrders.map((o) => ({
+              id: o.id,
+              trackingCode: o.trackingCode,
+            })),
+          },
+        });
+      }
 
       this.logger.log(`Handover confirmed by officer ${dto.handedById}`);
       return {

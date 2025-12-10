@@ -22,17 +22,20 @@ export class MapMessageController {
   @CheckPermission('Maps', PermissionActions.CREATE)
   @MessagePattern(PATTERNS.MAP_GET_ROUTE)
   async getRoute(@Payload() payoad: { driverId: string }): Promise<any> {
-    const result= await this.usecases.getRoute(payoad.driverId);
+    const result = await this.usecases.getRoute(payoad.driverId);
     return IResponse.success('Route Fetched successfully', result);
   }
 
   @UseGuards(PermissionGuard, RateLimitGuard)
-  @CheckPermission('Maps', PermissionActions.CREATE)
+  @CheckPermission('Maps', PermissionActions.UPDATE)
   @MessagePattern(PATTERNS.MAP_MARK_STOP_VISITED)
   async markStopVisited(
     @Payload() payload: { driverId: string; orderId: string },
   ): Promise<any> {
-    const result = await this.usecases.markStopVisited(payload.driverId, payload.orderId);
+    const result = await this.usecases.markStopVisited(
+      payload.driverId,
+      payload.orderId,
+    );
     return IResponse.success('Stop visited successfully', result);
   }
 
@@ -51,8 +54,7 @@ export class MapMessageController {
     @Payload() payoad: { orderIds: string[]; radius: any; user: any },
   ): Promise<any> {
     const userId = payoad.user?.sub;
-    const result= await
-     this.locationService.findNearbyDrivers(
+    const result = await this.locationService.findNearbyDrivers(
       payoad.orderIds,
       payoad.radius,
     );
@@ -60,21 +62,22 @@ export class MapMessageController {
     return IResponse.success('Nearby Drivers Fetched successfully', result);
   }
 
-    @UseGuards(PermissionGuard, RateLimitGuard)
+  @UseGuards(PermissionGuard, RateLimitGuard)
   @CheckPermission('Maps', PermissionActions.READ)
   @MessagePattern(PATTERNS.MAP_EXTERNAL_NEARBY_DRIVERS)
   async findNearbyExternalDrivers(
     @Payload() payoad: { lon: number; lat: number; radius: any; user: any },
   ): Promise<any> {
     const userId = payoad.user?.sub;
-    const result= await
-     this.locationService.findNearbyExternalDrivers(
+    const result = await this.locationService.findNearbyExternalDrivers(
       payoad.lon,
       payoad.lat,
       payoad.radius,
     );
 
-    return IResponse.success('External Nearby Drivers Fetched successfully', result);
+    return IResponse.success(
+      'External Nearby Drivers Fetched successfully',
+      result,
+    );
   }
-  
 }

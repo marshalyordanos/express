@@ -1,10 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OrderUseCases } from './order.usecase';
 import {
   AddException,
   CancelOrderDto,
   ConfirmPickUpOrderDto,
-  CreateOrderDto,
   UpdateOrderDto,
   ValidateOrderDto,
 } from './order.entity';
@@ -14,8 +13,6 @@ import {
   ServiceType,
   Order,
   ShippingScope,
-  OrderRouteSegment,
-  Address,
 } from '@prisma/client';
 import { RpcException } from '@nestjs/microservices';
 import { ListQueryDto } from '../../common/query/query.dto';
@@ -25,7 +22,6 @@ import { AppLogger } from '../../common/app-logger.service';
 import { PricingUseCasesImpl } from '../pricing/pricing.usecase.impl';
 import { NotificationPublisher } from '../../common/notification-publisher';
 import { RedisPublisher } from '../../redis/redis.publisher';
-import { log } from 'console';
 import { RedisSubscriber } from '../../redis/redis.subscriber';
 import { RouteSegmentHelper } from '../utils/route-segment.helper';
 // import { DriverAssignmentQueue } from './queue/driver-assignment.queue';
@@ -49,20 +45,24 @@ export class OrderUseCasesImpl implements OrderUseCases {
     this.logger.setContext('FulfillmentService', 'OrderUsecaseImpl');
   }
 
-  async getOrderManifest(query: ListQueryDto,userId: string) {
+  async getOrderManifest(query: ListQueryDto, userId: string) {
     try {
       const branch = await this.orderRepo.findBranchByUser(userId);
-      return this.orderRepo.getOrderManifest(query,userId, branch.id);
+      return this.orderRepo.getOrderManifest(query, userId, branch.id);
     } catch (err) {
       this.logger.error(err);
       throw handleCatch(err);
     }
   }
 
-  async getOngoingAndDeliveredOrders(query: ListQueryDto,userId: string) {
+  async getOngoingAndDeliveredOrders(query: ListQueryDto, userId: string) {
     try {
       const branch = await this.orderRepo.findBranchByUser(userId);
-      return this.orderRepo.getOngoingAndDeliveredOrders(query,userId, branch.id);
+      return this.orderRepo.getOngoingAndDeliveredOrders(
+        query,
+        userId,
+        branch.id,
+      );
     } catch (err) {
       this.logger.error(err);
       throw handleCatch(err);
@@ -84,7 +84,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
       console.log(
         `Order creation for customer ${customer}, and receiver ${receiver}`,
       );
-            let pickupAddress: any = null;
+      let pickupAddress: any = null;
       if (data.fulfillmentType === 'PICKUP') {
         pickupAddress = await this.mapsService.reverseGeocode(
           data.pickupAddress.lat,
@@ -122,6 +122,16 @@ export class OrderUseCasesImpl implements OrderUseCases {
           destination: order.deliveryAddress,
         },
         timestamp: Date.now(),
+      });
+
+      this.retryNotification('order.created', {
+        type: 'order.created',
+        userId,
+        message: `Your order ${order.trackingCode} has been created. Please track your order ${order.trackingCode} for status.`,
+        payload: {
+          orderid: order.id,
+          trackingCode: order.trackingCode,
+        },
       });
 
       return order; // ⚡ returns instantly
@@ -410,6 +420,16 @@ export class OrderUseCasesImpl implements OrderUseCases {
         timestamp: Date.now(),
       });
 
+      this.retryNotification('order.created', {
+        type: 'order.created',
+        userId: order.customerId,
+        message: `Your order ${order.trackingCode} has been created. Please track your order ${order.trackingCode} for status.`,
+        payload: {
+          orderid: order.id,
+          trackingCode: order.trackingCode,
+        },
+      });
+
       this.logger.log(
         `Order created successfully with id: ${order.id}, trackingCode: ${trackingCode}`,
       );
@@ -448,6 +468,17 @@ export class OrderUseCasesImpl implements OrderUseCases {
       }
 
       const result = await this.orderRepo.solveException(orderId, data, userId);
+
+      this.retryNotification('order.exception.solved', {
+        type: 'order.exception.solved',
+        userId: result.customerId,
+        message: `Your order ${result.trackingCode} has been solved for exception. Please track your order ${result.trackingCode} for delivery.`,
+        payload: {
+          orderid: orderId,
+          trackingCode: result.trackingCode,
+        },
+      });
+
       this.logger.log(`Order exception solved for orderId=${orderId}`);
       return result;
     } catch (error) {
@@ -525,6 +556,16 @@ export class OrderUseCasesImpl implements OrderUseCases {
       }
 
       this.logger.log(`Drop-off accepted for orderId=${order.id}`);
+
+      this.retryNotification('order.accepted', {
+        type: 'order.accepted',
+        userId: order.customer.id,
+        message: `Your order ${order.trackingCode} has been accepted at branch ${branch.name}. Please track your order ${order.trackingCode} for delivery.`,
+        payload: {
+          orderid: order.id,
+          trackingCode: trackingCode,
+        },
+      });
       return result;
     } catch (error) {
       this.logger.error(
@@ -592,6 +633,31 @@ export class OrderUseCasesImpl implements OrderUseCases {
       this.logger.log(
         `Pickup confirmed for orderId=${data.orderId} at location=${location}`,
       );
+
+      this.retryNotification('order.picked.up', {
+        type: 'order.picked.up',
+        userId: order.customer.id,
+        message: `Your Order ${order.trackingCode} has been picked up by driver. Please track your order ${order.trackingCode} for delivery.`,
+        payload: {
+          orderId: order.id,
+          trackingCode: order.trackingCode,
+        },
+      });
+
+      this.retryNotification('order.picked.up', {
+        type: 'order.picked.up',
+        userId,
+        message: `You have picked order ${result.trackingCode}.`,
+        payload: {
+          orderid: order.id,
+          trackingCode: result.trackingCode,
+          deliveryCustomer: {
+            id: order.receiver.id,
+            name: order.receiver.name,
+            phone: order.receiver.phone,
+          },
+        },
+      });
       return result;
     } catch (error) {
       this.logger.error(
@@ -658,15 +724,15 @@ export class OrderUseCasesImpl implements OrderUseCases {
         });
       }
 
-      if (order.status !== 'DROPPED_OFF') {
-        this.logger.warn(
-          `Order status invalid for validation: ${order.status}`,
-        );
-        throw new RpcException({
-          statusCode: 400,
-          message: `Order with Tracking code ['${order.trackingCode}'] cannot be validated. It is already validated or not collected.`,
-        });
-      }
+      // if (order.status !== 'DROPPED_OFF') {
+      //   this.logger.warn(
+      //     `Order status invalid for validation: ${order.status}`,
+      //   );
+      //   throw new RpcException({
+      //     statusCode: 400,
+      //     message: `Order with Tracking code ['${order.trackingCode}'] cannot be validated. It is already validated or not collected.`,
+      //   });
+      // }
 
       const result = await this.orderRepo.validateOrder(
         orderId,
@@ -674,6 +740,27 @@ export class OrderUseCasesImpl implements OrderUseCases {
         location,
         data,
       );
+
+      this.retryNotification('order.validated', {
+        type: 'order.validated',
+        userId: result.customerId,
+        message: `Your Order ${result.trackingCode} has been validated. Please track your order ${result.trackingCode} for delivery.`,
+        payload: {
+          orderId,
+          trackingCode: result.trackingCode,
+        },
+      });
+
+      this.retryNotification('order.validated.staff', {
+        type: 'order.validated.staff',
+        // userId: result.customerId,
+        message: `Order ${result.trackingCode} has been validated.`,
+        payload: {
+          orderId,
+          trackingCode: result.trackingCode,
+        },
+      });
+
       this.logger.log(`Order validated successfully: orderId=${orderId}`);
       return result;
     } catch (error) {
@@ -683,6 +770,66 @@ export class OrderUseCasesImpl implements OrderUseCases {
       throw handleCatch(error);
     }
   }
+
+  //   async validateOrders(orderIds: string[], data: ValidateOrderDto, userId: string) {
+  //   this.logger.log(
+  //     `Validate orders requested: [${orderIds.join(', ')}] by userId=${userId}`,
+  //   );
+
+  //   try {
+  //     const orders = await this.orderRepo.findOrdersByIds(orderIds);
+
+  //     if (!orders || orders.length === 0) {
+  //       throw new RpcException({
+  //         statusCode: 404,
+  //         message: 'No matching orders found.',
+  //       });
+  //     }
+
+  //     const officer = await this.orderRepo.findStaffById(userId);
+  //     if (!officer) {
+  //       throw new RpcException({
+  //         statusCode: 404,
+  //         message: `Officer with ID ${userId} not found.`,
+  //       });
+  //     }
+
+  //     // All orders must belong to the same branch or use officer fallback.
+  //     const branchId =
+  //       orders[0].branchId ?? officer.branchId;
+
+  //     if (!branchId) {
+  //       throw new RpcException({
+  //         statusCode: 400,
+  //         message: 'Orders cannot be validated without assigned branch.',
+  //       });
+  //     }
+
+  //     const branch = await this.orderRepo.findBranch(branchId);
+  //     const location = branch?.location ?? null;
+
+  //     if (!location) {
+  //       throw new RpcException({
+  //         statusCode: 404,
+  //         message: `Branch location missing.`,
+  //       });
+  //     }
+
+  //     const result = await this.orderRepo.validateOrders(
+  //       orderIds,
+  //       userId,
+  //       location,
+  //       data,
+  //     );
+
+  //     this.logger.log(`Orders validated successfully: [${orderIds.join(', ')}]`);
+
+  //     return result;
+  //   } catch (error) {
+  //     this.logger.error(`Failed to validate orders: ${error.message}`);
+  //     throw handleCatch(error);
+  //   }
+  // }
 
   async markUnusualOrder(orderId: string, data: any) {
     this.logger.log(`Mark unusual order requested for orderId=${orderId}`);
@@ -701,6 +848,16 @@ export class OrderUseCasesImpl implements OrderUseCases {
       this.logger.log(
         `Order marked as unusual successfully: orderId=${orderId}`,
       );
+      this.retryNotification('order.marked.unusual', {
+        type: 'order.marked.unusual',
+        userId: result.customerId,
+        message: `Your Order ${result.trackingCode} has been marked as unusual.`,
+        payload: {
+          orderId,
+          trackingCode: result.trackingCode,
+        },
+      });
+
       return result;
     } catch (error) {
       this.logger.error(
@@ -742,6 +899,16 @@ export class OrderUseCasesImpl implements OrderUseCases {
         userId,
       );
       this.logger.log(`Order approved successfully: orderId=${orderId}`);
+      this.retryNotification('order.approved', {
+        type: 'order.approved',
+        userId: result.customerId,
+        message: `Your Order ${result.trackingCode} has been Approved. Please track your order ${result.trackingCode} for delivery.`,
+        payload: {
+          orderId,
+          trackingCode: result.trackingCode,
+        },
+      });
+
       return result;
     } catch (error) {
       this.logger.error(`Failed to approve order ${orderId}: ${error.message}`);
@@ -964,6 +1131,17 @@ export class OrderUseCasesImpl implements OrderUseCases {
     try {
       const result = await this.orderRepo.cancelOrder(orderId, reason, userId);
       this.logger.log(`Order ${orderId} cancelled successfully`);
+      this.retryNotification('order.canceled', {
+        type: 'order.canceled',
+        userId: result.customerId,
+        message: `Your Order ${result.trackingCode} has been Canceled.`,
+        payload: {
+          orderId,
+          trackingCode: result.trackingCode,
+          reason: data.reason,
+        },
+      });
+
       return result;
     } catch (error) {
       this.logger.error(`Failed to cancel order ${orderId}: ${error.message}`);
@@ -999,6 +1177,41 @@ export class OrderUseCasesImpl implements OrderUseCases {
       }
 
       this.logger.log(`Exception added successfully for order ${orderId}`);
+
+      this.retryNotification('order.exception', {
+        type: 'order.exception',
+        userId: exception.updatedOrder.customerId,
+        message: `Your Order ${exception.updatedOrder.trackingCode} has been added to exception.`,
+        payload: {
+          orderId,
+          trackingCode: exception.updatedOrder.trackingCode,
+          reason,
+        },
+      });
+
+      this.retryNotification('order.exception', {
+        type: 'order.exception',
+        userId,
+        message: `You have added order ${exception.updatedOrder.trackingCode} to exception.`,
+        payload: {
+          orderId,
+          trackingCode: exception.updatedOrder.trackingCode,
+          reason,
+        },
+      });
+
+      this.retryNotification('order.exception.action', {
+        type: 'order.exception.action',
+        // userId,
+        message: `Order ${exception.updatedOrder.trackingCode} has been added to exception. It needs immediate action.`,
+        payload: {
+          orderId,
+          trackingCode: exception.updatedOrder.trackingCode,
+          reason,
+          createdBy: userId,
+        },
+      });
+
       return exception;
     } catch (error) {
       this.logger.error(
@@ -1133,6 +1346,7 @@ export class OrderUseCasesImpl implements OrderUseCases {
   async addOnHold(orderIds: string[], reason: string, userId: string) {
     try {
       const result = await this.orderRepo.addOnHold(orderIds, reason, userId);
+
       return result;
     } catch (error) {
       throw handleCatch(error);
@@ -1153,6 +1367,127 @@ export class OrderUseCasesImpl implements OrderUseCases {
       return await this.orderRepo.getOnHoldOrders(user.branch.id);
     } catch (error) {
       handleCatch(error);
+    }
+  }
+
+  async requestApproval(orderIds: any, userId: string) {
+    try {
+      console.log('ORDER IDS IN SERVIE ::: ', orderIds);
+      const orders = await this.orderRepo.findOrdersByIds(orderIds.orderIds);
+      console.log('ORDERS IN SERVIE ::: ', orders);
+
+      if (!orders || orders.length === 0) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Orders not found',
+        });
+      }
+
+      const result = await this.orderRepo.requestApproval(
+        orderIds.orderIds,
+        userId,
+      );
+
+      // Group orders by customerId
+      const customerMap = new Map<string, typeof orders>();
+
+      for (const order of orders) {
+        if (!customerMap.has(order.customerId)) {
+          customerMap.set(order.customerId, []);
+        }
+        customerMap.get(order.customerId)!.push(order);
+      }
+
+      // Send notifications per customer
+      for (const [customerId, customerOrders] of customerMap) {
+        this.retryNotification('order.requested.approval', {
+          type: 'order.requested.approval',
+          userId: customerId,
+          message: `Your order ${customerOrders.length > 1 ? 's have' : ' has'} been requested for approval.`,
+          payload: {
+            orders: customerOrders.map((o) => ({
+              id: o.id,
+              trackingCode: o.trackingCode,
+              status: o.status,
+            })),
+          },
+        });
+      }
+
+      this.retryNotification('order.requested.admin.approval', {
+        type: 'order.requested.admin.approval',
+        // userId: customerId,
+        message: `You have ${orders.length} orders waiting for your approval`,
+        payload: {
+          orders: orders.map((o) => ({
+            id: o.id,
+            trackingCode: o.trackingCode,
+            status: o.status,
+          })),
+          requestedBy: userId
+        },
+      });
+
+      return result;
+    } catch (error) {
+      handleCatch(error);
+      throw new RpcException(error);
+    }
+  }
+
+  // Flatten orders from all batches
+  // const ordersToSend = result.batches.flatMap((b) => b.orders);
+
+  // // Group orders by customerId
+  // const customerMap = new Map<string, typeof ordersToSend>();
+
+  // for (const order of ordersToSend) {
+  //   if (!customerMap.has(order.customerId)) {
+  //     customerMap.set(order.customerId, []);
+  //   }
+  //   customerMap.get(order.customerId)!.push(order);
+  // }
+
+  // // Send notifications per customer
+  // for (const [customerId, customerOrders] of customerMap) {
+  //   this.retryNotification('order.recieved.destination.branch', {
+  //     type: 'order.recieved.destination.branch',
+  //     userId: customerId,
+  //     message: `Your Order arrived at destination branch.`,
+  //     payload: {
+  //       orders: customerOrders.map((o) => ({
+  //         id: o.id,
+  //         trackingCode: o.trackingCode,
+  //       })),
+  //     },
+  //   });
+  // }
+
+  /**
+   * Retry helper for notifications
+   */
+  private async retryNotification(
+    event: string,
+    payload: any,
+    attempts = 3,
+    delayMs = 200,
+  ): Promise<void> {
+    for (let i = 0; i < attempts; i++) {
+      try {
+        await this.notificationPublisher.publish(event, payload);
+        return;
+      } catch (err) {
+        this.logger.warn(
+          `Notification attempt ${i + 1} failed for event ${event}: ${err.message}`,
+        );
+        if (i < attempts - 1) {
+          await new Promise((res) => setTimeout(res, delayMs * Math.pow(2, i))); // exponential backoff
+        } else {
+          this.logger.error(
+            `Notification failed after ${attempts} attempts for event ${event}`,
+          );
+        }
+      }
     }
   }
 }
