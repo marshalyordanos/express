@@ -97,6 +97,8 @@ export class OrderUseCasesImpl implements OrderUseCases {
         data.deliveryAddress.lat,
         data.deliveryAddress.long,
       );
+      console.log("DeliveryAddress dto:: ", deliveryAddress);
+      
       // this.logger.verbose(
       //   'Delivery address resolved ::: ',
       //   deliveryAddress as string,

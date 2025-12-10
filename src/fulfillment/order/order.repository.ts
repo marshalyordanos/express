@@ -626,14 +626,17 @@ export class OrderRepository {
       async (tx) => {
         console.log('Pickup address is :::::: ', pickupAddress);
 
-        const pickupAddressRecord = await upsertAddress(
-          tx,
-          customerId,
-          userId,
-          pickupAddress,
-          'ORDER_PICKUP',
-          data.pickupAddress.landMark,
-        );
+        let pickupAddressRecord = null;
+        if (data.fulfillmentType === 'PICKUP') {
+          pickupAddressRecord = await upsertAddress(
+            tx,
+            customerId,
+            userId,
+            pickupAddress,
+            'ORDER_PICKUP',
+            data.pickupAddress.landMark,
+          );
+        }
 
         const deliveryAddressRecord = await upsertAddress(
           tx,
@@ -1024,49 +1027,49 @@ export class OrderRepository {
   //     };
   //   });
   // }
-async requestApproval(orderIds: string[], userId: string) {
-  return await this.prisma.$transaction(async (tx) => {
-    // 1. Update orders status
-    const orders = await tx.order.updateMany({
-      where: { id: { in: orderIds } },
-      data: {
-        status: 'PENDING_APPROVAL',
-        updatedAt: new Date(),
-      },
+  async requestApproval(orderIds: string[], userId: string) {
+    return await this.prisma.$transaction(async (tx) => {
+      // 1. Update orders status
+      const orders = await tx.order.updateMany({
+        where: { id: { in: orderIds } },
+        data: {
+          status: 'PENDING_APPROVAL',
+          updatedAt: new Date(),
+        },
+      });
+
+      // 2. UPSERT parcel approval entries
+      await Promise.all(
+        orderIds.map((orderId) =>
+          tx.parcelApproval.upsert({
+            where: { orderId }, // must be unique in schema
+            update: {
+              status: 'PENDING',
+              reason: 'Driver assignment request for order',
+              decisionBy: userId,
+              decidedAt: new Date(),
+              updatedAt: new Date(),
+            },
+            create: {
+              orderId,
+              status: 'PENDING',
+              reason: 'Driver assignment request for order',
+              decisionBy: userId,
+              decidedAt: new Date(),
+              createdBy: userId,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          }),
+        ),
+      );
+
+      return {
+        updatedOrders: orders,
+        totalOrders: orderIds.length,
+      };
     });
-
-    // 2. UPSERT parcel approval entries
-    await Promise.all(
-      orderIds.map((orderId) =>
-        tx.parcelApproval.upsert({
-          where: { orderId }, // must be unique in schema
-          update: {
-            status: 'PENDING',
-            reason: 'Driver assignment request for order',
-            decisionBy: userId,
-            decidedAt: new Date(),
-            updatedAt: new Date(),
-          },
-          create: {
-            orderId,
-            status: 'PENDING',
-            reason: 'Driver assignment request for order',
-            decisionBy: userId,
-            decidedAt: new Date(),
-            createdBy: userId,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        })
-      )
-    );
-
-    return {
-      updatedOrders: orders,
-      totalOrders: orderIds.length,
-    };
-  });
-}
+  }
 
   async findOrdersByIds(orderIds: string[]) {
     console.log('INSIDE REPO :: ', orderIds);
@@ -1900,7 +1903,7 @@ async function upsertAddress(
     state: addressData.state ?? null,
     country: addressData.country ?? null,
     postalCode: addressData.postalCode ?? null,
-    landMark: addressData.landMark || landMark || null,
+    landMark: addressData?.landMark || (landMark ?? null) || null,
   };
 
   // Check if record already exists

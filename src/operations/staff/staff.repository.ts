@@ -530,111 +530,424 @@ export class StaffRepository {
     });
   }
 
+  // async findDriver(payload: ListQueryDto) {
+  //   // Start building dynamic filters
+  //   const conditions: any[] = [];
+
+  //   // Apply general search (text)
+  //   if (payload.search) {
+  //     conditions.push({
+  //       OR: [
+  //         { user: { name: { contains: payload.search, mode: 'insensitive' } } },
+  //         {
+  //           user: { email: { contains: payload.search, mode: 'insensitive' } },
+  //         },
+  //         {
+  //           user: { phone: { contains: payload.search, mode: 'insensitive' } },
+  //         },
+  //         {
+  //           vehicles: {
+  //             some: {
+  //               plateNumber: { contains: payload.search, mode: 'insensitive' },
+  //             },
+  //           },
+  //         },
+  //         {
+  //           vehicles: {
+  //             some: {
+  //               model: { contains: payload.search, mode: 'insensitive' },
+  //             },
+  //           },
+  //         },
+  //       ],
+  //     });
+  //   }
+
+  //   // Parse filters
+  //   let filters: any = {};
+  //   if (typeof payload.filter === 'string') {
+  //     try {
+  //       filters = JSON.parse(payload.filter);
+  //     } catch {
+  //       filters = {};
+  //     }
+  //   } else if (typeof payload.filter === 'object' && payload.filter !== null) {
+  //     filters = payload.filter;
+  //   }
+
+  //   // Apply optional filters
+  //   if (filters.status) conditions.push({ status: filters.status });
+  //   if (filters.type) conditions.push({ type: filters.type });
+  //   if (filters.vehicleStatus) {
+  //     conditions.push({
+  //       vehicles: { some: { status: filters.vehicleStatus } },
+  //     });
+  //   }
+  //   if (filters.userId) conditions.push({ userId: filters.userId });
+  //   if (filters.vehicleId) {
+  //     conditions.push({ vehicles: { some: { id: filters.vehicleId } } });
+  //   }
+
+  //   // Only include AND if we actually have conditions
+  //   const where = conditions.length > 0 ? { AND: conditions } : {};
+
+  //   const feature = new PrismaQueryFeature({
+  //     search: payload.search,
+  //     filter: payload.filter,
+  //     sort: payload.sort,
+  //     page: payload.page,
+  //     pageSize: payload.pageSize,
+  //     searchableFields: [
+  //       'user.name',
+  //       'user.email',
+  //       'user.phone',
+  //       'vehicles.plateNumber',
+  //       'vehicles.model',
+  //     ],
+  //   });
+
+  //   const baseQuery = feature.getQuery();
+  //   delete baseQuery.orderBy; // remove any sorting
+  //   const query = {
+  //     ...baseQuery,
+  //     where,
+  //     include: {
+  //       user: {
+  //         select: {
+  //           id: true,
+  //           name: true,
+  //           email: true,
+  //           phone: true,
+  //           isActive: true,
+  //         },
+  //       },
+  //       vehicles: {
+  //         select: { id: true, plateNumber: true, model: true, status: true },
+  //       },
+  //     },
+  //   };
+
+  //   const [drivers, total] = await this.prisma.$transaction([
+  //     this.prisma.driver.findMany(query),
+  //     this.prisma.driver.count({ where }),
+  //   ]);
+
+  //   return {
+  //     drivers,
+  //     pagination: feature.getPagination(total),
+  //   };
+  // }
+
+  // async findDriver(payload: ListQueryDto) {
+  //   const conditions: any[] = [];
+
+  //   if (payload.search) {
+  //     conditions.push({
+  //       OR: [
+  //         { user: { name: { contains: payload.search, mode: 'insensitive' } } },
+  //         {
+  //           user: { email: { contains: payload.search, mode: 'insensitive' } },
+  //         },
+  //         {
+  //           user: { phone: { contains: payload.search, mode: 'insensitive' } },
+  //         },
+  //         {
+  //           vehicles: {
+  //             some: {
+  //               plateNumber: { contains: payload.search, mode: 'insensitive' },
+  //             },
+  //           },
+  //         },
+  //         {
+  //           vehicles: {
+  //             some: {
+  //               model: { contains: payload.search, mode: 'insensitive' },
+  //             },
+  //           },
+  //         },
+  //       ],
+  //     });
+  //   }
+
+  //   let filters: any = {};
+  //   if (typeof payload.filter === 'string') {
+  //     try {
+  //       filters = JSON.parse(payload.filter);
+  //     } catch {
+  //       filters = {};
+  //     }
+  //   } else if (typeof payload.filter === 'object' && payload.filter !== null) {
+  //     filters = payload.filter;
+  //   }
+
+  //   if (filters.status) conditions.push({ status: filters.status });
+  //   if (filters.type) conditions.push({ type: filters.type });
+  //   if (filters.vehicleStatus) {
+  //     conditions.push({
+  //       vehicles: { some: { status: filters.vehicleStatus } },
+  //     });
+  //   }
+  //   if (filters.userId) conditions.push({ userId: filters.userId });
+  //   if (filters.vehicleId) {
+  //     conditions.push({ vehicles: { some: { id: filters.vehicleId } } });
+  //   }
+
+  //   const where = conditions.length ? { AND: conditions } : {};
+
+  //   const feature = new PrismaQueryFeature({
+  //     search: payload.search,
+  //     filter: payload.filter,
+  //     sort: payload.sort,
+  //     page: payload.page,
+  //     pageSize: payload.pageSize,
+  //   });
+
+  //   const baseQuery = feature.getQuery();
+  //   delete baseQuery.orderBy;
+
+  //   const query = {
+  //     ...baseQuery,
+  //     where,
+  //     include: {
+  //       user: {
+  //         select: {
+  //           id: true,
+  //           name: true,
+  //           email: true,
+  //           phone: true,
+  //           isActive: true,
+  //         },
+  //       },
+  //       vehicles: {
+  //         select: { id: true, plateNumber: true, model: true, status: true },
+  //       },
+  //     },
+  //   };
+
+  //   const [drivers, total] = await this.prisma.$transaction([
+  //     this.prisma.driver.findMany(query),
+  //     this.prisma.driver.count({ where }),
+  //   ]);
+
+  //   const enrichedDrivers = await Promise.all(
+  //     drivers.map(async (driver) => {
+  //       const baseCondition = {
+  //         OR: [
+  //           { pickupDriverId: driver.userId },
+  //           { deliveryDriverId: driver.userId },
+  //         ],
+  //       };
+
+  //       // Performance optimized grouped query
+  //       const groupedOrders = await this.prisma.order.groupBy({
+  //         by: ['status'],
+  //         where: baseCondition,
+  //         _count: { status: true },
+  //       });
+
+  //       let totalOrders = 0;
+  //       let completedOrders = 0;
+  //       let failedOrders = 0;
+
+  //       groupedOrders.forEach((item) => {
+  //         totalOrders += item._count.status;
+
+  //         if (item.status === 'DELIVERED') completedOrders = item._count.status;
+  //         if (['FAILED', 'EXCEPTION', 'CANCELED'].includes(item.status))
+  //           failedOrders += item._count.status;
+  //       });
+
+  //       const completionRate =
+  //         totalOrders > 0
+  //           ? ((completedOrders / totalOrders) * 100).toFixed(2)
+  //           : '0.00';
+
+  //       return {
+  //         ...driver,
+  //         performance: {
+  //           totalOrders,
+  //           completedOrders,
+  //           failedOrders,
+  //           completionRate,
+  //         },
+  //       };
+  //     }),
+  //   );
+
+  //   return {
+  //     drivers: enrichedDrivers,
+  //     pagination: feature.getPagination(total),
+  //   };
+  // }
+
   async findDriver(payload: ListQueryDto) {
-    // Start building dynamic filters
-    const conditions: any[] = [];
-
-    // Apply general search (text)
-    if (payload.search) {
-      conditions.push({
-        OR: [
-          { user: { name: { contains: payload.search, mode: 'insensitive' } } },
-          {
-            user: { email: { contains: payload.search, mode: 'insensitive' } },
-          },
-          {
-            user: { phone: { contains: payload.search, mode: 'insensitive' } },
-          },
-          {
-            vehicles: {
-              some: {
-                plateNumber: { contains: payload.search, mode: 'insensitive' },
-              },
-            },
-          },
-          {
-            vehicles: {
-              some: {
-                model: { contains: payload.search, mode: 'insensitive' },
-              },
-            },
-          },
-        ],
-      });
-    }
-
-    // Parse filters
-    let filters: any = {};
-    if (typeof payload.filter === 'string') {
-      try {
-        filters = JSON.parse(payload.filter);
-      } catch {
-        filters = {};
-      }
-    } else if (typeof payload.filter === 'object' && payload.filter !== null) {
-      filters = payload.filter;
-    }
-
-    // Apply optional filters
-    if (filters.status) conditions.push({ status: filters.status });
-    if (filters.type) conditions.push({ type: filters.type });
-    if (filters.vehicleStatus) {
-      conditions.push({
-        vehicles: { some: { status: filters.vehicleStatus } },
-      });
-    }
-    if (filters.userId) conditions.push({ userId: filters.userId });
-    if (filters.vehicleId) {
-      conditions.push({ vehicles: { some: { id: filters.vehicleId } } });
-    }
-
-    // Only include AND if we actually have conditions
-    const where = conditions.length > 0 ? { AND: conditions } : {};
+    const where = this.buildDriverWhereClause(payload);
 
     const feature = new PrismaQueryFeature({
-      search: payload.search,
-      filter: payload.filter,
-      sort: payload.sort,
       page: payload.page,
       pageSize: payload.pageSize,
-      searchableFields: [
-        'user.name',
-        'user.email',
-        'user.phone',
-        'vehicles.plateNumber',
-        'vehicles.model',
-      ],
+      sort: payload.sort,
     });
 
     const baseQuery = feature.getQuery();
-    delete baseQuery.orderBy; // remove any sorting
-    const query = {
-      ...baseQuery,
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            isActive: true,
-          },
-        },
-        vehicles: {
-          select: { id: true, plateNumber: true, model: true, status: true },
-        },
-      },
-    };
+    delete baseQuery.orderBy;
 
     const [drivers, total] = await this.prisma.$transaction([
-      this.prisma.driver.findMany(query),
+      this.prisma.driver.findMany({
+        ...baseQuery,
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              isActive: true,
+            },
+          },
+          vehicles: {
+            select: { id: true, model: true, plateNumber: true, status: true },
+          },
+        },
+      }),
       this.prisma.driver.count({ where }),
     ]);
 
+    // --- Performance calculation (unchanged)
+    const enrichedDrivers = await Promise.all(
+      drivers.map(async (driver) => {
+        const baseCondition = {
+          OR: [
+            { pickupDriverId: driver.userId },
+            { deliveryDriverId: driver.userId },
+          ],
+        };
+
+        // Performance optimized grouped query
+        const groupedOrders = await this.prisma.order.groupBy({
+          by: ['status'],
+          where: baseCondition,
+          _count: { status: true },
+        });
+
+        let totalOrders = 0;
+        let completedOrders = 0;
+        let failedOrders = 0;
+
+        groupedOrders.forEach((item) => {
+          totalOrders += item._count.status;
+
+          if (item.status === 'DELIVERED') completedOrders = item._count.status;
+          if (['FAILED', 'EXCEPTION', 'CANCELED'].includes(item.status))
+            failedOrders += item._count.status;
+        });
+
+        const completionRate =
+          totalOrders > 0
+            ? ((completedOrders / totalOrders) * 100).toFixed(2)
+            : '0.00';
+
+        return {
+          ...driver,
+          performance: {
+            totalOrders,
+            completedOrders,
+            failedOrders,
+            completionRate,
+          },
+        };
+      }),
+    );
+
     return {
-      drivers,
+      drivers: enrichedDrivers,
       pagination: feature.getPagination(total),
     };
   }
+
+  private buildDriverWhereClause(payload: ListQueryDto) {
+  const conditions: any[] = [];
+
+  // ------- 🔍 Global Search -------
+  if (payload.search) {
+    conditions.push({
+      OR: [
+        { user: { name: { contains: payload.search, mode: 'insensitive' } } },
+        { user: { email: { contains: payload.search, mode: 'insensitive' } } },
+        { user: { phone: { contains: payload.search, mode: 'insensitive' } } },
+        {
+          vehicles: {
+            some: {
+              OR: [
+                { plateNumber: { contains: payload.search, mode: 'insensitive' } },
+                { model: { contains: payload.search, mode: 'insensitive' } },
+              ],
+            },
+          },
+        },
+      ],
+    });
+  }
+
+  // ------- 🧪 Normalize Filter -------
+  const filters: any = this.normalizeFilter(payload.filter);
+
+  // ------- 📍 Driver-Level Filters -------
+  if (filters.status) conditions.push({ status: filters.status });
+  if (filters.type) conditions.push({ type: filters.type });
+  if (filters.userId) conditions.push({ userId: filters.userId });
+
+  // ------- 🚗 Vehicle Filters -------
+  if (filters.vehicleStatus) {
+    conditions.push({
+      vehicles: { some: { status: filters.vehicleStatus } },
+    });
+  }
+  if (filters.vehicleId) {
+    conditions.push({ vehicles: { some: { id: filters.vehicleId } } });
+  }
+
+  // ------- 👤 User-Level Filters -------
+  if (filters.user) {
+    const subConditions: any[] = [];
+
+    if (filters.user.name)
+      subConditions.push({
+        user: { name: { contains: filters.user.name, mode: 'insensitive' } },
+      });
+    if (filters.user.email)
+      subConditions.push({
+        user: { email: { contains: filters.user.email, mode: 'insensitive' } },
+      });
+    if (filters.user.phone)
+      subConditions.push({
+        user: { phone: { contains: filters.user.phone, mode: 'insensitive' } },
+      });
+
+    if (subConditions.length) conditions.push({ AND: subConditions });
+  }
+
+  return conditions.length ? { AND: conditions } : {};
+}
+
+// Helper: normalize string filters
+private normalizeFilter(filter?: string | Record<string, any>) {
+  if (!filter) return {};
+
+  if (typeof filter === 'object') return filter;
+
+  try {
+    return JSON.parse(filter);
+  } catch {
+    // fallback: "type:EXTERNAL,status:ACTIVE" → {type: "EXTERNAL", status: "ACTIVE"}
+    const obj: any = {};
+    filter.split(',').forEach((item) => {
+      const [key, val] = item.split(':');
+      if (key && val) obj[key.trim()] = val.trim();
+    });
+    return obj;
+  }
+}
+
 }
